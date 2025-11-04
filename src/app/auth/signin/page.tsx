@@ -1,8 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { signIn, useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { signIn } from "next-auth/react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,62 +10,40 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { LoaderCircle } from "lucide-react";
 
 export default function SignIn() {
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
-  const { data: session, status } = useSession();
-
-  useEffect(() => {
-    // If user is already authenticated, redirect to home
-    if (status === "authenticated" && session) {
-      router.push("/");
-    }
-  }, [session, status, router]);
-
-  // Show loading state while checking authentication
-  if (status === "loading") {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <LoaderCircle className="h-8 w-8 mx-auto mb-4 text-foreground animate-spin" />
-          <p className="text-muted-foreground">Checking authentication...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If already authenticated, don't show the sign-in form
-  if (status === "authenticated") {
-    return null;
-  }
 
   const handleSignIn = async () => {
     setIsLoading(true);
     try {
+      // Middleware handles redirect if already authenticated
       await signIn("google", { callbackUrl: "/" });
     } catch (error) {
       console.error("Sign in error:", error);
-    } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
+    <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Sign In</CardTitle>
-          <CardDescription>Sign in with your Google account</CardDescription>
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">
+            Welcome to Xmrit Hub
+          </CardTitle>
+          <CardDescription className="text-center">
+            Sign in with your Google account to continue
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <Button
             onClick={handleSignIn}
             className="w-full"
             disabled={isLoading}
+            size="lg"
           >
-            <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+            <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                 fill="#4285F4"

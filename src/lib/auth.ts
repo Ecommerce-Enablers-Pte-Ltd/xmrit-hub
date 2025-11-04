@@ -7,13 +7,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: DrizzleAdapter(db),
   providers: [
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID || "dummy-client-id",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "dummy-client-secret",
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
   pages: {
     signIn: "/auth/signin",
-    signOut: "/auth/signout",
     error: "/auth/error",
   },
   callbacks: {
@@ -27,6 +26,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
     strategy: "database",
   },
+  trustHost: true,
 });
 
 // Helper function for backward compatibility

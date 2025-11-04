@@ -72,7 +72,7 @@ export function UserNav({ session }: UserNavProps) {
           className="cursor-pointer px-3 py-2"
           onSelect={(event) => {
             event.preventDefault();
-            signOut();
+            signOut({ callbackUrl: "/auth/signin" });
           }}
         >
           <LogOut className="mr-3 h-4 w-4" />

@@ -5,23 +5,23 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isLoggedIn = !!req.auth;
 
-  // If user is authenticated and trying to access sign-in page, redirect to home
-  if (isLoggedIn && pathname.startsWith("/auth/signin")) {
-    return NextResponse.redirect(new URL("/", req.url));
-  }
-
-  // Allow access to auth pages without authentication
-  if (pathname.startsWith("/auth/")) {
-    return NextResponse.next();
-  }
-
-  // Allow access to public API routes
+  // Allow access to public API routes (needed for NextAuth)
   if (pathname.startsWith("/api/auth/")) {
     return NextResponse.next();
   }
 
   // Allow access to ingest API (uses API key authentication instead of session)
   if (pathname.startsWith("/api/ingest/")) {
+    return NextResponse.next();
+  }
+
+  // If user is authenticated and trying to access ANY auth page, redirect to home
+  if (isLoggedIn && pathname.startsWith("/auth/")) {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  // Allow access to auth pages ONLY if not authenticated
+  if (pathname.startsWith("/auth/")) {
     return NextResponse.next();
   }
 

@@ -215,7 +215,7 @@ export function SlideTable({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuItem
+                          {/* <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
                               onEditSlide(slide);
@@ -224,8 +224,8 @@ export function SlideTable({
                           >
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
+                          </DropdownMenuItem> */}
+                          {/* <DropdownMenuSeparator /> */}
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();

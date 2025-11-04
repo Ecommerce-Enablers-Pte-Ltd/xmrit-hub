@@ -1,95 +1,102 @@
-"use client";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { getAllWorkspaces } from "@/lib/action/workspace";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { useWorkspaces } from "@/lib/api";
-import { LoaderCircle } from "lucide-react";
+export default async function Home() {
+  // Middleware already handles authentication, but we check again for session data
+  const session = await auth();
 
-export default function Home() {
-  const router = useRouter();
-  const { data: session, status } = useSession();
-  const { workspaces, loading, error } = useWorkspaces();
-
-  useEffect(() => {
-    // If not authenticated, redirect to sign-in
-    if (status === "unauthenticated") {
-      router.push("/auth/signin");
-      return;
-    }
-
-    // Wait for authentication to be determined
-    if (status === "loading") return;
-
-    // Wait for workspaces to load
-    if (loading) return;
-
-    if (error) {
-      console.error("Error in home page:", error);
-      // Could redirect to an error page or show error state
-      return;
-    }
-
-    if (workspaces.length === 0) {
-      // TODO: Handle case where no workspaces exist
-      // For now, we'll show a message or create a default workspace via API
-      console.log("No workspaces found");
-      return;
-    }
-
-    // Redirect to the first workspace
-    router.push(`/${workspaces[0].id}`);
-  }, [workspaces, loading, error, router, session, status]);
-
-  if (status === "loading") {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <LoaderCircle className="h-8 w-8 mx-auto mb-4 text-foreground animate-spin" />
-          <p className="text-muted-foreground">Checking authentication...</p>
-        </div>
-      </div>
-    );
+  if (!session?.user) {
+    redirect("/auth/signin");
   }
 
-  if (status === "unauthenticated") {
-    return null; // Will redirect to sign-in
-  }
-
-  if (loading) {
+  // Fetch workspaces server-side
+  let workspaces;
+  try {
+    workspaces = await getAllWorkspaces();
+  } catch (error) {
+    console.error("Error fetching workspaces:", error);
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <LoaderCircle className="h-8 w-8 mx-auto mb-4 text-foreground animate-spin" />
-          <p className="text-muted-foreground">Loading workspaces...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
-          <p className="text-muted-foreground">{error}</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-red-600">Error</CardTitle>
+            <CardDescription>
+              Failed to load workspaces. Please try again later.
+            </CardDescription>
+          </CardHeader>
+        </Card>
       </div>
     );
   }
 
   if (workspaces.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">No Workspaces Found</h1>
-          <p className="text-muted-foreground">
-            Please create a workspace to get started.
-          </p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>No Workspaces Found</CardTitle>
+            <CardDescription>
+              Please create a workspace to get started.
+            </CardDescription>
+          </CardHeader>
+        </Card>
       </div>
     );
   }
+  //
+  // If only one workspace, redirect directly to it
+  if (workspaces.length === 1) {
+    redirect(`/${workspaces[0].id}`);
+  }
 
-  return null; // Should redirect before reaching here
+  // Show workspace selector for multiple workspaces
+  return (
+    <div className="flex items-center justify-center min-h-screen p-4">
+      <Card className="w-full max-w-2xl overflow-y-auto max-h-[calc(100vh-16rem)]">
+        <CardHeader>
+          <CardTitle>Welcome, {session.user.name}!</CardTitle>
+          <CardDescription>
+            Select a workspace to view your metrics and charts
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-3">
+            {workspaces.map((workspace) => (
+              <Link
+                key={workspace.id}
+                href={`/${workspace.id}`}
+                className="block"
+              >
+                <Button
+                  variant="outline"
+                  className="w-full h-auto py-4 px-6 justify-start text-left hover:bg-accent"
+                >
+                  <div className="flex flex-col gap-1 w-full">
+                    <div className="font-semibold text-base">
+                      {workspace.name}
+                    </div>
+                    {workspace.description && (
+                      <div className="text-sm text-muted-foreground font-normal whitespace-nowrap overflow-hidden text-ellipsis">
+                        {workspace.description}
+                      </div>
+                    )}
+                  </div>
+                </Button>
+              </Link>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
