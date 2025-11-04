@@ -61,7 +61,7 @@ export default async function Home() {
 
   // Show workspace selector for multiple workspaces
   return (
-    <div className="flex items-center justify-center min-h-screen p-4">
+    <div className="flex items-center justify-center min-h-screen p-8 md:p-4">
       <Card className="w-full max-w-2xl overflow-y-auto max-h-[calc(100vh-16rem)]">
         <CardHeader>
           <CardTitle>Welcome, {session.user.name}!</CardTitle>

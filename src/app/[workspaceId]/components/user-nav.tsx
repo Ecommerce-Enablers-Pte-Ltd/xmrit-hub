@@ -60,11 +60,11 @@ export function UserNav({ session }: UserNavProps) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {/* <DropdownMenuItem className="px-3 py-2">
-          <User className="mr-3 h-4 w-4" />
+          <User className="mr-2 h-4 w-4" />
           Profile
         </DropdownMenuItem>
         <DropdownMenuItem className="px-3 py-2">
-          <Settings className="mr-3 h-4 w-4" />
+          <Settings className="mr-2 h-4 w-4" />
           Settings
         </DropdownMenuItem>
         <DropdownMenuSeparator /> */}
@@ -75,7 +75,7 @@ export function UserNav({ session }: UserNavProps) {
             signOut({ callbackUrl: "/auth/signin" });
           }}
         >
-          <LogOut className="mr-3 h-4 w-4" />
+          <LogOut className="mr-2 h-4 w-4" />
           Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
