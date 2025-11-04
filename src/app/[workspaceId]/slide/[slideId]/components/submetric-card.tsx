@@ -901,6 +901,11 @@ export function SubmetricLineChart({ submetric }: SubmetricLineChartProps) {
                 <span>{submetric.trend.toUpperCase()}</span>
               </span>
             )}
+            {submetric.unit && (
+              <div className="text-sm text-muted-foreground mt-2">
+                Unit: <span className="font-semibold">{submetric.unit}</span>
+              </div>
+            )}
           </div>
           {hasData && (
             <div className="flex items-center gap-2">
@@ -1054,15 +1059,11 @@ export function SubmetricLineChart({ submetric }: SubmetricLineChartProps) {
                 </span>
               )}
               <CardTitle className="text-2xl font-bold overflow-hidden text-ellipsis whitespace-nowrap min-w-0">
-                {submetric.label.split("-")[1].trim()}
+                {submetric.label.includes("-")
+                  ? submetric.label.split("-")[1]?.trim() || submetric.label
+                  : submetric.label}
               </CardTitle>
             </div>
-
-            {submetric.unit && (
-              <div className="text-sm text-muted-foreground mt-2">
-                Unit: <span className="font-semibold">{submetric.unit}</span>
-              </div>
-            )}
           </div>
           {hasData && (
             <div className="flex flex-col items-end gap-2">
@@ -1139,7 +1140,11 @@ export function SubmetricLineChart({ submetric }: SubmetricLineChartProps) {
         dataPoints={rawDataPoints}
         currentLimits={autoSuggestedLimits || xmrData.limits}
         onLockLimits={handleLockLimits}
-        submetricName={submetric.label.split("-")[1].trim()}
+        submetricName={
+          submetric.label.includes("-")
+            ? submetric.label.split("-")[1]?.trim() || submetric.label
+            : submetric.label
+        }
         outlierIndices={
           hasEverBeenManuallyModified ? manuallyExcludedIndices : outlierIndices
         }

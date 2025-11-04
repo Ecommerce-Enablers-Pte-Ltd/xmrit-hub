@@ -65,7 +65,7 @@ Content-Type: application/json
 | `trend`            | String | No       | Expected trend: "up", "down", "uptrend", "downtrend"           |
 | `unit`             | String | No       | Unit of measurement (e.g., "%", "$", "count")                  |
 | `aggregation_type` | String | No       | Aggregation type: "sum", "avg", "min", "max" (default: "none") |
-| `color`            | String | No       | Hex color code for chart display                               |
+| `color`            | String | No       | Hex color code for chart display (default: "#3b82f6" - blue)   |
 | `metadata`         | Object | No       | Additional metadata as JSON                                    |
 | `data_points`      | Array  | Yes      | Array of data point objects                                    |
 
@@ -125,7 +125,7 @@ Content-Type: application/json
           "trend": "up",
           "unit": "$",
           "aggregation_type": "sum",
-          "color": "#10b981",
+          "color": "#3b82f6",
           "data_points": [
             {
               "timestamp": "2024-01-01",
