@@ -1,10 +1,11 @@
-"use client";
-
-import { use, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useWorkspace, useDeleteSlide } from "@/lib/api";
-import { SlideTable } from "./components/slide-table";
-import * as React from "react";
+import { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { getAuthSession } from "@/lib/auth";
+import { eq } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { workspaces } from "@/lib/db/schema";
+import { WorkspaceClient } from "./components/workspace-client";
+import type { WorkspaceWithSlides } from "@/types/db/workspace";
 
 interface WorkspacePageProps {
   params: Promise<{
@@ -12,97 +13,71 @@ interface WorkspacePageProps {
   }>;
 }
 
-export default function WorkspacePage({ params }: WorkspacePageProps) {
-  const { workspaceId } = use(params);
-  const router = useRouter();
-  const { workspace, loading } = useWorkspace(workspaceId);
-  const deleteSlide = useDeleteSlide();
+// Server-side data fetching
+async function getWorkspaceData(
+  workspaceId: string
+): Promise<WorkspaceWithSlides | null> {
+  const session = await getAuthSession();
+  if (!session) return null;
 
-  // Update page title when workspace loads
-  useEffect(() => {
-    if (workspace) {
-      document.title = `${workspace.name} - Xmrit Hub`;
-    }
-  }, [workspace]);
-
-  const handleCreateSlide = React.useCallback(() => {
-    // TODO: Implement slide creation
-    console.log("Creating new slide");
-  }, []);
-
-  const handleCreateMetric = React.useCallback((slideId: string) => {
-    // TODO: Implement metric creation
-    console.log("Creating new metric for slide:", slideId);
-  }, []);
-
-  const handleEditSlide = React.useCallback((slide: any) => {
-    // TODO: Implement slide editing
-    console.log("Editing slide:", slide.title);
-  }, []);
-
-  const handleDeleteSlide = React.useCallback(
-    async (slideId: string) => {
-      try {
-        // Show confirmation dialog
-        if (
-          !confirm(
-            "Are you sure you want to delete this slide? This will also delete all metrics and data points associated with it. This action cannot be undone."
-          )
-        ) {
-          return;
-        }
-
-        // Call the mutation - React Query will automatically invalidate the cache
-        // and update both the page and sidebar!
-        await deleteSlide.mutateAsync(slideId);
-
-        console.log("Slide deleted successfully:", slideId);
-      } catch (error) {
-        console.error("Error deleting slide:", error);
-        alert("Failed to delete slide. Please try again.");
-      }
+  const workspace = await db.query.workspaces.findFirst({
+    where: eq(workspaces.id, workspaceId),
+    with: {
+      slides: {
+        with: {
+          metrics: {
+            with: {
+              submetrics: true,
+            },
+          },
+        },
+      },
     },
-    [deleteSlide]
-  );
+  });
 
-  const handleViewSlide = React.useCallback(
-    (slideId: string) => {
-      router.push(`/${workspaceId}/slide/${slideId}`);
-    },
-    [router, workspaceId]
-  );
+  return workspace || null;
+}
 
-  // Show loading skeleton while workspace is being fetched
-  if (loading || !workspace) {
-    return (
-      <SlideTable
-        currentWorkspace={{
-          id: workspaceId,
-          name: "",
-          description: null,
-          settings: null,
-          isArchived: false,
-          isPublic: false,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }}
-        slides={[]}
-        onCreateSlide={handleCreateSlide}
-        onEditSlide={handleEditSlide}
-        onDeleteSlide={handleDeleteSlide}
-        isLoading={true}
-      />
-    );
+// Metadata generation
+export async function generateMetadata({
+  params,
+}: WorkspacePageProps): Promise<Metadata> {
+  const { workspaceId } = await params;
+  const workspace = await getWorkspaceData(workspaceId);
+
+  if (!workspace) {
+    return {
+      title: "Not Found - Xmrit Hub",
+      description: "Statistical Process Control and XMR Chart Analysis",
+    };
   }
 
-  return (
-    <SlideTable
-      currentWorkspace={workspace}
-      slides={workspace.slides}
-      onCreateSlide={handleCreateSlide}
-      onEditSlide={handleEditSlide}
-      onDeleteSlide={handleDeleteSlide}
-      isLoading={false}
-    />
-  );
+  const title = `${workspace.name} - Xmrit Hub`;
+  const description = workspace.description || `Workspace: ${workspace.name}`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+    },
+  };
+}
+
+export default async function WorkspacePage({ params }: WorkspacePageProps) {
+  const { workspaceId } = await params;
+  const workspace = await getWorkspaceData(workspaceId);
+
+  if (!workspace) {
+    notFound();
+  }
+
+  return <WorkspaceClient workspace={workspace} />;
 }

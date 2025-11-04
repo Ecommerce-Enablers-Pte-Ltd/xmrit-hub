@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Xmrit Hub",
-  description: "Xmrit Hub is a platform for creating and managing XmR charts",
+  description: "Statistical Process Control and XMR Chart Analysis Dashboard",
 };
 
 export default async function RootLayout({
