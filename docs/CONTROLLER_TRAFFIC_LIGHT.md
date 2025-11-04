@@ -322,5 +322,5 @@ Potential improvements under consideration:
 ## References
 
 - Statistical Process Control: A Practical Guide by Dr. Donald J. Wheeler
-- XMRit User Manual: https://xmrit.com/manual/
+- Xmrit User Manual: https://xmrit.com/manual/
 - Western Electric Rules for Control Charts

@@ -1,4 +1,4 @@
-# Xmrit - Statistical Process Control Dashboard
+# Xmrit Hub - Statistical Process Control Dashboard
 
 <p align="center">
   <img src="./public/dashboard-preview.png" alt="XMR Dashboard Preview" width="800"/>

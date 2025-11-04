@@ -552,5 +552,5 @@ If calculated locked limits don't match expectations:
 ## References
 
 - Statistical Process Control: Wheeler, "Making Sense of Data"
-- XMRit User Manual: https://xmrit.com/manual/
+- Xmrit User Manual: https://xmrit.com/manual/
 - Control Chart Interpretation: Montgomery, "Introduction to Statistical Quality Control"

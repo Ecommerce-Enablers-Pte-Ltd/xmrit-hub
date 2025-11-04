@@ -713,7 +713,7 @@ When sharing deseasonalized charts:
 - **Seasonal Adjustment Methods**: U.S. Census Bureau, "X-13ARIMA-SEATS Reference Manual"
 - **Statistical Process Control**: Wheeler, "Understanding Variation: The Key to Managing Chaos"
 - **Business Forecasting**: Hyndman & Athanasopoulos, "Forecasting: Principles and Practice"
-- **XMRit User Manual**: https://xmrit.com/manual/
+- **Xmrit User Manual**: https://xmrit.com/manual/
 
 ## Appendix: Period Length Reference
 

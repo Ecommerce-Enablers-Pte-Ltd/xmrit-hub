@@ -441,4 +441,4 @@ The recent point has extra protection (Z-Score > 3.0 required). If it's still ex
 
 - Outlier Detection Methods: Iglewicz & Hoaglin, "Volume 16: How to Detect and Handle Outliers"
 - Statistical Process Control: Wheeler, "Understanding Variation"
-- XMRit User Manual: https://xmrit.com/manual/
+- Xmrit User Manual: https://xmrit.com/manual/

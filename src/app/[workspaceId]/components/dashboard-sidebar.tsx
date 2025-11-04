@@ -64,7 +64,7 @@ export function DashboardSidebar({
     <Sidebar>
       <SidebarHeader className="p-4 pt-3.5">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">XMRIT</h2>
+          <h2 className="text-lg font-semibold">Xmrit Hub</h2>
           <ThemeToggle />
         </div>
         <WorkspaceSelector

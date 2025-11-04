@@ -60,7 +60,7 @@ export async function generateMetadata({
 
   if (!slide || !workspace) {
     return {
-      title: "XMRIT - Slide",
+      title: "Xmrit Hub - Slide",
       description: "Statistical Process Control and XMR Chart Analysis",
     };
   }
@@ -68,7 +68,7 @@ export async function generateMetadata({
   // Verify slide belongs to workspace
   if (slide.workspaceId !== workspace.id) {
     return {
-      title: "XMRIT - Slide",
+      title: "Xmrit Hub - Slide",
       description: "Statistical Process Control and XMR Chart Analysis",
     };
   }

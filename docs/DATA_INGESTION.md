@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Data Ingestion API enables programmatic ingestion of metrics data from various sources including data warehouses, ETL pipelines (n8n, Zapier, Airflow), BI tools (Metabase, Tableau), or any HTTP-capable system. This REST API endpoint provides a standardized way to populate XMRit with time-series data for statistical process control analysis.
+The Data Ingestion API enables programmatic ingestion of metrics data from various sources including data warehouses, ETL pipelines (n8n, Zapier, Airflow), BI tools (Metabase, Tableau), or any HTTP-capable system. This REST API endpoint provides a standardized way to populate Xmrit with time-series data for statistical process control analysis.
 
 ## Endpoint
 
