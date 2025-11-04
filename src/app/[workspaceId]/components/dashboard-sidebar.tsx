@@ -115,7 +115,11 @@ export function DashboardSidebar({
                   asChild
                   isActive={pathname.includes(`/slide/${slide.id}`)}
                 >
-                  <Link href={`/${currentWorkspace.id}/slide/${slide.id}`}>
+                  <Link
+                    href={`/${currentWorkspace.id}/slide/${slide.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <span className="truncate">{slide.title}</span>
                   </Link>
                 </SidebarMenuButton>
