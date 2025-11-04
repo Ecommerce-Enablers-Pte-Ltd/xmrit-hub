@@ -60,7 +60,7 @@ export async function generateMetadata({
 
   if (!slide || !workspace) {
     return {
-      title: "Xmrit Hub - Slide",
+      title: "Not Found - Xmrit Hub",
       description: "Statistical Process Control and XMR Chart Analysis",
     };
   }
@@ -68,12 +68,12 @@ export async function generateMetadata({
   // Verify slide belongs to workspace
   if (slide.workspaceId !== workspace.id) {
     return {
-      title: "Xmrit Hub - Slide",
+      title: "Not Found - Xmrit Hub",
       description: "Statistical Process Control and XMR Chart Analysis",
     };
   }
 
-  const title = `${slide.title}`;
+  const title = `${slide.title} - Xmrit Hub`;
   const description = slide.description || `Slide: ${slide.title}`;
   const slideDate = slide.slideDate
     ? new Date(slide.slideDate).toLocaleDateString("en-CA")

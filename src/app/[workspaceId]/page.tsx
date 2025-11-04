@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useWorkspace, useDeleteSlide } from "@/lib/api";
 import { SlideTable } from "./components/slide-table";
@@ -17,6 +17,13 @@ export default function WorkspacePage({ params }: WorkspacePageProps) {
   const router = useRouter();
   const { workspace, loading } = useWorkspace(workspaceId);
   const deleteSlide = useDeleteSlide();
+
+  // Update page title when workspace loads
+  useEffect(() => {
+    if (workspace) {
+      document.title = `${workspace.name} - Xmrit Hub`;
+    }
+  }, [workspace]);
 
   const handleCreateSlide = React.useCallback(() => {
     // TODO: Implement slide creation
