@@ -77,8 +77,8 @@ Get Google OAuth credentials:
 **3. Database & Run**
 
 ```bash
-npm run db:generate  # Generate migrations
-npm run db:migrate   # Apply migrations
+npm run db:generate  # Generate schema
+npm run db:push      # Apply schema or npm run db:migrate
 npm run dev          # Start server → http://localhost:3000 - A default workspace would be created for you
 ```
 

@@ -46,7 +46,9 @@ async function resetDatabase() {
 
     console.log("\n✅ Database reset complete!");
     console.log("\n📝 Next steps:");
-    console.log("   1. Run: npm run db:migrate");
+    console.log(
+      "   1. Run: npm run db:push or npm run db:migrate to apply the schema"
+    );
     console.log("   2. Your database is now clean and ready!");
   } catch (error) {
     console.error("\n❌ Failed to reset database:", error);
