@@ -8,6 +8,13 @@
       "when": 1759746102743,
       "tag": "0000_lethal_leech",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1730813000000,
+      "tag": "0001_rename_trend_to_preferredTrend",
+      "breakpoints": true
     }
   ]
 }

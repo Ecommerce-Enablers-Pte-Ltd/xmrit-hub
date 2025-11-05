@@ -17,7 +17,7 @@ export interface Submetric {
   metricId: string;
   xAxis: string;
   timezone: string | null;
-  trend: string | null;
+  preferredTrend: string | null;
   unit: string | null;
   aggregationType: string | null;
   color: string | null;

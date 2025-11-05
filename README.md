@@ -146,7 +146,7 @@ Content-Type: application/json
           "category": "North America",
           "timezone": "America/Los_Angeles",
           "xaxis": "week",
-          "trend": "up",
+          "preferred_trend": "up",
           "data_points": [
             { "timestamp": "2024-01-01", "value": 125000 },
             { "timestamp": "2024-01-08", "value": 132000 }
@@ -158,7 +158,7 @@ Content-Type: application/json
 }
 ```
 
-**Fields:** `workspace_id` (UUID), `slide_title` (creates/updates), `slide_date` (YYYY-MM-DD), `metrics[].metric_name`, `submetrics[].label/category/timezone/xaxis/trend`, `data_points[].timestamp/value`
+**Fields:** `workspace_id` (UUID), `slide_title` (creates/updates), `slide_date` (YYYY-MM-DD), `metrics[].metric_name`, `submetrics[].label/category/timezone/xaxis/preferred_trend`, `data_points[].timestamp/value`
 
 ### n8n + Metabase Integration - Ingestion Example
 

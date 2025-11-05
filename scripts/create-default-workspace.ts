@@ -153,7 +153,7 @@ async function createDefaultWorkspace() {
         "sales_database"
       );
       await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, trend, unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           'All Regions - Total Revenue',
@@ -179,7 +179,7 @@ async function createDefaultWorkspace() {
         "ecommerce_platform"
       );
       await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, trend, unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           'Online - Revenue',
@@ -219,7 +219,7 @@ async function createDefaultWorkspace() {
       // Create Submetric 2.1: New Customers
       const customersData = generateSampleDataPoints(30, 150, 30, "crm_system");
       await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, trend, unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           'Paid - New Customers',
@@ -245,7 +245,7 @@ async function createDefaultWorkspace() {
         "marketing_automation"
       );
       await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, trend, unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           'Free Trial - Sign-ups',
@@ -311,7 +311,7 @@ async function createDefaultWorkspace() {
         "analytics_platform"
       );
       await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, trend, unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           'Mobile + Web - Daily Active Users',
@@ -337,7 +337,7 @@ async function createDefaultWorkspace() {
         "analytics_platform"
       );
       await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, trend, unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           'Average - Session Duration',

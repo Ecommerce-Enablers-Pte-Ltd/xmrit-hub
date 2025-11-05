@@ -62,7 +62,7 @@ Content-Type: application/json
 | `category`         | String | No       | Category for grouping                                          |
 | `timezone`         | String | No       | Timezone (default: "UTC")                                      |
 | `xaxis`            | String | No       | X-axis type: "date", "week", "month", etc. (default: "date")   |
-| `trend`            | String | No       | Expected trend: "up", "down", "uptrend", "downtrend"           |
+| `preferred_trend`  | String | No       | Expected trend: "up", "down", "uptrend", "downtrend"           |
 | `unit`             | String | No       | Unit of measurement (e.g., "%", "$", "count")                  |
 | `aggregation_type` | String | No       | Aggregation type: "sum", "avg", "min", "max" (default: "none") |
 | `color`            | String | No       | Hex color code for chart display (default: "#3b82f6" - blue)   |
@@ -98,7 +98,7 @@ Content-Type: application/json
           "category": "North America",
           "timezone": "America/Los_Angeles",
           "xaxis": "week",
-          "trend": "up",
+          "preferred_trend": "up",
           "unit": "$",
           "aggregation_type": "sum",
           "color": "#3b82f6",
@@ -122,7 +122,7 @@ Content-Type: application/json
           "category": "Europe",
           "timezone": "Europe/London",
           "xaxis": "week",
-          "trend": "up",
+          "preferred_trend": "up",
           "unit": "$",
           "aggregation_type": "sum",
           "color": "#3b82f6",
@@ -147,7 +147,7 @@ Content-Type: application/json
           "label": "Overall Conversion Rate",
           "category": "Performance",
           "unit": "%",
-          "trend": "up",
+          "preferred_trend": "up",
           "data_points": [
             {
               "timestamp": "2024-01-01",

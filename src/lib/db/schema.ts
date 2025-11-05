@@ -151,7 +151,7 @@ export const submetrics = pgTable(
     // Visualization configuration
     xAxis: text("xAxis").notNull().default("date"),
     timezone: text("timezone").default("UTC"),
-    trend: text("trend"), // uptrend, downtrend, stable, etc.
+    preferredTrend: text("preferredTrend"), // uptrend, downtrend, stable, etc.
     unit: text("unit"), // %, $, units, etc.
     aggregationType: text("aggregationType").default("none"), // sum, avg, count, etc.
     color: text("color"), // hex color for visualization

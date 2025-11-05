@@ -29,7 +29,7 @@ import { type NextRequest, NextResponse } from "next/server";
  *           "category": "Adidas",
  *           "timezone": "ltz",
  *           "xaxis": "period",
- *           "trend": "downtrend",
+ *           "preferred_trend": "downtrend",
  *           "unit": "%",              // optional
  *           "aggregation_type": "avg", // optional
  *           "color": "#3b82f6",       // optional
@@ -61,7 +61,7 @@ interface SubmetricInput {
   category?: string;
   timezone?: string;
   xaxis?: string;
-  trend?: "uptrend" | "downtrend" | "stable" | null;
+  preferred_trend?: "uptrend" | "downtrend" | "stable" | null;
   unit?: string;
   aggregation_type?: string;
   color?: string;
@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
           metricId: metric.id,
           xAxis: submetricInput.xaxis || "date",
           timezone: submetricInput.timezone || "UTC",
-          trend: submetricInput.trend || null,
+          preferredTrend: submetricInput.preferred_trend || null,
           unit: submetricInput.unit || null,
           aggregationType: submetricInput.aggregation_type || "none",
           color: submetricInput.color || null,
@@ -408,7 +408,7 @@ export async function GET(request: NextRequest) {
               category: "Adidas",
               timezone: "ltz",
               xaxis: "period",
-              trend: "downtrend",
+              preferred_trend: "downtrend",
               unit: "%",
               aggregation_type: "avg",
               color: "#3b82f6",

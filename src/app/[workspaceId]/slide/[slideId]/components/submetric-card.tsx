@@ -512,8 +512,8 @@ export function SubmetricLineChart({ submetric }: SubmetricLineChartProps) {
     const recentValues = recentPoints.map((p) => p.value);
 
     // Determine metric direction: uptrend (higher is better) or downtrend (lower is better)
-    const isUptrendMetric = submetric.trend === "uptrend";
-    const isDowntrendMetric = submetric.trend === "downtrend";
+    const isUptrendMetric = submetric.preferredTrend === "uptrend";
+    const isDowntrendMetric = submetric.preferredTrend === "downtrend";
 
     // --- Statistical Calculations ---
 
@@ -750,7 +750,7 @@ export function SubmetricLineChart({ submetric }: SubmetricLineChartProps) {
     chartData,
     effectiveLimits,
     xmrData.violations,
-    submetric.trend,
+    submetric.preferredTrend,
     trendActive,
     trendLines,
   ]);
@@ -890,15 +890,9 @@ export function SubmetricLineChart({ submetric }: SubmetricLineChartProps) {
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {submetric.trend && (
+            {submetric.preferredTrend && (
               <span className="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                {submetric.trend === "uptrend" && (
-                  <span className="text-sm">↑</span>
-                )}
-                {submetric.trend === "downtrend" && (
-                  <span className="text-sm">↓</span>
-                )}
-                <span>{submetric.trend.toUpperCase()}</span>
+                <span>{submetric.preferredTrend.toUpperCase()} PREFERRED</span>
               </span>
             )}
             {submetric.unit && (
