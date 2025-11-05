@@ -154,7 +154,7 @@ export function DashboardSidebar({
       </SidebarContent>
       <SidebarFooter className="p-4">
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <span>© 2026 by</span>
+          <span>© 2025 by</span>
           <a
             href="https://github.com/ng-jayson"
             target="_blank"
