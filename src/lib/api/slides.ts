@@ -14,20 +14,30 @@ export class SlideApiClient extends BaseApiClient {
   }
 
   async createSlide(workspaceId: string, data: any): Promise<SlideWithMetrics> {
-    return this.request(`/workspaces/${workspaceId}/slides`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
+    const response = await this.request<{ slide: SlideWithMetrics }>(
+      `/workspaces/${workspaceId}/slides`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    );
+    return response.slide;
   }
 
   async updateSlide(slideId: string, data: any): Promise<SlideWithMetrics> {
-    return this.request(`/slides/${slideId}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
+    const response = await this.request<{ slide: SlideWithMetrics }>(
+      `/slides/${slideId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }
+    );
+    return response.slide;
   }
 
-  async deleteSlide(slideId: string): Promise<void> {
+  async deleteSlide(
+    slideId: string
+  ): Promise<{ message: string; slideId: string }> {
     return this.request(`/slides/${slideId}`, {
       method: "DELETE",
     });
@@ -85,19 +95,24 @@ export function useUpdateSlide() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ slideId, data }: { slideId: string; data: any }) =>
-      slideApiClient.updateSlide(slideId, data),
+    mutationFn: ({
+      slideId,
+      workspaceId,
+      data,
+    }: {
+      slideId: string;
+      workspaceId: string;
+      data: any;
+    }) => slideApiClient.updateSlide(slideId, data),
     onSuccess: (data, variables) => {
       // Invalidate specific slide
       queryClient.invalidateQueries({
         queryKey: slideKeys.detail(variables.slideId),
       });
       // Also invalidate the workspace since slides list might have changed
-      if (data.workspaceId) {
-        queryClient.invalidateQueries({
-          queryKey: workspaceKeys.detail(data.workspaceId),
-        });
-      }
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.detail(variables.workspaceId),
+      });
     },
   });
 }
@@ -106,12 +121,24 @@ export function useDeleteSlide() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (slideId: string) => slideApiClient.deleteSlide(slideId),
-    onSuccess: (_, slideId) => {
+    mutationFn: ({
+      slideId,
+      workspaceId,
+    }: {
+      slideId: string;
+      workspaceId: string;
+    }) => slideApiClient.deleteSlide(slideId),
+    onSuccess: (_, variables) => {
       // Remove slide from cache
-      queryClient.removeQueries({ queryKey: slideKeys.detail(slideId) });
-      // Invalidate all workspaces to update sidebar and page
-      queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
+      queryClient.removeQueries({
+        queryKey: slideKeys.detail(variables.slideId),
+      });
+      // Invalidate the specific workspace to update the slides list
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.detail(variables.workspaceId),
+      });
+      // Also invalidate workspace list in case we're on a different page
+      queryClient.invalidateQueries({ queryKey: workspaceKeys.list() });
     },
   });
 }

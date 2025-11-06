@@ -43,7 +43,7 @@ export function WorkspaceClient({ workspace }: WorkspaceClientProps) {
 
         // Call the mutation - React Query will automatically invalidate the cache
         // and update both the page and sidebar!
-        await deleteSlide.mutateAsync(slideId);
+        await deleteSlide.mutateAsync({ slideId, workspaceId: workspace.id });
 
         console.log("Slide deleted successfully:", slideId);
       } catch (error) {
@@ -51,7 +51,7 @@ export function WorkspaceClient({ workspace }: WorkspaceClientProps) {
         alert("Failed to delete slide. Please try again.");
       }
     },
-    [deleteSlide]
+    [deleteSlide, workspace.id]
   );
 
   const handleViewSlide = React.useCallback(
@@ -72,4 +72,3 @@ export function WorkspaceClient({ workspace }: WorkspaceClientProps) {
     />
   );
 }
-

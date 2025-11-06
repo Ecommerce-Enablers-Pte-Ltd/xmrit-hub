@@ -20,23 +20,33 @@ export class WorkspaceApiClient extends BaseApiClient {
   }
 
   async createWorkspace(data: Partial<Workspace>): Promise<Workspace> {
-    return this.request("/workspaces", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
+    const response = await this.request<{ workspace: Workspace }>(
+      "/workspaces",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    );
+    return response.workspace;
   }
 
   async updateWorkspace(
     workspaceId: string,
     data: Partial<Workspace>
   ): Promise<Workspace> {
-    return this.request(`/workspaces/${workspaceId}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
+    const response = await this.request<{ workspace: Workspace }>(
+      `/workspaces/${workspaceId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }
+    );
+    return response.workspace;
   }
 
-  async deleteWorkspace(workspaceId: string): Promise<void> {
+  async deleteWorkspace(
+    workspaceId: string
+  ): Promise<{ message: string; workspaceId: string }> {
     return this.request(`/workspaces/${workspaceId}`, {
       method: "DELETE",
     });
