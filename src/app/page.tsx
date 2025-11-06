@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { getAllWorkspaces } from "@/lib/action/workspace";
+import { db } from "@/lib/db";
+import { workspaces } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import {
   Card,
   CardContent,
@@ -20,9 +22,13 @@ export default async function Home() {
   }
 
   // Fetch workspaces server-side
-  let workspaces;
+  let allWorkspaces;
   try {
-    workspaces = await getAllWorkspaces();
+    allWorkspaces = await db
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.isArchived, false))
+      .orderBy(workspaces.updatedAt);
   } catch (error) {
     console.error("Error fetching workspaces:", error);
     return (
@@ -39,7 +45,7 @@ export default async function Home() {
     );
   }
 
-  if (workspaces.length === 0) {
+  if (allWorkspaces.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
         <Card className="w-full max-w-md">
@@ -55,8 +61,8 @@ export default async function Home() {
   }
   //
   // If only one workspace, redirect directly to it
-  if (workspaces.length === 1) {
-    redirect(`/${workspaces[0].id}`);
+  if (allWorkspaces.length === 1) {
+    redirect(`/${allWorkspaces[0].id}`);
   }
 
   // Show workspace selector for multiple workspaces
@@ -71,7 +77,7 @@ export default async function Home() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-3">
-            {workspaces.map((workspace) => (
+            {allWorkspaces.map((workspace) => (
               <Link
                 key={workspace.id}
                 href={`/${workspace.id}`}

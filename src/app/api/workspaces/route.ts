@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
-import { getAllWorkspaces, createWorkspace } from "@/lib/action/workspace";
+import { db } from "@/lib/db";
+import { workspaces } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 export async function GET() {
   try {
@@ -19,8 +21,13 @@ export async function GET() {
       );
     }
 
-    const workspaces = await getAllWorkspaces();
-    return NextResponse.json({ workspaces });
+    const allWorkspaces = await db
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.isArchived, false))
+      .orderBy(workspaces.updatedAt);
+
+    return NextResponse.json({ workspaces: allWorkspaces });
   } catch (error) {
     console.error("Error fetching workspaces:", error);
     return NextResponse.json(
@@ -48,9 +55,19 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const workspace = await createWorkspace(body);
 
-    return NextResponse.json({ workspace }, { status: 201 });
+    const newWorkspace = await db
+      .insert(workspaces)
+      .values({
+        name: body.name || "Untitled Workspace",
+        description: body.description,
+        settings: body.settings,
+        isArchived: body.isArchived || false,
+        isPublic: body.isPublic ?? true,
+      })
+      .returning();
+
+    return NextResponse.json({ workspace: newWorkspace[0] }, { status: 201 });
   } catch (error) {
     console.error("Error creating workspace:", error);
     return NextResponse.json(

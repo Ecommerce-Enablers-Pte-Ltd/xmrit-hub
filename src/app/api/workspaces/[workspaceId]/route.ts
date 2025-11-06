@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
-import {
-  getWorkspaceById,
-  updateWorkspace,
-  deleteWorkspace,
-} from "@/lib/action/workspace";
+import { db } from "@/lib/db";
+import { workspaces, slides } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 export async function GET(
   request: Request,
@@ -27,9 +25,15 @@ export async function GET(
     }
 
     const { workspaceId } = await params;
-    const workspace = await getWorkspaceById(workspaceId);
 
-    if (!workspace) {
+    // Get workspace with its slides
+    const workspace = await db
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.id, workspaceId))
+      .limit(1);
+
+    if (!workspace.length) {
       return NextResponse.json(
         { error: "Workspace not found" },
         { status: 404 }
@@ -38,7 +42,7 @@ export async function GET(
 
     // Check if workspace is public or user has access
     // Since there's no userId field in workspace, we allow access to public workspaces
-    if (workspace.isPublic === false) {
+    if (workspace[0].isPublic === false) {
       // Private workspaces should not be accessible without proper authorization
       // In a full implementation, you'd check workspace membership here
       return NextResponse.json(
@@ -47,7 +51,25 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ workspace });
+    // Get slides for this workspace with their metrics
+    const workspaceSlides = await db.query.slides.findMany({
+      where: eq(slides.workspaceId, workspaceId),
+      with: {
+        metrics: {
+          with: {
+            submetrics: true,
+          },
+        },
+      },
+      orderBy: [slides.sortOrder, slides.createdAt],
+    });
+
+    return NextResponse.json({
+      workspace: {
+        ...workspace[0],
+        slides: workspaceSlides,
+      }
+    });
   } catch (error) {
     console.error("Error fetching workspace:", error);
     return NextResponse.json(
@@ -80,9 +102,13 @@ export async function PUT(
     const { workspaceId } = await params;
 
     // Check if workspace exists and user has access
-    const existingWorkspace = await getWorkspaceById(workspaceId);
+    const existingWorkspace = await db
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.id, workspaceId))
+      .limit(1);
 
-    if (!existingWorkspace) {
+    if (!existingWorkspace.length) {
       return NextResponse.json(
         { error: "Workspace not found" },
         { status: 404 }
@@ -91,7 +117,7 @@ export async function PUT(
 
     // Check if user has permission to modify workspace
     // For private workspaces, only owners should be able to modify
-    if (existingWorkspace.isPublic === false) {
+    if (existingWorkspace[0].isPublic === false) {
       return NextResponse.json(
         { error: "Access denied - cannot modify private workspace" },
         { status: 403 }
@@ -99,9 +125,21 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const workspace = await updateWorkspace(workspaceId, body);
 
-    return NextResponse.json({ workspace });
+    const updatedWorkspace = await db
+      .update(workspaces)
+      .set({
+        ...body,
+        updatedAt: new Date(),
+      })
+      .where(eq(workspaces.id, workspaceId))
+      .returning();
+
+    if (!updatedWorkspace.length) {
+      throw new Error("Workspace not found");
+    }
+
+    return NextResponse.json({ workspace: updatedWorkspace[0] });
   } catch (error) {
     console.error("Error updating workspace:", error);
     return NextResponse.json(
@@ -134,9 +172,13 @@ export async function DELETE(
     const { workspaceId } = await params;
 
     // Check if workspace exists and user has access
-    const existingWorkspace = await getWorkspaceById(workspaceId);
+    const existingWorkspace = await db
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.id, workspaceId))
+      .limit(1);
 
-    if (!existingWorkspace) {
+    if (!existingWorkspace.length) {
       return NextResponse.json(
         { error: "Workspace not found" },
         { status: 404 }
@@ -145,14 +187,21 @@ export async function DELETE(
 
     // Check if user has permission to delete workspace
     // For private workspaces, only owners should be able to delete
-    if (existingWorkspace.isPublic === false) {
+    if (existingWorkspace[0].isPublic === false) {
       return NextResponse.json(
         { error: "Access denied - cannot delete private workspace" },
         { status: 403 }
       );
     }
 
-    await deleteWorkspace(workspaceId);
+    // Soft delete by marking as archived
+    await db
+      .update(workspaces)
+      .set({
+        isArchived: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(workspaces.id, workspaceId));
 
     return NextResponse.json({
       message: "Workspace deleted successfully",

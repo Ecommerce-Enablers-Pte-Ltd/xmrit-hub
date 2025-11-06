@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
-import { getWorkspaceById } from "@/lib/action/workspace";
 import { db } from "@/lib/db";
-import { slides } from "@/lib/db/schema";
+import { workspaces, slides } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 export async function POST(
   request: Request,
@@ -27,9 +27,13 @@ export async function POST(
     const { workspaceId } = await params;
 
     // Check if workspace exists and user has access
-    const workspace = await getWorkspaceById(workspaceId);
+    const workspace = await db
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.id, workspaceId))
+      .limit(1);
 
-    if (!workspace) {
+    if (!workspace.length) {
       return NextResponse.json(
         { error: "Workspace not found" },
         { status: 404 }
@@ -37,7 +41,7 @@ export async function POST(
     }
 
     // Check if user has permission to create slides in this workspace
-    if (workspace.isPublic === false) {
+    if (workspace[0].isPublic === false) {
       // Private workspace - should check user ownership
       return NextResponse.json(
         { error: "Access denied - cannot create slide in private workspace" },
