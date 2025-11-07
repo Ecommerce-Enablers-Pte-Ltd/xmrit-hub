@@ -10,6 +10,7 @@ export interface Metric {
   description: string | null;
   slideId: string;
   sortOrder: number | null;
+  ranking: number | null; // Optional ranking: 1 = top, 2 = second, etc.
   chartType: string | null;
   chartConfig: any; // JSON object for chart configuration
   createdAt: Date;

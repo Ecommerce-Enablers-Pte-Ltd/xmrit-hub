@@ -121,6 +121,7 @@ export const metrics = pgTable(
       .notNull()
       .references(() => slides.id, { onDelete: "cascade" }),
     sortOrder: integer("sortOrder").default(0),
+    ranking: integer("ranking"), // Optional ranking: 1 = top, 2 = second, etc.
     chartType: text("chartType").default("line"), // line, bar, area, etc.
     chartConfig: json("chartConfig"), // JSON for chart configuration
     createdAt: timestamp("createdAt", { mode: "date" })
@@ -133,6 +134,7 @@ export const metrics = pgTable(
   (table) => ({
     slideIdIdx: index("metric_slide_id_idx").on(table.slideId),
     sortOrderIdx: index("metric_sort_order_idx").on(table.sortOrder),
+    rankingIdx: index("metric_ranking_idx").on(table.ranking),
   })
 );
 

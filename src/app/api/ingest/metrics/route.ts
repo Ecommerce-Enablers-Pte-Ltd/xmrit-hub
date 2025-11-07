@@ -22,6 +22,7 @@ import { type NextRequest, NextResponse } from "next/server";
  *     {
  *       "metric_name": "Transaction Count",
  *       "description": "Optional description",
+ *       "ranking": 1,         // optional - 1 = top, 2 = second, etc.
  *       "chart_type": "line", // optional, default: "line"
  *       "submetrics": [
  *         {
@@ -72,6 +73,7 @@ interface SubmetricInput {
 interface MetricInput {
   metric_name: string;
   description?: string;
+  ranking?: number; // Optional ranking: 1 = top, 2 = second, etc.
   chart_type?: "line" | "bar" | "area" | "pie" | "scatter";
   submetrics: SubmetricInput[];
 }
@@ -271,6 +273,7 @@ export async function POST(request: NextRequest) {
           name: metricInput.metric_name,
           description: metricInput.description || null,
           slideId,
+          ranking: metricInput.ranking || null,
           chartType: metricInput.chart_type || "line",
           sortOrder: 0,
         })
@@ -401,6 +404,7 @@ export async function GET(request: NextRequest) {
         {
           metric_name: "% of MCB Count to Total Transactions",
           description: "Optional description",
+          ranking: 1,
           chart_type: "line",
           submetrics: [
             {

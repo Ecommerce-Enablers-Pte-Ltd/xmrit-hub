@@ -104,15 +104,35 @@ export function useUpdateSlide() {
       workspaceId: string;
       data: any;
     }) => slideApiClient.updateSlide(slideId, data),
-    onSuccess: (data, variables) => {
-      // Invalidate specific slide
-      queryClient.invalidateQueries({
-        queryKey: slideKeys.detail(variables.slideId),
-      });
-      // Also invalidate the workspace since slides list might have changed
-      queryClient.invalidateQueries({
-        queryKey: workspaceKeys.detail(variables.workspaceId),
-      });
+    onSuccess: (updatedSlide, variables) => {
+      // Directly update the slide cache instead of invalidating
+      queryClient.setQueryData<SlideWithMetrics>(
+        slideKeys.detail(variables.slideId),
+        (oldData) => {
+          if (!oldData) return updatedSlide;
+          // Merge the updated fields with the existing data
+          return {
+            ...oldData,
+            ...updatedSlide,
+          };
+        }
+      );
+
+      // Update the workspace cache to reflect slide changes in the list
+      queryClient.setQueryData(
+        workspaceKeys.detail(variables.workspaceId),
+        (oldWorkspace: any) => {
+          if (!oldWorkspace?.slides) return oldWorkspace;
+          return {
+            ...oldWorkspace,
+            slides: oldWorkspace.slides.map((slide: any) =>
+              slide.id === variables.slideId
+                ? { ...slide, ...updatedSlide }
+                : slide
+            ),
+          };
+        }
+      );
     },
   });
 }

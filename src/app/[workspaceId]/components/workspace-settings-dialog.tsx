@@ -175,6 +175,8 @@ export function WorkspaceSettingsDialog({
                     "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors",
                     item.disabled
                       ? "opacity-50 cursor-not-allowed"
+                      : activeTab === item.id
+                      ? ""
                       : "hover:bg-muted",
                     activeTab === item.id
                       ? "bg-background text-foreground font-medium"
