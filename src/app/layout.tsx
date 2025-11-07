@@ -4,6 +4,7 @@ import { getAuthSession } from "@/lib/auth";
 import { AuthSessionProvider } from "@/providers/session-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { QueryProvider } from "@/providers/query-provider";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,8 +18,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Xmrit Hub",
+  title: "ShopBack - Xmrit Hub",
   description: "Statistical Process Control and XMR Chart Analysis Dashboard",
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+      "max-video-preview": -1,
+      "max-image-preview": "none",
+      "max-snippet": -1,
+    },
+  },
 };
 
 export default async function RootLayout({
@@ -42,6 +56,7 @@ export default async function RootLayout({
           <AuthSessionProvider session={session}>
             <QueryProvider>{children}</QueryProvider>
           </AuthSessionProvider>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

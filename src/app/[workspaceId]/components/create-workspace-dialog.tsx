@@ -1,0 +1,134 @@
+"use client";
+
+import * as React from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useCreateWorkspace } from "@/lib/api";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+
+interface CreateWorkspaceDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function CreateWorkspaceDialog({
+  open,
+  onOpenChange,
+}: CreateWorkspaceDialogProps) {
+  const [name, setName] = React.useState("");
+  const [description, setDescription] = React.useState("");
+  const createWorkspace = useCreateWorkspace();
+  const router = useRouter();
+
+  // Reset form when dialog closes
+  React.useEffect(() => {
+    if (!open) {
+      setName("");
+      setDescription("");
+    }
+  }, [open]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!name.trim()) {
+      toast.error("Workspace name is required");
+      return;
+    }
+
+    try {
+      const loadingToast = toast.loading("Creating workspace...");
+
+      const newWorkspace = await createWorkspace.mutateAsync({
+        name: name.trim(),
+        description: description.trim() || null,
+        isArchived: false,
+        isPublic: true,
+      });
+
+      toast.dismiss(loadingToast);
+      toast.success("Workspace created successfully", {
+        description: "Redirecting to your new workspace...",
+      });
+
+      onOpenChange(false);
+
+      // Navigate to the new workspace
+      router.push(`/${newWorkspace.id}`);
+    } catch (error) {
+      console.error("Error creating workspace:", error);
+      toast.error("Failed to create workspace", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred. Please try again.",
+      });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Create Workspace</DialogTitle>
+          <DialogDescription>
+            Create a new workspace to organize your slides and metrics.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit}>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">
+                Name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., Marketing Dashboard"
+                required
+                autoFocus
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Add a description for your workspace (optional)"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={createWorkspace.isPending || !name.trim()}
+            >
+              {createWorkspace.isPending ? "Creating..." : "Create Workspace"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

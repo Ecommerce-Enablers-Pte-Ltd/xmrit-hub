@@ -2,11 +2,12 @@
 
 import {
   BarChart3,
-  Edit,
   FolderOpen,
   MoreVertical,
+  Settings,
   Trash2,
 } from "lucide-react";
+import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -25,6 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { WorkspaceSettingsDialog } from "./workspace-settings-dialog";
 import type { SlideWithMetrics } from "@/types/db/slide";
 import type { Workspace } from "@/types/db/workspace";
 
@@ -45,6 +47,8 @@ export function SlideTable({
   onDeleteSlide,
   isLoading = false,
 }: SlideTableProps) {
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+
   const handleRowClick = (slideId: string) => {
     window.open(`/${currentWorkspace.id}/slide/${slideId}`, "_blank");
   };
@@ -106,19 +110,36 @@ export function SlideTable({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">{currentWorkspace.name}</h1>
-          {currentWorkspace.description && (
-            <p className="text-muted-foreground mt-2">
-              {currentWorkspace.description}
-            </p>
-          )}
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-3xl font-bold">{currentWorkspace.name}</h1>
+            {currentWorkspace.description && (
+              <p className="text-muted-foreground mt-2">
+                {currentWorkspace.description}
+              </p>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSettingsOpen(true)}
+            title="Workspace settings"
+            className="shrink-0 mt-1"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
         </div>
         {/* <Button onClick={onCreateSlide} className="flex items-center gap-2">
           <Plus className="h-4 w-4" />
           New Slide
         </Button> */}
       </div>
+
+      <WorkspaceSettingsDialog
+        workspace={currentWorkspace}
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+      />
 
       {slides.length === 0 ? (
         <Card className="border-dashed">

@@ -9,6 +9,7 @@ import type { Workspace } from "@/types/db/workspace";
 import { BreadcrumbNav } from "./breadcrumb-nav";
 import { DashboardSidebar } from "./dashboard-sidebar";
 import { UserNav } from "./user-nav";
+import { CreateWorkspaceDialog } from "./create-workspace-dialog";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -26,6 +27,7 @@ export function DashboardLayout({
   slides,
 }: DashboardLayoutProps) {
   const router = useRouter();
+  const [createWorkspaceOpen, setCreateWorkspaceOpen] = React.useState(false);
 
   const handleWorkspaceChange = React.useCallback(
     (workspace: Workspace) => {
@@ -36,8 +38,7 @@ export function DashboardLayout({
   );
 
   const handleCreateWorkspace = React.useCallback(() => {
-    // TODO: Implement workspace creation
-    console.log("Creating new workspace");
+    setCreateWorkspaceOpen(true);
   }, []);
 
   const handleCreateSlide = React.useCallback(() => {
@@ -72,6 +73,10 @@ export function DashboardLayout({
           <main className="flex-1 overflow-auto p-6">{children}</main>
         </div>
       </div>
+      <CreateWorkspaceDialog
+        open={createWorkspaceOpen}
+        onOpenChange={setCreateWorkspaceOpen}
+      />
     </SidebarProvider>
   );
 }
