@@ -1053,9 +1053,7 @@ export function SubmetricLineChart({ submetric }: SubmetricLineChartProps) {
                 </span>
               )}
               <CardTitle className="text-2xl font-bold overflow-hidden text-ellipsis whitespace-nowrap min-w-0">
-                {submetric.label.includes("-")
-                  ? submetric.label.split("-")[1]?.trim() || submetric.label
-                  : submetric.label}
+                {submetric.label}
               </CardTitle>
             </div>
           </div>
