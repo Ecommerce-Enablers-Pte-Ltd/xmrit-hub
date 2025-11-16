@@ -1052,18 +1052,17 @@ const SubmetricXChartInternal = memo(
                     domain={yAxisDomain}
                     width={60}
                   >
-                    {submetric.yAxis ||
-                      (submetric.unit && (
-                        <Label
-                          content={(props: any) => (
-                            <YAxisLabel
-                              {...props}
-                              value={submetric.yAxis || submetric.unit || ""}
-                            />
-                          )}
-                          position="left"
-                        />
-                      ))}
+                    {(submetric.yAxis || submetric.unit) && (
+                      <Label
+                        content={(props: any) => (
+                          <YAxisLabel
+                            {...props}
+                            value={submetric.yAxis || submetric.unit || ""}
+                          />
+                        )}
+                        position="left"
+                      />
+                    )}
                   </YAxis>
 
                   <Tooltip content={CustomTooltip} />
