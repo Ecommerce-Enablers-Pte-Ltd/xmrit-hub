@@ -782,7 +782,12 @@ export function removeOutliersFromData(data: DataPoint[]): {
         return b.methodCount - a.methodCount;
       }
       // Then by z-score (more extreme first)
-      return b.zScore - a.zScore;
+      const zScoreDiff = b.zScore - a.zScore;
+      if (Math.abs(zScoreDiff) > 0.0001) {
+        return zScoreDiff;
+      }
+      // If z-scores are essentially equal, use index for deterministic ordering
+      return a.index - b.index;
     });
 
   // Limit to max 25% of data points

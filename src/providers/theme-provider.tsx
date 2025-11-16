@@ -4,7 +4,10 @@ import {
   ThemeProvider as NextThemesProvider,
   type ThemeProviderProps,
 } from "next-themes";
+import { memo } from "react";
 
-export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+const ThemeProviderComponent = ({ children, ...props }: ThemeProviderProps) => {
   return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
-}
+};
+
+export const ThemeProvider = memo(ThemeProviderComponent);

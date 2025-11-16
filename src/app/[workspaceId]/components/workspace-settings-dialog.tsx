@@ -154,17 +154,17 @@ export function WorkspaceSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] p-0 gap-0 h-fit">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+      <DialogContent className="sm:max-w-[800px] max-h-[85vh] p-0 gap-0 flex flex-col">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
           <DialogTitle>Workspace Settings</DialogTitle>
           <DialogDescription>
             Manage your workspace settings and preferences.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden min-h-0">
           {/* Side Menu */}
-          <div className="w-48 border-r bg-muted/20 p-4">
+          <div className="w-48 border-r bg-muted/20 p-4 flex-shrink-0">
             <nav className="space-y-1">
               {menuItems.map((item) => (
                 <button
@@ -192,7 +192,7 @@ export function WorkspaceSettingsDialog({
 
           {/* Content Area */}
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 p-6 overflow-y-auto">
               {activeTab === "general" && (
                 <form onSubmit={handleSubmit} id="general-settings-form">
                   <div className="space-y-6 max-w-xl">
@@ -297,7 +297,7 @@ export function WorkspaceSettingsDialog({
             </div>
 
             {/* Footer with action buttons */}
-            <div className="border-t p-4 bg-muted/20">
+            <div className="border-t p-4 bg-muted/20 flex-shrink-0">
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"

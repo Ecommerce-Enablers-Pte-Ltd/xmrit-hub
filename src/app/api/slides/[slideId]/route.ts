@@ -4,6 +4,9 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { slides, workspaces } from "@/lib/db/schema";
 
+// Cache control headers for slide data
+const CACHE_REVALIDATE = 300; // 5 minutes
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ slideId: string }> }
@@ -25,13 +28,21 @@ export async function GET(
     }
 
     const { slideId } = await params;
+
+    // Optimized query with ordering
     const slide = await db.query.slides.findFirst({
       where: eq(slides.id, slideId),
       with: {
         workspace: true,
         metrics: {
+          orderBy: (metrics, { asc }) => [
+            asc(metrics.sortOrder),
+            asc(metrics.ranking),
+          ],
           with: {
-            submetrics: true,
+            submetrics: {
+              orderBy: (submetrics, { asc }) => [asc(submetrics.createdAt)],
+            },
           },
         },
       },
@@ -42,7 +53,7 @@ export async function GET(
     }
 
     // Check if the workspace is public or user has access
-    if (slide.workspace && slide.workspace.isPublic === false) {
+    if (slide.workspace && (slide.workspace as any).isPublic === false) {
       // Private workspace - should check user membership
       return NextResponse.json(
         { error: "Access denied - slide belongs to a private workspace" },
@@ -50,7 +61,15 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ slide });
+    // Return with cache headers
+    return NextResponse.json(
+      { slide },
+      {
+        headers: {
+          "Cache-Control": `private, s-maxage=${CACHE_REVALIDATE}, stale-while-revalidate`,
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching slide:", error);
     return NextResponse.json(
@@ -95,7 +114,10 @@ export async function PUT(
     }
 
     // Check if the workspace is public or user has access
-    if (existingSlide.workspace && existingSlide.workspace.isPublic === false) {
+    if (
+      existingSlide.workspace &&
+      (existingSlide.workspace as any).isPublic === false
+    ) {
       // Private workspace - should check user ownership before allowing modification
       return NextResponse.json(
         { error: "Access denied - cannot modify slide from private workspace" },
@@ -172,7 +194,7 @@ export async function DELETE(
     }
 
     // Check if the workspace is public or user has access
-    if (slide.workspace && slide.workspace.isPublic === false) {
+    if (slide.workspace && (slide.workspace as any).isPublic === false) {
       // Private workspace - should check user ownership before allowing delete
       return NextResponse.json(
         { error: "Access denied - cannot delete slide from private workspace" },

@@ -10,6 +10,7 @@ export { MetricApiClient, metricApiClient } from "./metrics";
 export {
   useWorkspaces,
   useWorkspace,
+  usePrefetchWorkspace,
   useCreateWorkspace,
   useUpdateWorkspace,
   useDeleteWorkspace,
@@ -17,6 +18,7 @@ export {
 } from "./workspaces";
 export {
   useSlide,
+  usePrefetchSlide,
   useCreateSlide,
   useUpdateSlide,
   useDeleteSlide,

@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { workspaces, slides } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
+
+// Cache control headers for workspace data
+const CACHE_REVALIDATE = 300; // 5 minutes
 
 export async function GET(
   request: Request,
@@ -51,25 +54,39 @@ export async function GET(
       );
     }
 
-    // Get slides for this workspace with their metrics
+    // Get slides for this workspace with their metrics (optimized with ordering and limit)
     const workspaceSlides = await db.query.slides.findMany({
       where: eq(slides.workspaceId, workspaceId),
       with: {
         metrics: {
+          orderBy: (metrics, { asc }) => [
+            asc(metrics.sortOrder),
+            asc(metrics.ranking),
+          ],
           with: {
-            submetrics: true,
+            submetrics: {
+              orderBy: (submetrics, { asc }) => [asc(submetrics.createdAt)],
+            },
           },
         },
       },
-      orderBy: [slides.sortOrder, slides.createdAt],
+      orderBy: [desc(slides.createdAt)],
+      limit: 100, // Limit to most recent 100 slides
     });
 
-    return NextResponse.json({
-      workspace: {
-        ...workspace[0],
-        slides: workspaceSlides,
+    return NextResponse.json(
+      {
+        workspace: {
+          ...workspace[0],
+          slides: workspaceSlides,
+        },
+      },
+      {
+        headers: {
+          "Cache-Control": `private, s-maxage=${CACHE_REVALIDATE}, stale-while-revalidate`,
+        },
       }
-    });
+    );
   } catch (error) {
     console.error("Error fetching workspace:", error);
     return NextResponse.json(

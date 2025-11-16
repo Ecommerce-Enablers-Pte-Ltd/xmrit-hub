@@ -4,7 +4,6 @@ import { BarChart3, FileText, Github, Home, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -62,7 +61,7 @@ export function DashboardSidebar({
 
   return (
     <Sidebar>
-      <SidebarHeader className="p-4 pt-3.5">
+      <SidebarHeader className="p-3 pt-2">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Xmrit Hub</h2>
           <ThemeToggle />
@@ -90,7 +89,7 @@ export function DashboardSidebar({
 
         <Separator className="my-2" />
 
-        <div className="px-4">
+        <div className="px-3">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-medium text-muted-foreground">
               Slides
@@ -107,7 +106,7 @@ export function DashboardSidebar({
           </div>
         </div>
 
-        <ScrollArea className="flex-1 px-4">
+        <ScrollArea className="flex-1 px-3">
           <SidebarMenu>
             {slides.map((slide) => (
               <SidebarMenuItem key={slide.id}>
@@ -152,7 +151,7 @@ export function DashboardSidebar({
           </SidebarMenu>
         </ScrollArea>
       </SidebarContent>
-      <SidebarFooter className="p-4">
+      <SidebarFooter className="p-3">
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <span>© 2025 by</span>
           <a

@@ -26,8 +26,17 @@ async function resetDatabase() {
     await sql`DROP TABLE IF EXISTS "session" CASCADE`;
     console.log("  ✓ Dropped session");
 
+    await sql`DROP TABLE IF EXISTS "comment" CASCADE`;
+    console.log("  ✓ Dropped comment");
+
+    await sql`DROP TABLE IF EXISTS "comment_thread" CASCADE`;
+    console.log("  ✓ Dropped comment_thread");
+
     await sql`DROP TABLE IF EXISTS "submetric" CASCADE`;
     console.log("  ✓ Dropped submetric");
+
+    await sql`DROP TABLE IF EXISTS "submetric_definition" CASCADE`;
+    console.log("  ✓ Dropped submetric_definition");
 
     await sql`DROP TABLE IF EXISTS "metric" CASCADE`;
     console.log("  ✓ Dropped metric");

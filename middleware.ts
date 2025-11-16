@@ -5,33 +5,34 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isLoggedIn = !!req.auth;
 
+  // Create response based on authentication logic
+  let response: NextResponse;
+
   // Allow access to public API routes (needed for NextAuth)
   if (pathname.startsWith("/api/auth/")) {
-    return NextResponse.next();
+    response = NextResponse.next();
   }
-
   // Allow access to ingest API (uses API key authentication instead of session)
-  if (pathname.startsWith("/api/ingest/")) {
-    return NextResponse.next();
+  else if (pathname.startsWith("/api/ingest/")) {
+    response = NextResponse.next();
   }
-
   // If user is authenticated and trying to access ANY auth page, redirect to home
-  if (isLoggedIn && pathname.startsWith("/auth/")) {
-    return NextResponse.redirect(new URL("/", req.url));
+  else if (isLoggedIn && pathname.startsWith("/auth/")) {
+    response = NextResponse.redirect(new URL("/", req.url));
   }
-
   // Allow access to auth pages ONLY if not authenticated
-  if (pathname.startsWith("/auth/")) {
-    return NextResponse.next();
+  else if (pathname.startsWith("/auth/")) {
+    response = NextResponse.next();
   }
-
   // Protect all other routes - require authentication
-  if (!isLoggedIn) {
-    return NextResponse.redirect(new URL("/auth/signin", req.url));
+  else if (!isLoggedIn) {
+    response = NextResponse.redirect(new URL("/auth/signin", req.url));
   }
-
   // Allow the request to continue
-  return NextResponse.next();
+  else {
+    response = NextResponse.next();
+  }
+  return response;
 });
 
 export const config = {

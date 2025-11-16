@@ -173,8 +173,11 @@ export function SubmetricSeasonalityDialog({
     return prepareSeasonalDataForTable(editedDataPoints, period);
   }, [editedDataPoints, period]);
 
-  // Detect dark mode
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  // Detect dark mode using a more efficient approach with observer
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return document.documentElement.classList.contains("dark");
+  });
 
   useEffect(() => {
     // Check if dark mode is enabled
@@ -183,10 +186,12 @@ export function SubmetricSeasonalityDialog({
       setIsDarkMode(isDark);
     };
 
-    checkDarkMode();
-
     // Watch for theme changes
-    const observer = new MutationObserver(checkDarkMode);
+    const observer = new MutationObserver(() => {
+      // Use requestAnimationFrame to batch updates with the theme change
+      requestAnimationFrame(checkDarkMode);
+    });
+
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["class"],

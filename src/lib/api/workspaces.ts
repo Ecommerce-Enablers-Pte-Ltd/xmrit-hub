@@ -65,11 +65,15 @@ export const workspaceKeys = {
   detail: (id: string) => [...workspaceKeys.details(), id] as const,
 };
 
-// React Query hooks for workspace data fetching
-export function useWorkspaces() {
+// React Query hooks for workspace data fetching with optimizations
+export function useWorkspaces(initialData?: Workspace[]) {
   const query = useQuery({
     queryKey: workspaceKeys.list(),
     queryFn: () => workspaceApiClient.getAllWorkspaces(),
+    initialData, // Hydrate from SSR data
+    staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh
+    gcTime: 10 * 60 * 1000, // 10 minutes - keep in cache (formerly cacheTime)
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
   });
 
   return {
@@ -77,14 +81,21 @@ export function useWorkspaces() {
     loading: query.isLoading,
     error: query.error?.message || null,
     refetch: query.refetch,
+    isFetching: query.isFetching, // Background refetch indicator
   };
 }
 
-export function useWorkspace(workspaceId: string) {
+export function useWorkspace(workspaceId: string, initialData?: WorkspaceWithSlides) {
   const query = useQuery({
     queryKey: workspaceKeys.detail(workspaceId),
     queryFn: () => workspaceApiClient.getWorkspaceById(workspaceId),
     enabled: !!workspaceId,
+    initialData, // Hydrate from SSR data
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: true,
+    // Stale-while-revalidate: show stale data while refetching
+    placeholderData: (previousData) => previousData,
   });
 
   return {
@@ -92,6 +103,20 @@ export function useWorkspace(workspaceId: string) {
     loading: query.isLoading,
     error: query.error?.message || null,
     refetch: query.refetch,
+    isFetching: query.isFetching, // Background refetch indicator
+  };
+}
+
+// Prefetch workspace on hover for instant navigation
+export function usePrefetchWorkspace() {
+  const queryClient = useQueryClient();
+
+  return (workspaceId: string) => {
+    queryClient.prefetchQuery({
+      queryKey: workspaceKeys.detail(workspaceId),
+      queryFn: () => workspaceApiClient.getWorkspaceById(workspaceId),
+      staleTime: 5 * 60 * 1000,
+    });
   };
 }
 

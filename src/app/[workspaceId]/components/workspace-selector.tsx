@@ -69,13 +69,16 @@ export function WorkspaceSelector({
                 "ml-3 h-4 w-4 shrink-0",
                 currentWorkspace.id === workspace.id
                   ? "opacity-100"
-                  : "opacity-0"
+                  : "opacity-0",
               )}
             />
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={onCreateWorkspace} className="px-3 py-3">
+        <DropdownMenuItem
+          onSelect={onCreateWorkspace}
+          className="px-3 py-3"
+        >
           <Plus className="mr-2 h-4 w-4" />
           Create workspace
         </DropdownMenuItem>

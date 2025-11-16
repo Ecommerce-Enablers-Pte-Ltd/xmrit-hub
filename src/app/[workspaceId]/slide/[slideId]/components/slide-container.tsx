@@ -8,9 +8,10 @@ import { ChevronUp, ChevronDown } from "lucide-react";
 
 interface SlideContainerProps {
   metrics: MetricWithSubmetrics[];
+  slideId: string;
 }
 
-export function SlideContainer({ metrics }: SlideContainerProps) {
+export function SlideContainer({ metrics, slideId }: SlideContainerProps) {
   const chartRefs = useRef<(HTMLDivElement | null)[]>([]);
   const navigationRef = useRef<HTMLDivElement>(null);
   // Use ref to track current index for instant navigation without re-renders
@@ -66,6 +67,10 @@ export function SlideContainer({ metrics }: SlideContainerProps) {
       // Scroll happens IMMEDIATELY - no state updates, no re-renders
       scrollToChart(newIndex);
     }
+    // Remove focus to allow arrow key navigation
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
   }, [scrollToChart]);
 
   // Navigate to next chart - INSTANT, NO RE-RENDERS
@@ -76,6 +81,10 @@ export function SlideContainer({ metrics }: SlideContainerProps) {
       currentIndexRef.current = newIndex;
       // Scroll happens IMMEDIATELY - no state updates, no re-renders
       scrollToChart(newIndex);
+    }
+    // Remove focus to allow arrow key navigation
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
     }
   }, [scrollToChart, totalCharts]);
 
@@ -123,13 +132,22 @@ export function SlideContainer({ metrics }: SlideContainerProps) {
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Check if user is typing in an input field
+      // Check if user is typing in an input field or interacting with a button/dropdown
       const target = e.target as HTMLElement;
-      if (
+      const isInteractiveElement =
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
-        target.isContentEditable
-      ) {
+        target.tagName === "BUTTON" ||
+        target.tagName === "SELECT" ||
+        target.isContentEditable ||
+        target.closest('[role="menu"]') !== null ||
+        target.closest('[role="dialog"]') !== null ||
+        target.closest('[role="combobox"]') !== null ||
+        target.getAttribute("role") === "button" ||
+        target.hasAttribute("data-slot"); // Radix UI components use data-slot
+
+      // Don't handle navigation if focus is on interactive elements
+      if (isInteractiveElement) {
         return;
       }
 
@@ -245,7 +263,10 @@ export function SlideContainer({ metrics }: SlideContainerProps) {
                       }}
                       className="transition-all duration-300 rounded-lg relative"
                     >
-                      <SubmetricLineChart submetric={submetric} />
+                      <SubmetricLineChart
+                        submetric={submetric}
+                        slideId={slideId}
+                      />
                       {totalCharts > 1 && (
                         <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm border border-border/50 rounded-full px-3 py-1.5 text-xs font-semibold opacity-60">
                           <span className="text-foreground">

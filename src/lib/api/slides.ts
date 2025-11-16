@@ -59,12 +59,18 @@ export const slideKeys = {
   detail: (id: string) => [...slideKeys.details(), id] as const,
 };
 
-// React Query hooks for slide data fetching
-export function useSlide(slideId: string) {
+// React Query hooks for slide data fetching with optimizations
+export function useSlide(slideId: string, initialData?: SlideWithMetrics) {
   const query = useQuery({
     queryKey: slideKeys.detail(slideId),
     queryFn: () => slideApiClient.getSlideById(slideId),
     enabled: !!slideId,
+    initialData, // Hydrate from SSR data
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: true,
+    // Stale-while-revalidate: show stale data while refetching
+    placeholderData: (previousData) => previousData,
   });
 
   return {
@@ -72,6 +78,20 @@ export function useSlide(slideId: string) {
     loading: query.isLoading,
     error: query.error?.message || null,
     refetch: query.refetch,
+    isFetching: query.isFetching, // Background refetch indicator
+  };
+}
+
+// Prefetch slide on hover for instant navigation
+export function usePrefetchSlide() {
+  const queryClient = useQueryClient();
+
+  return (slideId: string) => {
+    queryClient.prefetchQuery({
+      queryKey: slideKeys.detail(slideId),
+      queryFn: () => slideApiClient.getSlideById(slideId),
+      staleTime: 5 * 60 * 1000,
+    });
   };
 }
 

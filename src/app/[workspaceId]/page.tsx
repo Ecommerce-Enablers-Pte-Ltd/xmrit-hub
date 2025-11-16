@@ -1,9 +1,9 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getAuthSession } from "@/lib/auth";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { workspaces } from "@/lib/db/schema";
+import { workspaces, slides } from "@/lib/db/schema";
 import { WorkspaceClient } from "./components/workspace-client";
 import type { WorkspaceWithSlides } from "@/types/db/workspace";
 
@@ -13,7 +13,8 @@ interface WorkspacePageProps {
   }>;
 }
 
-// Server-side data fetching
+// Server-side data fetching - simple fetch, no caching
+// React Query handles all caching on the client side
 async function getWorkspaceData(
   workspaceId: string
 ): Promise<WorkspaceWithSlides | null> {
@@ -24,10 +25,37 @@ async function getWorkspaceData(
     where: eq(workspaces.id, workspaceId),
     with: {
       slides: {
+        orderBy: [desc(slides.createdAt)],
+        limit: 100, // Limit to most recent 100 slides
         with: {
           metrics: {
+            orderBy: (metrics, { asc }) => [
+              asc(metrics.sortOrder),
+              asc(metrics.ranking),
+            ],
             with: {
-              submetrics: true,
+              submetrics: {
+                orderBy: (submetrics, { asc }) => [asc(submetrics.createdAt)],
+                columns: {
+                  // Exclude heavy dataPoints column on the workspace overview
+                  // Individual slide pages will load full data
+                  id: true,
+                  label: true,
+                  category: true,
+                  metricId: true,
+                  definitionId: true,
+                  xAxis: true,
+                  timezone: true,
+                  preferredTrend: true,
+                  unit: true,
+                  aggregationType: true,
+                  color: true,
+                  metadata: true,
+                  createdAt: true,
+                  updatedAt: true,
+                  // dataPoints: false - exclude the large JSON array
+                },
+              },
             },
           },
         },
@@ -35,7 +63,7 @@ async function getWorkspaceData(
     },
   });
 
-  return workspace || null;
+  return workspace as WorkspaceWithSlides | null;
 }
 
 // Metadata generation

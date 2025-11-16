@@ -51,6 +51,15 @@ export function DashboardLayout({
     console.log("Creating new metric for slide:", slideId);
   }, []);
 
+  const handleSidebarTriggerClick = React.useCallback(() => {
+    // Remove focus from sidebar trigger to allow arrow key navigation
+    setTimeout(() => {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    }, 0);
+  }, []);
+
   return (
     <SidebarProvider>
       <div className="flex h-screen w-full">
@@ -64,8 +73,10 @@ export function DashboardLayout({
           onCreateMetric={handleCreateMetric}
         />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <header className="flex h-16 items-center gap-4 border-b bg-background px-6">
-            <SidebarTrigger />
+          <header className="flex h-12 items-center gap-4 border-b bg-background px-6">
+            <div onClick={handleSidebarTriggerClick}>
+              <SidebarTrigger />
+            </div>
             <BreadcrumbNav workspace={currentWorkspace} slides={slides} />
             <div className="flex-1" />
             <UserNav session={session} />

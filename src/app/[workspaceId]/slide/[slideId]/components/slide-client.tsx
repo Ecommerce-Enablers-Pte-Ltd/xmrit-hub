@@ -1,27 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { SlideContainer } from "./slide-container";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { SlideWithMetrics } from "@/types/db/slide";
 import type { Workspace } from "@/types/db/workspace";
 import { MonitorIcon, Pencil } from "lucide-react";
-import { useSlide, useUpdateSlide, slideKeys } from "@/lib/api/slides";
-import { toast } from "sonner";
+import { useSlide, slideKeys } from "@/lib/api/slides";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { EditSlideNameDialog } from "@/app/[workspaceId]/components/edit-slide-name-dialog";
+import { CommentCountsProvider } from "./comment-counts-provider";
 
 interface SlideClientProps {
   slide: SlideWithMetrics;
@@ -36,8 +26,6 @@ export function SlideClient({
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [titleValue, setTitleValue] = useState(initialSlide.title);
-  const updateSlide = useUpdateSlide();
 
   // Initialize React Query cache with server data on mount
   useEffect(() => {
@@ -50,6 +38,20 @@ export function SlideClient({
   // Use the cached slide data if available, otherwise fall back to initial prop
   const currentSlide = slide || initialSlide;
 
+  // Extract all definition IDs for the CommentCountsProvider
+  // This allows ONE batch query instead of N individual queries (100+ submetrics = 100+ requests!)
+  const definitionIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const metric of currentSlide.metrics) {
+      for (const submetric of metric.submetrics) {
+        if (submetric.definitionId) {
+          ids.push(submetric.definitionId);
+        }
+      }
+    }
+    return ids;
+  }, [currentSlide.metrics]);
+
   // Verify slide belongs to the workspace
   useEffect(() => {
     if (
@@ -60,37 +62,6 @@ export function SlideClient({
       router.push("/404");
     }
   }, [currentSlide, workspace, router]);
-
-  // Sync title value when dialog opens
-  useEffect(() => {
-    if (isEditDialogOpen) {
-      setTitleValue(currentSlide.title);
-    }
-  }, [isEditDialogOpen, currentSlide.title]);
-
-  // Handle title update
-  const handleSaveTitle = async () => {
-    const trimmedTitle = titleValue.trim();
-
-    // If title hasn't changed or is empty, just close dialog
-    if (!trimmedTitle || trimmedTitle === currentSlide.title) {
-      setIsEditDialogOpen(false);
-      return;
-    }
-
-    try {
-      await updateSlide.mutateAsync({
-        slideId: currentSlide.id,
-        workspaceId: workspace.id,
-        data: { title: trimmedTitle },
-      });
-
-      toast.success("Slide title updated");
-      setIsEditDialogOpen(false);
-    } catch (error) {
-      toast.error("Failed to update slide title");
-    }
-  };
 
   // Show message on mobile devices
   if (isMobile) {
@@ -116,62 +87,20 @@ export function SlideClient({
           <div className="flex-1">
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold">{currentSlide.title}</h1>
-              <Dialog
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 opacity-60 hover:opacity-100"
+                onClick={() => setIsEditDialogOpen(true)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <EditSlideNameDialog
                 open={isEditDialogOpen}
                 onOpenChange={setIsEditDialogOpen}
-              >
-                <DialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 opacity-60 hover:opacity-100"
-                    disabled={updateSlide.isPending}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Edit Slide Title</DialogTitle>
-                    <DialogDescription>
-                      Update the title for this slide.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="title">Title</Label>
-                      <Input
-                        id="title"
-                        value={titleValue}
-                        onChange={(e) => setTitleValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleSaveTitle();
-                          }
-                        }}
-                        placeholder="Enter slide title"
-                        disabled={updateSlide.isPending}
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsEditDialogOpen(false)}
-                      disabled={updateSlide.isPending}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleSaveTitle}
-                      disabled={updateSlide.isPending}
-                    >
-                      {updateSlide.isPending ? "Saving..." : "Save"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                slide={currentSlide}
+                workspaceId={workspace.id}
+              />
             </div>
             {currentSlide.description && (
               <p className="text-muted-foreground mt-2">
@@ -188,7 +117,13 @@ export function SlideClient({
         </div>
       </div>
 
-      <SlideContainer metrics={currentSlide.metrics} />
+      {/* Wrap with CommentCountsProvider to batch-fetch all comment counts in ONE request */}
+      <CommentCountsProvider
+        slideId={currentSlide.id}
+        definitionIds={definitionIds}
+      >
+        <SlideContainer metrics={currentSlide.metrics} slideId={currentSlide.id} />
+      </CommentCountsProvider>
     </div>
   );
 }

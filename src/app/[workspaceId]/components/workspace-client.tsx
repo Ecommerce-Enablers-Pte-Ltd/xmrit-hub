@@ -3,6 +3,7 @@
 import { useRouter, useParams } from "next/navigation";
 import { useDeleteSlide, useWorkspace } from "@/lib/api";
 import { SlideTable } from "./slide-table";
+import { EditSlideNameDialog } from "./edit-slide-name-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +17,7 @@ import {
 import { toast } from "sonner";
 import * as React from "react";
 import type { WorkspaceWithSlides } from "@/types/db/workspace";
+import type { SlideWithMetrics } from "@/types/db/slide";
 
 interface WorkspaceClientProps {
   workspace: WorkspaceWithSlides;
@@ -28,16 +30,23 @@ export function WorkspaceClient({
   const params = useParams();
   const workspaceId = params.workspaceId as string;
 
-  // Use React Query hook to get live data that updates when cache is invalidated
-  const { workspace, loading } = useWorkspace(workspaceId);
+  // Hybrid approach: hydrate React Query with server data, then use client cache
+  const { workspace, loading, isFetching } = useWorkspace(
+    workspaceId,
+    initialWorkspace
+  );
   const deleteSlide = useDeleteSlide();
 
-  // Use the live workspace data from React Query, fallback to initial server data
+  // Use the live workspace data from React Query (hydrated with SSR data)
   const currentWorkspace = workspace || initialWorkspace;
 
   // Alert dialog state
   const [alertOpen, setAlertOpen] = React.useState(false);
   const [slideToDelete, setSlideToDelete] = React.useState<string | null>(null);
+
+  // Edit slide dialog state
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [slideToEdit, setSlideToEdit] = React.useState<SlideWithMetrics | null>(null);
 
   const handleCreateSlide = React.useCallback(() => {
     // TODO: Implement slide creation
@@ -49,9 +58,9 @@ export function WorkspaceClient({
     console.log("Creating new metric for slide:", slideId);
   }, []);
 
-  const handleEditSlide = React.useCallback((slide: any) => {
-    // TODO: Implement slide editing
-    console.log("Editing slide:", slide.title);
+  const handleEditSlide = React.useCallback((slide: SlideWithMetrics) => {
+    setSlideToEdit(slide);
+    setEditDialogOpen(true);
   }, []);
 
   const handleDeleteSlide = React.useCallback((slideId: string) => {
@@ -109,6 +118,19 @@ export function WorkspaceClient({
         onDeleteSlide={handleDeleteSlide}
         isLoading={loading}
       />
+      {slideToEdit && (
+        <EditSlideNameDialog
+          open={editDialogOpen}
+          onOpenChange={(open) => {
+            setEditDialogOpen(open);
+            if (!open) {
+              setSlideToEdit(null);
+            }
+          }}
+          slide={slideToEdit}
+          workspaceId={currentWorkspace.id}
+        />
+      )}
       <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

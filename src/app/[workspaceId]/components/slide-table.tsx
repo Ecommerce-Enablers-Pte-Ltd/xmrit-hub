@@ -25,10 +25,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Pencil } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceSettingsDialog } from "./workspace-settings-dialog";
 import type { SlideWithMetrics } from "@/types/db/slide";
 import type { Workspace } from "@/types/db/workspace";
+import { usePrefetchSlide } from "@/lib/api";
 
 interface SlideTableProps {
   currentWorkspace: Workspace;
@@ -48,6 +50,7 @@ export function SlideTable({
   isLoading = false,
 }: SlideTableProps) {
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const prefetchSlide = usePrefetchSlide();
 
   const handleRowClick = (slideId: string) => {
     window.open(`/${currentWorkspace.id}/slide/${slideId}`, "_blank");
@@ -180,6 +183,7 @@ export function SlideTable({
                     key={slide.id}
                     className="cursor-pointer"
                     onClick={() => handleRowClick(slide.id)}
+                    onMouseEnter={() => prefetchSlide(slide.id)}
                   >
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -200,11 +204,11 @@ export function SlideTable({
                           {totalSubmetrics} submetric
                           {totalSubmetrics !== 1 ? "s" : ""}
                         </span>
-                        {slide.slideDate && (
+                        {slide.createdAt && (
                           <>
                             <span>•</span>
                             <span>
-                              {new Date(slide.slideDate).toLocaleDateString(
+                              {new Date(slide.createdAt).toLocaleDateString(
                                 "en-US",
                                 {
                                   month: "short",
@@ -236,17 +240,16 @@ export function SlideTable({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
-                          {/* <DropdownMenuItem
+                          <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
                               onEditSlide(slide);
                             }}
-                            disabled
                           >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem> */}
-                          {/* <DropdownMenuSeparator /> */}
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();

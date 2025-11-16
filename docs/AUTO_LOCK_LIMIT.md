@@ -4,6 +4,12 @@
 
 Auto Lock Limit is an intelligent feature that automatically detects outliers in your data and recalculates control limits with those outliers excluded. This helps distinguish between **special cause variation** (outliers) and **common cause variation** (normal process variation), resulting in more accurate and meaningful control limits.
 
+**⚠️ Important**: This implementation uses **aggressive threshold settings** designed for high-sensitivity anomaly detection in business metrics. The thresholds are more sensitive than traditional statistical outlier detection methods, which means:
+
+- More data points will be flagged as outliers
+- Auto-lock will trigger on datasets with relatively low variation
+- Results are fully deterministic for the same dataset (as of the latest update)
+
 ## Purpose
 
 Traditional XMR charts calculate control limits using all data points. However, when outliers are present due to one-time events or special causes, they can artificially widen the control limits, making the chart less sensitive to detecting real process changes.
@@ -20,11 +26,11 @@ Auto Lock Limit solves this by:
 
 Auto Lock Limit runs **once** when a chart first loads, if:
 
-1. ✅ Sufficient data points available (≥ 10 points)
+1. ✅ Sufficient data points available (≥ 6 points)
 2. ✅ No trend analysis active
 3. ✅ No seasonality adjustments active
 4. ✅ Limits not already manually locked
-5. ✅ Data has sufficient variation (Coefficient of Variation > 0.05)
+5. ✅ Data has sufficient variation (Coefficient of Variation > 0.001)
 6. ✅ At least one outlier detected
 
 ### Consensus-Based Detection
@@ -46,12 +52,13 @@ Upper Bound = Q3 + (multiplier × IQR)
 
 **Adaptive Multiplier**: The IQR multiplier adapts based on data characteristics:
 
-- **High variability** (CV > 0.5): multiplier = 1.5 (more sensitive)
-- **Moderate variability** (0.3 < CV ≤ 0.5): multiplier = 2.0 (balanced)
-- **Low variability** (CV ≤ 0.3): multiplier = 2.5 (less sensitive)
-- **Highly skewed data** (skewness > 1): multiplier increased by 0.5
+- **Low variability** (CV < 0.1): multiplier = 1.0 (most sensitive)
+- **Moderate variability** (0.1 ≤ CV < 0.3): multiplier = 1.2 (balanced)
+- **High variability** (CV ≥ 0.3): multiplier = 1.5 (less sensitive)
 
 Where CV = Coefficient of Variation = (Standard Deviation / Mean)
+
+**Note**: Lower multipliers make outlier detection more aggressive, flagging points that are closer to the normal range.
 
 #### 2. Z-Score Method
 
@@ -60,10 +67,10 @@ Identifies points that are unusually far from the mean:
 ```
 Z-Score = (value - mean) / standard deviation
 
-Outlier if |Z-Score| > threshold (default: 2.5)
+Outlier if |Z-Score| > threshold (default: 1.8)
 ```
 
-**Strict Threshold**: For the most recent data point, a stricter threshold of 3.0 is used to avoid flagging it as an outlier unless it's extremely anomalous.
+**Strict Threshold**: For the most recent data point, a stricter threshold of 2.2 is used to avoid flagging it as an outlier unless it's extremely anomalous.
 
 #### 3. MAD (Median Absolute Deviation) Method
 
@@ -75,7 +82,7 @@ MAD = median(|values - median|)
 
 Modified Z-Score = 0.6745 × (value - median) / MAD
 
-Outlier if |Modified Z-Score| > 3.5
+Outlier if |Modified Z-Score| > 2.2
 ```
 
 #### 4. Percentile Method
@@ -83,8 +90,8 @@ Outlier if |Modified Z-Score| > 3.5
 Flags extreme values at the tails of the distribution:
 
 ```
-Lower Bound = 1st percentile
-Upper Bound = 99th percentile
+Lower Bound = 8th percentile
+Upper Bound = 92nd percentile
 
 Outlier if value < Lower Bound or value > Upper Bound
 ```
@@ -102,9 +109,10 @@ This approach reduces false positives while ensuring extreme outliers are caught
 ### Additional Safeguards
 
 1. **Maximum Outlier Limit**: No more than 25% of data points can be flagged as outliers
-2. **Recent Point Protection**: The most recent data point is protected unless it has an extreme Z-Score (> 3.0)
-3. **Minimum Data Requirement**: Requires at least 10 data points for reliable detection
-4. **Variation Threshold**: Only activates if Coefficient of Variation > 0.05 (5%)
+2. **Recent Point Protection**: The most recent data point is protected unless it has an extreme Z-Score (> 2.2)
+3. **Minimum Data Requirement**: Requires at least 6 data points for reliable detection
+4. **Variation Threshold**: Only activates if Coefficient of Variation > 0.001 (0.1%)
+5. **Deterministic Ordering**: When outliers have similar z-scores, data point index is used as a tie-breaker to ensure consistent results across sessions
 
 ## Implementation Flow
 
@@ -238,8 +246,8 @@ if (iqr === 0) {
     const percentDiff =
       Math.abs(value - median) / Math.max(Math.abs(median), 1);
 
-    // Flag if > 5% difference from median
-    if (percentDiff > 0.05 && value !== median) {
+    // Flag if > 0.1% difference from median
+    if (percentDiff > 0.001 && value !== median) {
       outlierIndices.push(index);
     }
   });
@@ -302,7 +310,9 @@ Auto-lock is completely reversible. Users can unlock limits at any time to see t
 
 ### 1. Minimum Data Requirement
 
-Requires at least 10 data points. With fewer points, outlier detection is unreliable.
+Requires at least 6 data points. With fewer points, outlier detection is unreliable.
+
+**Note**: While the algorithm will run with 6 points, results become more reliable with 10+ data points.
 
 ### 2. Not Suitable for All Scenarios
 
@@ -311,6 +321,9 @@ Auto-lock should not be used when:
 - Outliers are valid and represent the process (e.g., seasonal spikes)
 - Data has a trend (use trend analysis instead)
 - Process intentionally varies widely (use seasonality adjustments)
+- Data is expected to have high variability as part of normal operations
+
+**Warning**: The current aggressive thresholds may flag legitimate data points as outliers in stable, low-variation processes. If auto-lock excludes too many points, consider using manual lock instead.
 
 ### 3. Single-Pass Detection
 
@@ -328,17 +341,50 @@ Cannot use auto-lock simultaneously with trend lines or seasonality adjustments.
 
 ```typescript
 export const OUTLIER_DETECTION = {
-  MIN_DATA_POINTS: 10, // Minimum points for detection
+  MIN_DATA_POINTS: 6, // Minimum points for detection
+  IQR_MULTIPLIER_AGGRESSIVE: 1.0, // For CV < 0.1
+  IQR_MULTIPLIER_MODERATE: 1.2, // For 0.1 ≤ CV < 0.3
+  IQR_MULTIPLIER_CONSERVATIVE: 1.5, // For CV ≥ 0.3
+  ZSCORE_THRESHOLD: 1.8, // Z-score threshold for outlier
+  ZSCORE_STRICT_THRESHOLD: 2.2, // Stricter threshold for recent point
+  MAD_MULTIPLIER: 2.2, // MAD modified z-score threshold
+  PERCENTILE_THRESHOLD: 0.08, // 8th and 92nd percentile (8% from each tail)
   MAX_OUTLIER_PERCENTAGE: 0.25, // Max 25% can be outliers
-  ZSCORE_THRESHOLD: 2.5, // Z-score threshold for outlier
-  ZSCORE_STRICT_THRESHOLD: 3.0, // Stricter threshold for recent point
-  MAD_THRESHOLD: 3.5, // MAD modified z-score threshold
-  PERCENTILE_THRESHOLD: [0.01, 0.99], // 1st and 99th percentile
-  VARIATION_THRESHOLD: 0.05, // Min 5% CV to attempt detection
+  VARIATION_THRESHOLD: 0.001, // Min 0.1% CV to attempt detection
 };
 ```
 
-These constants can be adjusted based on your domain and tolerance for false positives/negatives.
+**Important Notes:**
+- These constants are **more aggressive** than typical statistical outlier detection
+- Lower thresholds mean more points will be flagged as outliers
+- The low `VARIATION_THRESHOLD` (0.1%) means auto-lock will trigger even on datasets with minimal variation
+- These settings are tuned for detecting anomalies in business metrics where sensitivity is prioritized
+- Constants can be adjusted in `src/lib/xmr-calculations.ts` based on your domain and tolerance for false positives/negatives
+
+## Deterministic Behavior
+
+**Important**: Auto-lock results are now **fully deterministic** for identical datasets. This was achieved by adding tie-breaking logic when multiple outliers have similar statistical properties:
+
+```typescript
+.sort((a, b) => {
+  // First, prioritize by method count
+  if (b.methodCount !== a.methodCount) {
+    return b.methodCount - a.methodCount;
+  }
+  // Then by z-score (more extreme first)
+  const zScoreDiff = b.zScore - a.zScore;
+  if (Math.abs(zScoreDiff) > 0.0001) {
+    return zScoreDiff;
+  }
+  // If z-scores are essentially equal, use index for deterministic ordering
+  return a.index - b.index;
+});
+```
+
+**What this means:**
+- Loading the same data multiple times will **always** produce the same auto-lock results
+- No more inconsistent outlier detection across page refreshes
+- Data point index serves as a stable tie-breaker when statistical measures are nearly identical
 
 ## Use Cases
 
@@ -402,9 +448,9 @@ Revisit auto-locked limits periodically. If the process has changed, you may nee
 
 Possible reasons:
 
-- Data variation is too low (CV < 5%)
-- "Outliers" are not statistically extreme enough
-- Consensus requirement not met (only 1 method flagged them)
+- Data variation is too low (CV < 0.1%)
+- "Outliers" are not statistically extreme enough (Z-Score < 1.8)
+- Consensus requirement not met (only 1 method flagged them and Z-Score < 3.0)
 
 **Solution**: Use manual lock and exclude points yourself.
 
@@ -420,15 +466,17 @@ The algorithm is capped at 25% of points. If more than 25% seem like outliers:
 
 Check prerequisites:
 
-- At least 10 data points?
-- Coefficient of Variation > 5%?
+- At least 6 data points?
+- Coefficient of Variation > 0.1%?
 - Not already manually locked?
 - Trend/seasonality not active?
 - Are there actual outliers? (Run `shouldAutoLockLimits()` manually)
 
+**Note**: With the aggressive thresholds in the current configuration, auto-lock should trigger frequently if outliers exist.
+
 ### "Recent point incorrectly excluded"
 
-The recent point has extra protection (Z-Score > 3.0 required). If it's still excluded, it's extremely anomalous. Consider if it's valid data.
+The recent point has extra protection (Z-Score > 2.2 required). If it's still excluded, it's anomalous beyond the strict threshold. Consider if it's valid data or a true outlier.
 
 ## Related Documentation
 

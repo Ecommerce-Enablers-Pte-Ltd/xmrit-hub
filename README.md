@@ -25,6 +25,7 @@ Inspired by [xmrit.com](https://xmrit.com) by Commoncog, this is a self-hosted d
 - NextAuth.js with Google OAuth
 - Metrics ingestion API for automation
 - Interactive charts (Recharts + Radix UI)
+- Persistent comments on data points with cross-slide discussion threads
 
 ## 📚 Documentation
 
@@ -33,6 +34,7 @@ Comprehensive feature documentation is available in the [`docs/`](./docs) folder
 - **[Documentation Index](./docs/README.md)** - Complete guide to all features
 - **[Controller Logic (Traffic Light)](./docs/CONTROLLER_TRAFFIC_LIGHT.md)** - Process control status indicators
 - **[Data Ingestion API](./docs/DATA_INGESTION.md)** - REST API for programmatic data ingestion
+- **[Comment System](./docs/COMMENT_SYSTEM.md)** - Persistent comments and discussion threads on data points
 - **[Auto Lock Limit](./docs/AUTO_LOCK_LIMIT.md)** - Automatic outlier detection and removal
 - **[Lock Limit](./docs/LOCK_LIMIT.md)** - Manual limit locking and customization
 - **[Trend Lines](./docs/TREND_LINES.md)** - Linear trend analysis with dynamic limits
@@ -57,16 +59,25 @@ npm install
 Create `.env` file:
 
 ```env
+# Port Configuration (optional - defaults to 3000)
+PORT=3000
+
+# Database
 DATABASE_URL="postgresql://username:password@host/database?sslmode=require"
 
+# NextAuth
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="your-secret-key"  # openssl rand -base64 32
 
+# Google OAuth
 GOOGLE_CLIENT_ID="your_google_client_id"
 GOOGLE_CLIENT_SECRET="your_google_client_secret"
 
-METRICS_API_KEY="your-metrics-api-key"  # openssl rand -hex 32 (min 32 chars) this is your api key for data ingestion
+# API Key for data ingestion
+METRICS_API_KEY="your-metrics-api-key"  # openssl rand -hex 32 (min 32 chars)
 ```
+
+> **Note on PORT:** The app defaults to port 3000 for local development. Set `PORT=5000` for Replit or other environments. The Replit configuration automatically sets this.
 
 Get Google OAuth credentials:
 
@@ -77,8 +88,7 @@ Get Google OAuth credentials:
 **3. Database & Run**
 
 ```bash
-npm run db:generate  # Generate schema
-npm run db:push      # Apply schema or npm run db:migrate
+npm run db:push      # Sync schema to database
 npm run dev          # Start server → http://localhost:3000 - A default workspace would be created for you
 ```
 

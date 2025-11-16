@@ -1,5 +1,11 @@
 import { db } from "@/lib/db";
-import { metrics, slides, submetrics, workspaces } from "@/lib/db/schema";
+import {
+  metrics,
+  slides,
+  submetrics,
+  submetricDefinitions,
+  workspaces,
+} from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 
@@ -30,6 +36,7 @@ import { type NextRequest, NextResponse } from "next/server";
  *           "category": "Adidas",
  *           "timezone": "ltz",
  *           "xaxis": "period",
+ *           "yaxis": "value",
  *           "preferred_trend": "downtrend",
  *           "unit": "%",              // optional
  *           "aggregation_type": "avg", // optional
@@ -62,6 +69,7 @@ interface SubmetricInput {
   category?: string;
   timezone?: string;
   xaxis?: string;
+  yaxis?: string;
   preferred_trend?: "uptrend" | "downtrend" | "stable" | null;
   unit?: string;
   aggregation_type?: string;
@@ -85,6 +93,42 @@ interface IngestRequest {
   slide_date?: string;
   slide_description?: string;
   metrics: MetricInput[];
+}
+
+/**
+ * Normalize a string to a stable key format
+ * Example: "% of MCB Count" -> "of-mcb-count"
+ */
+function normalizeKey(str: string): string {
+  return str
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Derive submetric key from label
+ * Extracts both category prefix and metric name to create a unique key
+ * Example: "[Adidas] - % of MCB Count" -> "adidas-of-mcb-count"
+ * Example: "[Nike] - % of MCB Count" -> "nike-of-mcb-count"
+ * Example: "Transaction Count" -> "transaction-count"
+ */
+function deriveSubmetricKey(label: string): string {
+  // Check if label has the pattern "[Category] - MetricName"
+  const categoryMatch = label.match(/^\[([^\]]+)\]\s*-\s*(.+)$/);
+
+  if (categoryMatch) {
+    // Extract category and metric name
+    const category = categoryMatch[1].trim();
+    const metricName = categoryMatch[2].trim();
+
+    // Combine category and metric name for unique key
+    return normalizeKey(`${category}-${metricName}`);
+  }
+
+  // Otherwise use entire label
+  return normalizeKey(label);
 }
 
 // Validate API key from environment variable
@@ -283,6 +327,43 @@ export async function POST(request: NextRequest) {
 
       // Insert submetrics with data points
       for (const submetricInput of metricInput.submetrics) {
+        // Derive stable keys for definition lookup/creation
+        const metricKey = normalizeKey(metricInput.metric_name);
+        // Include category in the submetric key to ensure uniqueness
+        const categoryPrefix = submetricInput.category
+          ? normalizeKey(submetricInput.category)
+          : null;
+        const labelKey = deriveSubmetricKey(submetricInput.label);
+        const submetricKey = categoryPrefix
+          ? `${categoryPrefix}-${labelKey}`
+          : labelKey;
+
+        // Upsert submetric definition (auto-create/update)
+        const [definition] = await db
+          .insert(submetricDefinitions)
+          .values({
+            workspaceId,
+            metricKey,
+            submetricKey,
+            label: submetricInput.label,
+            unit: submetricInput.unit || null,
+            preferredTrend: submetricInput.preferred_trend || null,
+          })
+          .onConflictDoUpdate({
+            target: [
+              submetricDefinitions.workspaceId,
+              submetricDefinitions.metricKey,
+              submetricDefinitions.submetricKey,
+            ],
+            set: {
+              label: submetricInput.label,
+              unit: submetricInput.unit || null,
+              preferredTrend: submetricInput.preferred_trend || null,
+              updatedAt: new Date(),
+            },
+          })
+          .returning();
+
         // Prepare data points as JSON array
         const dataPointsJson =
           submetricInput.data_points && submetricInput.data_points.length > 0
@@ -295,11 +376,14 @@ export async function POST(request: NextRequest) {
               }))
             : [];
 
+        // Insert submetric with definitionId
         await db.insert(submetrics).values({
           label: submetricInput.label,
           category: submetricInput.category || null,
           metricId: metric.id,
+          definitionId: definition.id,
           xAxis: submetricInput.xaxis || "date",
+          yAxis: submetricInput.yaxis || null,
           timezone: submetricInput.timezone || "UTC",
           preferredTrend: submetricInput.preferred_trend || null,
           unit: submetricInput.unit || null,
@@ -412,6 +496,7 @@ export async function GET(request: NextRequest) {
               category: "Adidas",
               timezone: "ltz",
               xaxis: "period",
+              yaxis: "value",
               preferred_trend: "downtrend",
               unit: "%",
               aggregation_type: "avg",

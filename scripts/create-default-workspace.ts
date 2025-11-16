@@ -6,6 +6,52 @@ import { join } from "node:path";
 // Load environment variables
 config();
 
+/**
+ * Normalize a string to a stable key format
+ * Example: "% of MCB Count" -> "of-mcb-count"
+ */
+function normalizeKey(str: string): string {
+  return str
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Derive submetric key from label
+ * Extracts both category prefix and metric name to create a unique key
+ * Example: "[Adidas] - % of MCB Count" -> "adidas-of-mcb-count"
+ * Example: "[Nike] - % of MCB Count" -> "nike-of-mcb-count"
+ * Example: "Transaction Count" -> "transaction-count"
+ */
+function deriveSubmetricKey(label: string): string {
+  // Check if label has the pattern "[Category] - MetricName"
+  const categoryMatch = label.match(/^\[([^\]]+)\]\s*-\s*(.+)$/);
+
+  if (categoryMatch) {
+    // Extract category and metric name
+    const category = categoryMatch[1].trim();
+    const metricName = categoryMatch[2].trim();
+
+    // Combine category and metric name for unique key
+    return normalizeKey(`${category}-${metricName}`);
+  }
+
+  // Otherwise use entire label
+  return normalizeKey(label);
+}
+
+/**
+ * Build submetric key with category prefix
+ * This is the correct way to derive submetricKey that includes category
+ */
+function buildSubmetricKey(category: string | null, label: string): string {
+  const categoryPrefix = category ? normalizeKey(category) : null;
+  const labelKey = deriveSubmetricKey(label);
+  return categoryPrefix ? `${categoryPrefix}-${labelKey}` : labelKey;
+}
+
 // Helper function to generate sample data points
 function generateSampleDataPoints(
   count: number,
@@ -152,13 +198,38 @@ async function createDefaultWorkspace() {
         10000,
         "sales_database"
       );
-      await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+      const revenueLabel = "All Regions - Total Revenue";
+      const revenueCategory = "sales";
+      const revenueMetricKey = normalizeKey("Revenue");
+      const revenueSubmetricKey = buildSubmetricKey(
+        revenueCategory,
+        revenueLabel
+      );
+
+      const revenueDef = await sql`
+        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", label, unit, "preferredTrend", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
-          'All Regions - Total Revenue',
+          ${workspaceId},
+          ${revenueMetricKey},
+          ${revenueSubmetricKey},
+          ${revenueLabel},
+          '$',
+          'uptrend',
+          NOW(),
+          NOW()
+        )
+        RETURNING id
+      `;
+
+      await sql`
+        INSERT INTO "submetric" (id, label, category, "metricId", "definitionId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        VALUES (
+          gen_random_uuid()::text,
+          ${revenueLabel},
           'sales',
           ${metric1Id},
+          ${revenueDef[0].id},
           'date',
           'UTC',
           'uptrend',
@@ -178,13 +249,37 @@ async function createDefaultWorkspace() {
         6000,
         "ecommerce_platform"
       );
-      await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+      const onlineRevenueLabel = "Online - Revenue";
+      const onlineRevenueCategory = "sales";
+      const onlineRevenueSubmetricKey = buildSubmetricKey(
+        onlineRevenueCategory,
+        onlineRevenueLabel
+      );
+
+      const onlineRevenueDef = await sql`
+        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", label, unit, "preferredTrend", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
-          'Online - Revenue',
+          ${workspaceId},
+          ${revenueMetricKey},
+          ${onlineRevenueSubmetricKey},
+          ${onlineRevenueLabel},
+          '$',
+          'uptrend',
+          NOW(),
+          NOW()
+        )
+        RETURNING id
+      `;
+
+      await sql`
+        INSERT INTO "submetric" (id, label, category, "metricId", "definitionId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        VALUES (
+          gen_random_uuid()::text,
+          ${onlineRevenueLabel},
           'sales',
           ${metric1Id},
+          ${onlineRevenueDef[0].id},
           'date',
           'UTC',
           'uptrend',
@@ -218,13 +313,38 @@ async function createDefaultWorkspace() {
 
       // Create Submetric 2.1: New Customers
       const customersData = generateSampleDataPoints(30, 150, 30, "crm_system");
-      await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+      const customersLabel = "Paid - New Customers";
+      const customersCategory = "acquisition";
+      const customersMetricKey = normalizeKey("Customer Acquisition");
+      const customersSubmetricKey = buildSubmetricKey(
+        customersCategory,
+        customersLabel
+      );
+
+      const customersDef = await sql`
+        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", label, unit, "preferredTrend", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
-          'Paid - New Customers',
+          ${workspaceId},
+          ${customersMetricKey},
+          ${customersSubmetricKey},
+          ${customersLabel},
+          'customers',
+          'stable',
+          NOW(),
+          NOW()
+        )
+        RETURNING id
+      `;
+
+      await sql`
+        INSERT INTO "submetric" (id, label, category, "metricId", "definitionId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        VALUES (
+          gen_random_uuid()::text,
+          ${customersLabel},
           'acquisition',
           ${metric2Id},
+          ${customersDef[0].id},
           'date',
           'UTC',
           'stable',
@@ -244,13 +364,34 @@ async function createDefaultWorkspace() {
         40,
         "marketing_automation"
       );
-      await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+      const trialsLabel = "Free Trial - Sign-ups";
+      const trialsCategory = "acquisition";
+      const trialsSubmetricKey = buildSubmetricKey(trialsCategory, trialsLabel);
+
+      const trialsDef = await sql`
+        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", label, unit, "preferredTrend", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
-          'Free Trial - Sign-ups',
+          ${workspaceId},
+          ${customersMetricKey},
+          ${trialsSubmetricKey},
+          ${trialsLabel},
+          'sign-ups',
+          'uptrend',
+          NOW(),
+          NOW()
+        )
+        RETURNING id
+      `;
+
+      await sql`
+        INSERT INTO "submetric" (id, label, category, "metricId", "definitionId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        VALUES (
+          gen_random_uuid()::text,
+          ${trialsLabel},
           'acquisition',
           ${metric2Id},
+          ${trialsDef[0].id},
           'date',
           'UTC',
           'uptrend',
@@ -310,13 +451,35 @@ async function createDefaultWorkspace() {
         500,
         "analytics_platform"
       );
-      await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+      const dauLabel = "Mobile + Web - Daily Active Users";
+      const dauCategory = "engagement";
+      const dauMetricKey = normalizeKey("Active Users");
+      const dauSubmetricKey = buildSubmetricKey(dauCategory, dauLabel);
+
+      const dauDef = await sql`
+        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", label, unit, "preferredTrend", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
-          'Mobile + Web - Daily Active Users',
+          ${workspaceId},
+          ${dauMetricKey},
+          ${dauSubmetricKey},
+          ${dauLabel},
+          'users',
+          'uptrend',
+          NOW(),
+          NOW()
+        )
+        RETURNING id
+      `;
+
+      await sql`
+        INSERT INTO "submetric" (id, label, category, "metricId", "definitionId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        VALUES (
+          gen_random_uuid()::text,
+          ${dauLabel},
           'engagement',
           ${metric3Id},
+          ${dauDef[0].id},
           'date',
           'UTC',
           'uptrend',
@@ -336,13 +499,37 @@ async function createDefaultWorkspace() {
         2,
         "analytics_platform"
       );
-      await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+      const sessionLabel = "Average - Session Duration";
+      const sessionCategory = "engagement";
+      const sessionSubmetricKey = buildSubmetricKey(
+        sessionCategory,
+        sessionLabel
+      );
+
+      const sessionDef = await sql`
+        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", label, unit, "preferredTrend", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
-          'Average - Session Duration',
+          ${workspaceId},
+          ${dauMetricKey},
+          ${sessionSubmetricKey},
+          ${sessionLabel},
+          'minutes',
+          'stable',
+          NOW(),
+          NOW()
+        )
+        RETURNING id
+      `;
+
+      await sql`
+        INSERT INTO "submetric" (id, label, category, "metricId", "definitionId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        VALUES (
+          gen_random_uuid()::text,
+          ${sessionLabel},
           'engagement',
           ${metric3Id},
+          ${sessionDef[0].id},
           'date',
           'UTC',
           'stable',

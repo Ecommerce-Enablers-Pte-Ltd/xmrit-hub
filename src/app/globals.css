@@ -76,6 +76,17 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Chart-specific theme colors */
+  --chart-label-bg: #ffffff;
+  --chart-label-text: #374151;
+  --chart-label-border: #e5e7eb;
+  --chart-dot-stroke: #ffffff;
+  --chart-comment-indicator: #3b82f6;
+
+  /* Color transition timing */
+  --theme-transition-duration: 0.2s;
+  --theme-transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dark {
@@ -110,6 +121,17 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Chart-specific theme colors */
+  --chart-label-bg: #2a2a2a;
+  --chart-label-text: #e5e5e5;
+  --chart-label-border: #404040;
+  --chart-dot-stroke: #2a2a2a;
+  --chart-comment-indicator: #60a5fa;
+
+  /* Same transition timing in dark mode */
+  --theme-transition-duration: 0.2s;
+  --theme-transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @layer base {
@@ -118,5 +140,52 @@
   }
   body {
     @apply bg-background text-foreground;
+    transition: background-color var(--theme-transition-duration)
+        var(--theme-transition-timing),
+      color var(--theme-transition-duration) var(--theme-transition-timing);
+  }
+
+  /* Performance optimizations for charts */
+  .chart-container {
+    /* Allow tooltips to overflow */
+    overflow: visible !important;
+    content-visibility: auto;
+    /* Hint to browser that colors will change */
+    will-change: auto;
+  }
+
+  /* Smooth color transitions for SVG elements */
+  svg text:not(.recharts-label),
+  svg rect,
+  svg circle {
+    transition: fill var(--theme-transition-duration)
+        var(--theme-transition-timing),
+      stroke var(--theme-transition-duration) var(--theme-transition-timing);
+    /* Use GPU acceleration for better performance */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* Ensure Recharts labels can use SVG transforms for rotation */
+  .recharts-label {
+    /* Don't apply CSS transform that would override SVG transform attribute */
+    transition: fill var(--theme-transition-duration)
+        var(--theme-transition-timing),
+      stroke var(--theme-transition-duration) var(--theme-transition-timing);
+  }
+
+  /* Optimize recharts components */
+  .recharts-wrapper,
+  .recharts-surface {
+    transition: opacity var(--theme-transition-duration)
+      var(--theme-transition-timing);
+  }
+
+  /* Optimize theme transitions with View Transitions API support */
+  @supports (view-transition-name: none) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation-duration: 0.2s;
+    }
   }
 }

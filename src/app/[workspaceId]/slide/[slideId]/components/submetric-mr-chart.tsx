@@ -14,12 +14,12 @@ import {
 } from "recharts";
 import type { Submetric } from "@/types/db/submetric";
 import type { XMRLimits } from "@/lib/xmr-calculations";
+import { useChartTheme } from "@/hooks/use-chart-theme";
 
 interface SubmetricMRChartProps {
   chartData: any[];
   xmrLimits: XMRLimits;
   submetric: Submetric;
-  isDark: boolean;
   isLimitsLocked: boolean;
 }
 
@@ -28,9 +28,11 @@ export const SubmetricMRChart = memo(
     chartData,
     xmrLimits,
     submetric,
-    isDark,
     isLimitsLocked,
   }: SubmetricMRChartProps) => {
+    // Track theme for consistent colors
+    const isDark = useChartTheme();
+
     // Calculate Y-axis domain for MR chart
     const mrYAxisDomain = useMemo(() => {
       if (chartData.length === 0) return [0, 100];
@@ -50,9 +52,9 @@ export const SubmetricMRChart = memo(
           const data = payload[0].payload;
 
           return (
-            <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-4 shadow-xl max-w-xs">
+            <div className="bg-popover/95 backdrop-blur-sm border border-border rounded-lg p-4 shadow-lg shadow-black/10 dark:shadow-black/50 max-w-xs text-popover-foreground">
               <div className="space-y-2">
-                <p className="font-semibold text-base border-b pb-2">
+                <p className="font-semibold text-base border-b pb-2 text-popover-foreground">
                   {data.fullTimestamp}
                 </p>
 
@@ -108,6 +110,7 @@ export const SubmetricMRChart = memo(
       (props: any) => {
         const { cx, cy, payload, index } = props;
         const isRangeViolation = payload?.isRangeViolation;
+        // Use theme-based colors
         const dotStroke = isDark ? "#2a2a2a" : "#ffffff";
 
         const fillColor = isRangeViolation
@@ -134,7 +137,7 @@ export const SubmetricMRChart = memo(
           />
         );
       },
-      [isDark, submetric.color]
+      [isDark, submetric.color] // Depends on theme and submetric color
     );
 
     // Memoize active dot renderer
@@ -143,11 +146,10 @@ export const SubmetricMRChart = memo(
         const { cx, cy, payload } = props;
         const isRangeViolation = payload?.isRangeViolation;
 
-        const fillColor = isRangeViolation
-          ? "#ef4444"
-          : isDark
-          ? "#2a2a2a"
-          : "#ffffff";
+        // Use theme-based colors
+        const dotStroke = isDark ? "#2a2a2a" : "#ffffff";
+
+        const fillColor = isRangeViolation ? "#ef4444" : dotStroke;
         const strokeColor = isRangeViolation
           ? "#dc2626"
           : submetric.color || "#3b82f6";
@@ -167,7 +169,7 @@ export const SubmetricMRChart = memo(
           />
         );
       },
-      [isDark, submetric.color]
+      [isDark, submetric.color] // Depends on theme and submetric color
     );
 
     // Memoize tick formatter
@@ -215,8 +217,8 @@ export const SubmetricMRChart = memo(
     );
 
     return (
-      <div className="h-[500px] w-full [&_.recharts-cartesian-grid-horizontal>line]:stroke-muted-foreground/20 [&_.recharts-cartesian-grid-vertical>line]:stroke-muted-foreground/20 [&_.recharts-tooltip-wrapper]:z-50">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="chart-container h-[500px] w-full [&_.recharts-cartesian-grid-horizontal>line]:stroke-muted-foreground/20 [&_.recharts-cartesian-grid-vertical>line]:stroke-muted-foreground/20 [&_.recharts-tooltip-wrapper]:z-50">
+        <ResponsiveContainer width="100%" height="100%" debounce={350}>
           <LineChart
             data={chartData}
             margin={{ top: 40, right: 60, left: 20, bottom: 40 }}

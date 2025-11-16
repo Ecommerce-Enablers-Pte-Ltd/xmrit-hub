@@ -22,6 +22,34 @@
       "when": 1762510508330,
       "tag": "0002_wooden_warhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1762763629788,
+      "tag": "0003_pink_marvex",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1762852491431,
+      "tag": "0004_tough_joystick",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1763175855321,
+      "tag": "0005_sparkling_power_pack",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1763220462860,
+      "tag": "0006_drop_redundant_index",
+      "breakpoints": true
     }
   ]
 }

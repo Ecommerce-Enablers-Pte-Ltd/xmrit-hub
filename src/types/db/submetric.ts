@@ -10,12 +10,26 @@ export interface DataPointJson {
   dimensions?: Record<string, unknown> | null;
 }
 
+export interface SubmetricDefinition {
+  id: string;
+  workspaceId: string;
+  metricKey: string;
+  submetricKey: string;
+  label: string | null;
+  unit: string | null;
+  preferredTrend: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Submetric {
   id: string;
   label: string;
   category: string | null;
   metricId: string;
+  definitionId: string | null;
   xAxis: string;
+  yAxis: string | null;
   timezone: string | null;
   preferredTrend: string | null;
   unit: string | null;

@@ -15,7 +15,8 @@ interface SlidePageProps {
   }>;
 }
 
-// Server-side data fetching functions
+// Server-side data fetching - simple fetch, no caching
+// React Query handles all caching on the client side
 async function getSlideData(slideId: string): Promise<SlideWithMetrics | null> {
   const session = await getAuthSession();
   if (!session) return null;
@@ -24,14 +25,21 @@ async function getSlideData(slideId: string): Promise<SlideWithMetrics | null> {
     where: eq(slides.id, slideId),
     with: {
       metrics: {
+        orderBy: (metrics, { asc }) => [
+          asc(metrics.sortOrder),
+          asc(metrics.ranking),
+        ],
         with: {
-          submetrics: true,
+          submetrics: {
+            orderBy: (submetrics, { asc }) => [asc(submetrics.createdAt)],
+            // All fields including dataPoints are needed for chart rendering
+          },
         },
       },
     },
   });
 
-  return slide || null;
+  return slide as SlideWithMetrics | null;
 }
 
 async function getWorkspaceData(

@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { useTheme } from "next-themes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Lock, LockOpen, TrendingUp, X } from "lucide-react";
+import { useSidebar } from "@/components/ui/sidebar";
 import type { Submetric } from "@/types/db/submetric";
 import {
   generateXMRData,
@@ -32,6 +32,7 @@ import { SubmetricMRChart } from "./submetric-mr-chart";
 
 interface SubmetricLineChartProps {
   submetric: Submetric;
+  slideId: string;
 }
 
 // Helper function to parse timestamps in various formats
@@ -56,9 +57,30 @@ const parseTimestamp = (timestamp: string): Date => {
   return new Date(timestamp);
 };
 
-export function SubmetricLineChart({ submetric }: SubmetricLineChartProps) {
-  const { theme, resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
+export function SubmetricLineChart({
+  submetric,
+  slideId,
+}: SubmetricLineChartProps) {
+  // Get sidebar state for dynamic width calculations
+  const { state: sidebarState, isMobile } = useSidebar();
+
+  // Calculate max width for title based on sidebar state
+  // Sidebar width: 16rem (256px) when expanded, 3rem (48px) when collapsed
+  const { titleMaxWidth, categoryMaxWidth } = useMemo(() => {
+    if (isMobile) {
+      // Mobile: sidebar is overlay, so use full width
+      return {
+        titleMaxWidth: "85vw",
+        categoryMaxWidth: "25vw",
+      };
+    }
+    // Desktop: subtract sidebar width
+    const sidebarWidth = sidebarState === "expanded" ? "16rem" : "3rem";
+    return {
+      titleMaxWidth: `calc(90vw - ${sidebarWidth})`,
+      categoryMaxWidth: `calc(25vw - ${sidebarWidth} * 0.3)`, // Proportionally reduce category width
+    };
+  }, [sidebarState, isMobile]);
 
   // Check if label indicates trend or seasonality
   const labelHasTrend = useMemo(
@@ -884,7 +906,7 @@ export function SubmetricLineChart({ submetric }: SubmetricLineChartProps) {
   };
 
   return (
-    <Card className="w-full gap-0">
+    <Card className="w-full gap-0 overflow-visible">
       <CardHeader className="pb-0">
         {/* Chart Toolbar */}
 
@@ -893,11 +915,6 @@ export function SubmetricLineChart({ submetric }: SubmetricLineChartProps) {
             {submetric.preferredTrend && (
               <span className="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
                 <span>{submetric.preferredTrend.toUpperCase()} PREFERRED</span>
-              </span>
-            )}
-            {submetric.unit && (
-              <span className="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                Unit: {submetric.unit}
               </span>
             )}
           </div>
@@ -1046,13 +1063,19 @@ export function SubmetricLineChart({ submetric }: SubmetricLineChartProps) {
         {/* Title and Status Row */}
         <div className="flex items-start justify-between mt-2">
           <div className="flex-1">
-            <div className="flex items-center gap-3  max-w-[64vw]">
+            <div
+              className="flex items-center gap-3"
+              style={{ maxWidth: titleMaxWidth }}
+            >
               {submetric.category && (
-                <span className="px-4 py-2 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-md text-sm font-bold uppercase tracking-wide whitespace-nowrap flex-shrink-0">
+                <span
+                  className="px-4 py-2 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-md text-sm font-bold uppercase tracking-wide whitespace-nowrap overflow-hidden text-ellipsis shrink-0"
+                  style={{ maxWidth: categoryMaxWidth }}
+                >
                   {submetric.category}
                 </span>
               )}
-              <CardTitle className="text-2xl font-bold overflow-hidden text-ellipsis whitespace-nowrap min-w-0">
+              <CardTitle className="text-2xl font-bold overflow-hidden text-ellipsis whitespace-nowrap min-w-0 flex-1">
                 {submetric.label}
               </CardTitle>
             </div>
@@ -1061,7 +1084,7 @@ export function SubmetricLineChart({ submetric }: SubmetricLineChartProps) {
             <div className="flex flex-col items-end gap-2">
               {/* Traffic Light Control Indicator */}
               <div
-                className={`w-8 h-8 rounded-full shadow-lg ring-4 ${
+                className={`w-8 h-8 rounded-sm shadow-lg ring-4 ${
                   controlIndicatorColor === "red"
                     ? "bg-red-500 ring-red-200 dark:ring-red-900"
                     : controlIndicatorColor === "yellow"
@@ -1081,10 +1104,10 @@ export function SubmetricLineChart({ submetric }: SubmetricLineChartProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 overflow-visible">
         {hasData ? (
           <div
-            className="grid grid-cols-1 lg:grid-cols-2"
+            className="grid grid-cols-1 lg:grid-cols-2 transform-gpu overflow-visible"
             key={`chart-${trendActive}-${!!trendLines}-${isLimitsLocked}-${seasonalityActive}`}
           >
             {/* X Chart */}
@@ -1093,11 +1116,11 @@ export function SubmetricLineChart({ submetric }: SubmetricLineChartProps) {
               xmrLimits={xmrData.limits}
               submetric={submetric}
               yAxisDomain={yAxisDomain}
-              isDark={isDark}
               isLimitsLocked={isLimitsLocked}
               trendActive={trendActive}
               trendLines={trendLines}
               showReducedTrendLimits={showReducedTrendLimits}
+              slideId={slideId}
             />
 
             {/* MR Chart */}
@@ -1105,7 +1128,6 @@ export function SubmetricLineChart({ submetric }: SubmetricLineChartProps) {
               chartData={chartData}
               xmrLimits={xmrData.limits}
               submetric={submetric}
-              isDark={isDark}
               isLimitsLocked={isLimitsLocked}
             />
           </div>

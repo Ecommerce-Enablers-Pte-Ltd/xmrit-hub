@@ -6,10 +6,12 @@ import {
   integer,
   json,
   numeric,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
 
@@ -138,6 +140,46 @@ export const metrics = pgTable(
   })
 );
 
+// Enums for comment system
+export const timeBucketEnum = pgEnum("time_bucket", [
+  "day",
+  "week",
+  "month",
+  "quarter",
+  "year",
+]);
+
+export const threadScopeEnum = pgEnum("thread_scope", ["point", "submetric"]);
+
+// Submetric definitions - stable identities across slides
+export const submetricDefinitions = pgTable(
+  "submetric_definition",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    workspaceId: text("workspaceId")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    metricKey: text("metricKey").notNull(), // stable key for metric family
+    submetricKey: text("submetricKey").notNull(), // stable key for logical submetric
+    label: text("label"), // display label (latest)
+    unit: text("unit"),
+    preferredTrend: text("preferredTrend"),
+    createdAt: timestamp("createdAt", { mode: "date" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: timestamp("updatedAt", { mode: "date" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    workspaceMetricSubIdx: uniqueIndex(
+      "submetric_definition_ws_metric_sub_idx"
+    ).on(table.workspaceId, table.metricKey, table.submetricKey),
+  })
+);
+
 // Submetrics table - specific metric implementations with visualization config
 export const submetrics = pgTable(
   "submetric",
@@ -150,8 +192,13 @@ export const submetrics = pgTable(
     metricId: text("metricId")
       .notNull()
       .references(() => metrics.id, { onDelete: "cascade" }),
+    definitionId: text("definitionId").references(
+      () => submetricDefinitions.id,
+      { onDelete: "set null" }
+    ),
     // Visualization configuration
     xAxis: text("xAxis").notNull().default("date"),
+    yAxis: text("yAxis"),
     timezone: text("timezone").default("UTC"),
     preferredTrend: text("preferredTrend"), // uptrend, downtrend, stable, etc.
     unit: text("unit"), // %, $, units, etc.
@@ -178,6 +225,110 @@ export const submetrics = pgTable(
   (table) => ({
     metricIdIdx: index("submetric_metric_id_idx").on(table.metricId),
     categoryIdx: index("submetric_category_idx").on(table.category),
+    definitionIdIdx: index("submetric_definition_id_idx").on(
+      table.definitionId
+    ),
+  })
+);
+
+// Comment threads - supports both point-level and submetric-scoped
+export const commentThreads = pgTable(
+  "comment_thread",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    workspaceId: text("workspaceId")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    definitionId: text("definitionId")
+      .notNull()
+      .references(() => submetricDefinitions.id, { onDelete: "cascade" }),
+    scope: threadScopeEnum("scope").notNull(), // 'point' or 'submetric'
+    slideId: text("slideId").references(() => slides.id, {
+      onDelete: "cascade",
+    }), // nullable; used when scope='submetric'
+    bucketType: timeBucketEnum("bucketType"), // required when scope='point'
+    bucketValue: text("bucketValue"), // normalized key (ISO date start)
+    title: text("title"),
+    isResolved: boolean("isResolved").notNull().default(false),
+    createdBy: text("createdBy")
+      .notNull()
+      .references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("createdAt", { mode: "date" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: timestamp("updatedAt", { mode: "date" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    // LLM-aware reserves (unused in v1)
+    summary: text("summary"),
+    lastSummarizedAt: timestamp("lastSummarizedAt", { mode: "date" }),
+  },
+  (table) => ({
+    wsDefScopeIdx: index("comment_thread_ws_def_scope_idx").on(
+      table.workspaceId,
+      table.definitionId,
+      table.scope
+    ),
+    // pointLookupIdx removed in migration 0006 - was redundant, covered by groupingIdx
+    slideIdx: index("comment_thread_slide_idx").on(table.slideId),
+    uniquePointThreadIdx: uniqueIndex("comment_thread_unique_point_idx").on(
+      table.definitionId,
+      table.scope,
+      table.bucketType,
+      table.bucketValue
+    ),
+    // Optimized indexes for batch comment count queries (100+ definitions)
+    scopeDefIdx: index("comment_thread_scope_def_idx").on(
+      table.scope,
+      table.definitionId
+    ),
+    groupingIdx: index("comment_thread_grouping_idx").on(
+      table.definitionId,
+      table.bucketType,
+      table.bucketValue,
+      table.scope
+    ),
+  })
+);
+
+// Comments - items within a thread (supports replies)
+export const comments = pgTable(
+  "comment",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    threadId: text("threadId")
+      .notNull()
+      .references(() => commentThreads.id, { onDelete: "cascade" }),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "set null" }),
+    body: text("body").notNull(),
+    parentId: text("parentId").references((): any => comments.id, {
+      onDelete: "cascade",
+    }),
+    isDeleted: boolean("isDeleted").notNull().default(false),
+    createdAt: timestamp("createdAt", { mode: "date" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: timestamp("updatedAt", { mode: "date" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    threadCreatedIdx: index("comment_thread_created_idx").on(
+      table.threadId,
+      table.createdAt,
+      table.id
+    ),
+    // Optimized for batch count queries with LEFT JOIN and isDeleted filter
+    threadDeletedIdx: index("comment_thread_deleted_idx").on(
+      table.threadId,
+      table.isDeleted
+    ),
   })
 );
 
@@ -225,9 +376,63 @@ export const metricsRelations = relations(metrics, ({ one, many }) => ({
   submetrics: many(submetrics),
 }));
 
+export const submetricDefinitionsRelations = relations(
+  submetricDefinitions,
+  ({ one, many }) => ({
+    workspace: one(workspaces, {
+      fields: [submetricDefinitions.workspaceId],
+      references: [workspaces.id],
+    }),
+    submetrics: many(submetrics),
+    commentThreads: many(commentThreads),
+  })
+);
+
 export const submetricsRelations = relations(submetrics, ({ one }) => ({
   metric: one(metrics, {
     fields: [submetrics.metricId],
     references: [metrics.id],
+  }),
+  definition: one(submetricDefinitions, {
+    fields: [submetrics.definitionId],
+    references: [submetricDefinitions.id],
+  }),
+}));
+
+export const commentThreadsRelations = relations(
+  commentThreads,
+  ({ one, many }) => ({
+    workspace: one(workspaces, {
+      fields: [commentThreads.workspaceId],
+      references: [workspaces.id],
+    }),
+    definition: one(submetricDefinitions, {
+      fields: [commentThreads.definitionId],
+      references: [submetricDefinitions.id],
+    }),
+    slide: one(slides, {
+      fields: [commentThreads.slideId],
+      references: [slides.id],
+    }),
+    createdByUser: one(users, {
+      fields: [commentThreads.createdBy],
+      references: [users.id],
+    }),
+    comments: many(comments),
+  })
+);
+
+export const commentsRelations = relations(comments, ({ one }) => ({
+  thread: one(commentThreads, {
+    fields: [comments.threadId],
+    references: [commentThreads.id],
+  }),
+  user: one(users, {
+    fields: [comments.userId],
+    references: [users.id],
+  }),
+  parent: one(comments, {
+    fields: [comments.parentId],
+    references: [comments.id],
   }),
 }));
