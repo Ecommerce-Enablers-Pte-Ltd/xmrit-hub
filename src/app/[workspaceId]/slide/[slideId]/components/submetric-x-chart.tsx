@@ -221,26 +221,18 @@ const YAxisLabel = memo((props: any) => {
 
 YAxisLabel.displayName = "YAxisLabel";
 
-// Custom X-axis tick component with comment indicator
+// Custom X-axis tick component (simplified - comment indicators are rendered separately)
 const XAxisTick = memo(
   ({
     x,
     y,
     payload,
-    bucketType,
-    bucketsWithComments,
     chartData,
-    index,
-    visibleTicksCount,
   }: {
     x: number;
     y: number;
     payload: any;
-    bucketType: TimeBucket;
-    bucketsWithComments: Record<string, number>;
     chartData?: any[];
-    index?: number;
-    visibleTicksCount?: number;
   }) => {
     // Try to get fullTimestamp from the chart data using payload.index
     const dataPoint = chartData?.[payload?.index];
@@ -260,45 +252,22 @@ const XAxisTick = memo(
       );
     }
 
-    const bucketValue = normalizeToBucket(fullTimestamp, bucketType);
-
-    // Check if this bucket has comments (from React Query cache)
-    const hasComments = (bucketsWithComments[bucketValue] || 0) > 0;
-
+    // Just render the tick label - comment indicators are rendered separately
     return (
-      <g>
-        {/* Render the tick label */}
-        <text
-          x={x}
-          y={y + 16}
-          textAnchor="middle"
-          style={{ fontSize: "12px", fill: "#888" }}
-        >
-          {payload.value}
-        </text>
-
-        {/* Render comment indicator dot if comments exist */}
-        {hasComments && (
-          <circle
-            cx={x}
-            cy={y + 26}
-            r={2.5}
-            fill="#a855f7"
-            stroke="#a855f7"
-            strokeWidth={0.5}
-            style={{
-              filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))",
-            }}
-          />
-        )}
-      </g>
+      <text
+        x={x}
+        y={y + 16}
+        textAnchor="middle"
+        style={{ fontSize: "12px", fill: "#888" }}
+      >
+        {payload.value}
+      </text>
     );
   },
   (prevProps, nextProps) => {
     // Custom comparison function for memo - only re-render if these change
     return (
       prevProps.payload.value === nextProps.payload.value &&
-      prevProps.bucketsWithComments === nextProps.bucketsWithComments &&
       prevProps.x === nextProps.x &&
       prevProps.y === nextProps.y
     );
@@ -306,6 +275,51 @@ const XAxisTick = memo(
 );
 
 XAxisTick.displayName = "XAxisTick";
+
+// Custom component to render comment indicators below the X-axis
+// This renders for ALL data points, independent of tick visibility
+const CommentIndicatorDot = memo(
+  ({
+    cx,
+    cy,
+    payload,
+    bucketType,
+    bucketsWithComments,
+  }: {
+    cx: number;
+    cy: number;
+    payload: any;
+    bucketType: TimeBucket;
+    bucketsWithComments: Record<string, number>;
+  }) => {
+    const fullTimestamp = payload?.fullTimestamp;
+
+    if (!fullTimestamp) return null;
+
+    const bucketValue = normalizeToBucket(fullTimestamp, bucketType);
+    const hasComments = (bucketsWithComments[bucketValue] || 0) > 0;
+
+    if (!hasComments) return null;
+
+    const xAxisTickY = 440;
+
+    return (
+      <circle
+        cx={cx}
+        cy={xAxisTickY}
+        r={2.5}
+        fill="#a855f7"
+        stroke="#a855f7"
+        strokeWidth={0.5}
+        style={{
+          filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))",
+        }}
+      />
+    );
+  }
+);
+
+CommentIndicatorDot.displayName = "CommentIndicatorDot";
 
 // Separate tooltip component that can re-render independently
 const ChartTooltip = memo(
@@ -943,18 +957,28 @@ const SubmetricXChartInternal = memo(
         []
       );
 
-      // Memoize custom X-axis tick renderer with comment indicators
+      // Memoize custom X-axis tick renderer (simplified - no comment indicators)
       // Use chartData instead of mergedChartData to avoid unnecessary re-renders from trend changes
       const renderXAxisTick = useCallback(
-        (props: any) => (
-          <XAxisTick
-            {...props}
-            bucketType={bucketType}
-            bucketsWithComments={bucketsWithComments}
-            chartData={chartData}
-          />
-        ),
-        [bucketType, bucketsWithComments, chartData]
+        (props: any) => <XAxisTick {...props} chartData={chartData} />,
+        [chartData]
+      );
+
+      // Memoize comment indicator dot renderer - renders for ALL data points
+      const renderCommentIndicator = useCallback(
+        (props: any) => {
+          // Extract key to avoid React warning about spreading key prop
+          const { key, ...rest } = props;
+          return (
+            <CommentIndicatorDot
+              key={key}
+              {...rest}
+              bucketType={bucketType}
+              bucketsWithComments={bucketsWithComments}
+            />
+          );
+        },
+        [bucketType, bucketsWithComments]
       );
 
       // Memoize static axis configurations
@@ -1239,6 +1263,18 @@ const SubmetricXChartInternal = memo(
                   >
                     <LabelList content={renderCustomLabel} />
                   </Line>
+
+                  {/* Render comment indicators for ALL data points (independent of tick visibility) */}
+                  <Line
+                    type="linear"
+                    dataKey="value"
+                    stroke="transparent"
+                    strokeWidth={0}
+                    dot={renderCommentIndicator}
+                    activeDot={false}
+                    connectNulls={false}
+                    isAnimationActive={false}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
