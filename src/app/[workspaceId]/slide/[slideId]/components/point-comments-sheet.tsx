@@ -277,6 +277,17 @@ export function PointCommentsSheet({
     });
   };
 
+  // Auto-focus textarea when sheet opens (but not when replying, that's handled below)
+  useEffect(() => {
+    if (open && !isShowingAll && !replyToId && session) {
+      // Delay to ensure the sheet animation and DOM rendering complete
+      const timer = setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [open, isShowingAll, session]);
+
   // Auto-focus textarea when replying
   useEffect(() => {
     if (replyToId && textareaRef.current) {
