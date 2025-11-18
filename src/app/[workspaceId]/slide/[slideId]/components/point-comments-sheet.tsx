@@ -73,6 +73,7 @@ interface PointCommentsSheetProps {
   allDataPoints?: DataPoint[];
   onCommentAdded?: (bucketValue: string) => void;
   slideId: string; // Add slideId to invalidate comment counts on mutations
+  initialFilterToAll?: boolean; // If true, opens with "all comments" filter selected
 }
 
 export function PointCommentsSheet({
@@ -85,6 +86,7 @@ export function PointCommentsSheet({
   allDataPoints,
   onCommentAdded,
   slideId,
+  initialFilterToAll = false,
 }: PointCommentsSheetProps) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
@@ -103,15 +105,16 @@ export function PointCommentsSheet({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Filter state: "all" means show all comments, otherwise filter to specific date
-  const [selectedFilter, setSelectedFilter] =
-    useState<string>(initialBucketValue);
+  const [selectedFilter, setSelectedFilter] = useState<string>(
+    initialFilterToAll ? "all" : initialBucketValue
+  );
 
   // Update filter when props change (e.g., when opening for a new point)
   useEffect(() => {
     if (open) {
-      setSelectedFilter(initialBucketValue);
+      setSelectedFilter(initialFilterToAll ? "all" : initialBucketValue);
     }
-  }, [open, initialBucketValue]);
+  }, [open, initialBucketValue, initialFilterToAll]);
 
   // Determine what to display based on filter
   const isShowingAll = selectedFilter === "all";

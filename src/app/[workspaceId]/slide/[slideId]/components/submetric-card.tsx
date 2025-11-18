@@ -3,12 +3,11 @@
 import { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Lock, LockOpen, TrendingUp, X } from "lucide-react";
+import { Lock, LockOpen, TrendingUp, X, MessageSquare } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import type { Submetric } from "@/types/db/submetric";
 import {
   generateXMRData,
-  isProcessInControl,
   detectViolations,
   MINIMUM_XMR_DATA_POINTS,
   shouldAutoLockLimits,
@@ -29,6 +28,11 @@ import { SubmetricTrendDialog } from "./submetric-trend-dialog";
 import { SubmetricSeasonalityDialog } from "./submetric-seasonality-dialog";
 import { SubmetricXChart } from "./submetric-x-chart";
 import { SubmetricMRChart } from "./submetric-mr-chart";
+import {
+  PointCommentsSheet,
+  type DataPoint as CommentDataPoint,
+} from "./point-comments-sheet";
+import { detectBucketType, normalizeToBucket } from "@/lib/time-buckets";
 
 interface SubmetricLineChartProps {
   submetric: Submetric;
@@ -115,7 +119,6 @@ export function SubmetricLineChart({
   const [trendActive, setTrendActive] = useState(false);
   const [trendGradient, setTrendGradient] = useState<number>(0);
   const [trendIntercept, setTrendIntercept] = useState<number>(0);
-  const [showReducedTrendLimits, setShowReducedTrendLimits] = useState(false);
   const [storedTrendLines, setStoredTrendLines] = useState<TrendLimits | null>(
     null
   );
@@ -132,6 +135,9 @@ export function SubmetricLineChart({
   // Track if auto-apply has been done
   const [autoAppliedTrend, setAutoAppliedTrend] = useState(false);
   const [autoAppliedSeasonality, setAutoAppliedSeasonality] = useState(false);
+
+  // Comments sheet state
+  const [isAllCommentsSheetOpen, setIsAllCommentsSheetOpen] = useState(false);
 
   // Memoize raw data points transformation with deduplication
   const rawDataPoints = useMemo<DataPoint[]>(() => {
@@ -187,6 +193,28 @@ export function SubmetricLineChart({
 
     return Array.from(deduplicated.values());
   }, [submetric.dataPoints]);
+
+  // Prepare data for comments sheet
+  const commentDataPoints = useMemo<CommentDataPoint[]>(() => {
+    return rawDataPoints.map((point) => {
+      const date = parseTimestamp(point.timestamp);
+      const timestampFormat = date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "2-digit",
+      });
+      return {
+        timestamp: timestampFormat,
+        bucketValue: point.timestamp,
+      };
+    });
+  }, [rawDataPoints]);
+
+  // Detect bucket type from data
+  const bucketType = useMemo(() => {
+    if (rawDataPoints.length === 0) return "day";
+    return detectBucketType(rawDataPoints.map((p) => p.timestamp));
+  }, [rawDataPoints]);
 
   // Auto-apply trend based on label
   useEffect(() => {
@@ -430,12 +458,6 @@ export function SubmetricLineChart({
     xmrData.limits,
     xmrData.dataPoints.length,
   ]);
-
-  // Memoize process control status
-  const processInControl = useMemo(
-    () => isProcessInControl(xmrData.limits),
-    [xmrData.limits]
-  );
 
   // Memoize chart data transformation
   const chartData = useMemo(() => {
@@ -933,46 +955,15 @@ export function SubmetricLineChart({
                 </Button>
               )}
               {trendActive && (
-                <>
-                  {/* <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setShowReducedTrendLimits(!showReducedTrendLimits)
-                    }
-                    className={`gap-2 ${
-                      showReducedTrendLimits
-                        ? "bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13 10V3L4 14h7v7l9-11h-7z"
-                      />
-                    </svg>
-                    {showReducedTrendLimits
-                      ? "Reduced Limits On"
-                      : "Reduced Limits"}
-                  </Button> */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleRemoveTrend}
-                    className="gap-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
-                  >
-                    <X className="h-4 w-4" />
-                    Remove Trend
-                  </Button>
-                </>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRemoveTrend}
+                  className="gap-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
+                >
+                  <X className="h-4 w-4" />
+                  Remove Trend
+                </Button>
               )}
               {seasonalityActive && (
                 <Button
@@ -1056,6 +1047,21 @@ export function SubmetricLineChart({
                 </svg>
                 {seasonalityActive ? "Deseasonalised" : "Deseasonalise"}
               </Button>
+
+              {/* Separator before comments */}
+              <div className="h-6 w-px bg-border mx-1" />
+
+              {/* Comments button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAllCommentsSheetOpen(true)}
+                className="gap-2"
+                title="View all comments on this chart"
+              >
+                <MessageSquare className="h-4 w-4" />
+                All Comments
+              </Button>
             </div>
           )}
         </div>
@@ -1119,7 +1125,6 @@ export function SubmetricLineChart({
               isLimitsLocked={isLimitsLocked}
               trendActive={trendActive}
               trendLines={trendLines}
-              showReducedTrendLimits={showReducedTrendLimits}
               slideId={slideId}
             />
 
@@ -1186,6 +1191,20 @@ export function SubmetricLineChart({
         initialFactors={seasonalFactors}
         initialGrouping={seasonalityGrouping}
       />
+
+      {/* All Comments Sheet */}
+      {submetric.definitionId && commentDataPoints.length > 0 && (
+        <PointCommentsSheet
+          open={isAllCommentsSheetOpen}
+          onOpenChange={setIsAllCommentsSheetOpen}
+          definitionId={submetric.definitionId}
+          bucketType={bucketType}
+          bucketValue={commentDataPoints[0]?.bucketValue || ""}
+          allDataPoints={commentDataPoints}
+          slideId={slideId}
+          initialFilterToAll={true}
+        />
+      )}
     </Card>
   );
 }

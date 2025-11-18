@@ -79,28 +79,16 @@ LNPL = Centre Line - (avgMR × 2.66)
 
 Where 2.66 is the natural process limit constant for XMR charts.
 
-### 4. Standard vs Reduced Limits
+### 4. Quartile Lines
 
-Two sets of trend limits are provided:
-
-**Standard Limits**: Include trend slope in variation calculation
+In addition to the main control limits, quartile lines are provided for additional context:
 
 ```
-UNPL = Trend + (avgMR × 2.66)
-LNPL = Trend - (avgMR × 2.66)
+Upper Quartile = Centre Line + (avgMR × 2.66 / 2)
+Lower Quartile = Centre Line - (avgMR × 2.66 / 2)
 ```
 
-**Reduced Limits**: Subtract trend slope from variation (tighter)
-
-```
-Reduced UNPL = Trend + (max(0, avgMR - |m|) × 2.66)
-Reduced LNPL = Trend - (max(0, avgMR - |m|) × 2.66)
-```
-
-**Use case**:
-
-- Standard limits: Default, includes all variation
-- Reduced limits: When you want to see variation that's independent of the trend itself
+These intermediate lines help gauge the severity of deviations - points between the quartile and limit lines are in the "outer zone" and warrant closer monitoring.
 
 ## Setting Trend Lines
 
@@ -162,8 +150,8 @@ Click "Apply Trend" to activate. The chart updates to show:
 
 - Green dashed trend line (centre)
 - Dynamic UNPL and LNPL moving with the trend
-- Quartile lines if applicable
-- Optional reduced limits toggle
+- Quartile lines for additional reference zones
+- Violation detection adjusted for trend
 
 ### Removing Trend
 
@@ -196,12 +184,6 @@ To remove trend analysis:
 - Upper Quartile: Between centre and UNPL
 - Lower Quartile: Between centre and LNPL
 - Help gauge severity of deviations
-
-**Reduced Limits (Optional)**:
-
-- Maroon dashed lines (`#9f1239`)
-- Tighter than standard limits
-- Toggle on/off with "Show Reduced Limits" checkbox
 
 **Data Points**:
 
@@ -240,11 +222,13 @@ These rules are calculated point-by-point using the dynamic trend limits.
 
 ### Traffic Light Status with Trends
 
-The traffic light (process control status) evaluates based on **baseline limits**, not trend limits:
+The traffic light (process control status) evaluates based on **trend-adjusted limits** when trend is active:
 
-- Trend lines show expected trajectory
-- Traffic light shows overall stability
-- A process with trend can still be "in control" if variation is within bounds
+- Uses the effective limits at the last data point (trend line values)
+- Provides context-aware assessment accounting for the trend trajectory
+- Evaluates whether the process is in control relative to the expected trend
+- When trend is active, the `effectiveLimits` calculation uses trend line values
+- A process with trend is evaluated relative to where it should be on the trend line
 
 ## Use Cases
 
@@ -416,26 +400,16 @@ export function createTrendLines(
     lnpl: [],
     lowerQuartile: [],
     upperQuartile: [],
-    reducedUnpl: [],
-    reducedLnpl: [],
-    reducedLowerQuartile: [],
-    reducedUpperQuartile: [],
   };
 
   data.forEach((d, i) => {
     const centreValue = i * m + c;
 
-    // Standard limits
+    // Dynamic limits following the trend
     const unplValue = centreValue + avgMR * 2.66;
     const lnplValue = centreValue - avgMR * 2.66;
 
-    // Reduced limits (account for trend slope)
-    const reducedUnplValue =
-      centreValue + Math.max(0, avgMR - Math.abs(m)) * 2.66;
-    const reducedLnplValue =
-      centreValue - Math.max(0, avgMR - Math.abs(m)) * 2.66;
-
-    // Quartiles
+    // Quartiles (midway between center and limits)
     const upperQuartileValue = (unplValue + centreValue) / 2;
     const lowerQuartileValue = (lnplValue + centreValue) / 2;
 
@@ -456,7 +430,6 @@ export function createTrendLines(
 const [trendActive, setTrendActive] = useState(false);
 const [trendGradient, setTrendGradient] = useState<number>(0);
 const [trendIntercept, setTrendIntercept] = useState<number>(0);
-const [showReducedTrendLimits, setShowReducedTrendLimits] = useState(false);
 
 // Calculate trend lines
 const trendLines = useMemo<TrendLimits | null>(() => {
@@ -561,14 +534,19 @@ Requirements for trend analysis:
 - At least 2 data points (recommended 10+)
 - Not currently showing insufficient data message
 
-### "Reduced limits are the same as standard limits"
+### "Trend doesn't fit the data well"
 
 This occurs when:
 
-- `avgMR ≈ |m|` (average movement equals trend slope)
-- `avgMR < |m|` (movement smaller than slope)
+- Data has non-linear patterns (curves, steps)
+- Multiple trends present in different time periods
+- Outliers heavily influence regression
 
-Interpretation: Most variation is due to the trend itself; little variation around trend.
+**Solutions**:
+
+- Consider segmenting data into periods with consistent trends
+- Remove outliers using Auto-Lock or Lock Limits first
+- Check if seasonality should be applied instead
 
 ### "All points are violations after applying trend"
 

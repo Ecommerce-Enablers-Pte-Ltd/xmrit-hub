@@ -29,9 +29,15 @@ Inspired by [xmrit.com](https://xmrit.com) by Commoncog, this is a self-hosted d
 
 ## 📚 Documentation
 
-Comprehensive feature documentation is available in the [`docs/`](./docs) folder:
+Comprehensive documentation is available in the [`docs/`](./docs) folder:
+
+### Core Documentation
 
 - **[Documentation Index](./docs/README.md)** - Complete guide to all features
+- **[Database Schema](./docs/SCHEMA.md)** - Complete database schema reference with tables, relationships, and best practices
+
+### Feature Documentation
+
 - **[Controller Logic (Traffic Light)](./docs/CONTROLLER_TRAFFIC_LIGHT.md)** - Process control status indicators
 - **[Data Ingestion API](./docs/DATA_INGESTION.md)** - REST API for programmatic data ingestion
 - **[Comment System](./docs/COMMENT_SYSTEM.md)** - Persistent comments and discussion threads on data points

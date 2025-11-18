@@ -2,110 +2,207 @@
 
 ## Overview
 
-The Controller Logic, also known as the Traffic Light System, is a visual feedback mechanism that indicates whether a process is in statistical control. It provides an at-a-glance status indicator based on Statistical Process Control (SPC) principles, helping users quickly identify processes that require attention.
+The Controller Logic, also known as the Traffic Light System, is a visual feedback mechanism that indicates whether a process is in statistical control. It provides an at-a-glance status indicator based on Statistical Process Control (SPC) principles and advanced violation detection, helping users quickly identify processes that require attention.
 
 ## Concept
 
-The traffic light system evaluates the control limits and average movement of a process to determine its status:
+The traffic light system uses a three-state visual indicator to represent process status:
 
 - 🟢 **Green (In Control)**: Process is stable and predictable
-- 🔴 **Red (Out of Control)**: Process shows signs of instability or special cause variation
+- 🟡 **Yellow (Watch Zone)**: Warning conditions detected - trending or significant changes present
+- 🔴 **Red (Out of Control)**: Critical violations or sudden unexpected changes detected
 
-This binary status is derived from the fundamental XMR chart control criteria used in statistical process control.
+This multi-level status system combines Western Electric Rules, statistical analysis, and trend detection to provide nuanced process assessment beyond simple binary control status.
 
 ## Control Criteria
 
-A process is considered "in control" when ALL of the following conditions are met:
+The traffic light system evaluates multiple dimensions to determine process status:
 
-### 1. Average X Within Natural Process Limits
+### Red (Critical) Conditions
 
-```
-LNPL ≤ Average X ≤ UNPL
-```
+The process shows **RED** when:
 
-Where:
+1. **Critical Violations (Rule 1 or Rule 4)**:
 
-- **LNPL**: Lower Natural Process Limit
-- **Average X**: Mean of all data point values
-- **UNPL**: Upper Natural Process Limit
+   - Point beyond 3σ control limits (Rule 1)
+   - 2 of 3 points beyond 2σ (Rule 4)
+   - **AND** the violation is sudden/unexpected (not part of gradual trend)
+   - **OR** moving in unfavorable direction (opposite to preferred trend)
 
-The average (center line) must fall within the calculated natural process limits. If the average is outside these bounds, it indicates the process has shifted.
+2. **Sudden Spike Detection**:
+   - Change > 2.5× average movement
+   - Not part of consistent trend pattern
+   - Isolated violation (previous points were in control)
 
-### 2. Average Movement Within Upper Range Limit
+### Yellow (Warning) Conditions
 
-```
-Average Movement ≤ URL
-```
+The process shows **YELLOW** when ANY of these conditions are met:
 
-Where:
+1. **Pattern Violations**:
 
-- **Average Movement**: Average of the moving ranges between consecutive data points
-- **URL**: Upper Range Limit
+   - Running point pattern (Rule 2): 8+ points on one side of center line
+   - 4 Near Limit Pattern (Rule 3): 3 of 4 in extreme quartiles
 
-The average movement represents the typical variation between consecutive points. If it exceeds the URL, it indicates excessive variation or instability.
+2. **Statistical Warnings**:
+
+   - Significant unfavorable change > 2.0× average movement
+   - Large favorable movement > 3.0× average movement (potential instability)
+   - Approaching unfavorable limit (within 15% of limit range)
+   - High variability: standard deviation > 1.5× average movement
+
+3. **Trend-Based Warnings**:
+
+   - Unfavorable consistent trend with significant slope
+   - Accelerating change rate > 2.0× recent average
+   - Significant deviation from baseline (> 2 standard deviations)
+   - Large variance from baseline average (> 2.5× average movement)
+
+4. **Favorable Violations**:
+   - Points outside limits but moving in favorable direction with consistent trend
+   - May indicate improvement requiring limit recalibration
+
+### Green (In Control) Conditions
+
+The process shows **GREEN** when:
+
+- No critical violations present
+- No warning conditions met
+- Process variation within expected bounds
+- Point-to-point changes consistent with historical patterns
+
+**Note**: Low variation (Rule 5: 15+ points within 1σ) is tracked but doesn't affect color - it's generally informational about process stability.
 
 ## Implementation
 
-### Core Function
+### Core Logic
+
+The traffic light color is calculated using a sophisticated decision tree that evaluates:
 
 ```typescript
-export function isProcessInControl(limits: XMRLimits): boolean {
-  // Process is in control if:
-  // 1. Average X is between LNPL and UNPL
-  // 2. Average Movement is less than or equal to URL
-  return (
-    limits.avgX >= limits.LNPL &&
-    limits.avgX <= limits.UNPL &&
-    limits.avgMovement <= limits.URL
-  );
-}
+// Memoize control indicator color based on statistical analysis
+const controlIndicatorColor = useMemo(() => {
+  if (chartData.length < 3) return "green"; // Need minimum data for analysis
+
+  const lastPoint = chartData[chartData.length - 1];
+  const lastIndex = chartData.length - 1;
+
+  // Use unified effective limits (accounts for trend, locked, or default state)
+  const effectiveLimits = /* ... */;
+
+  // Analyze recent data (last 5 points)
+  const lookbackWindow = Math.min(5, chartData.length);
+  const recentPoints = chartData.slice(-lookbackWindow);
+
+  // Calculate statistical measures:
+  // - Standard deviation of recent points
+  // - Trend detection (consistent direction)
+  // - Rate of change (linear regression slope)
+  // - Distance to control limits
+  // - Deviation from baseline
+  // - Change acceleration
+
+  // Determine metric direction preference
+  const isUptrendMetric = submetric.preferredTrend === "uptrend";
+  const isDowntrendMetric = submetric.preferredTrend === "downtrend";
+
+  // Check for favorable vs unfavorable movement
+  // ...
+
+  // RED: Critical violations
+  if (hasCriticalViolation) {
+    // Check if sudden spike or part of gradual trend
+    // Return red for unexpected/unfavorable violations
+    // Return yellow for favorable violations with trend
+  }
+
+  // YELLOW: Warning conditions
+  if (warningConditions.some(condition => condition)) {
+    return "yellow";
+  }
+
+  // GREEN: Normal, in-control
+  return "green";
+}, [chartData, effectiveLimits, xmrData.violations, submetric.preferredTrend, trendActive, trendLines]);
 ```
 
-### XMRLimits Interface
+### Key Data Structures
+
+**Effective Limits** (State-Aware):
 
 ```typescript
-interface XMRLimits {
-  avgX: number; // Average of all values (center line)
-  UNPL: number; // Upper Natural Process Limit
-  LNPL: number; // Lower Natural Process Limit
-  avgMovement: number; // Average of moving ranges
-  URL: number; // Upper Range Limit
-  lowerQuartile: number; // Lower quartile (between avgX and LNPL)
-  upperQuartile: number; // Upper quartile (between avgX and UNPL)
-}
+const effectiveLimits = useMemo(() => {
+  if (trendActive && trendLines) {
+    // Use trend limits at last point
+    return {
+      avgX: trendLines.centreLine[lastIndex]?.value,
+      UNPL: trendLines.unpl[lastIndex]?.value,
+      LNPL: trendLines.lnpl[lastIndex]?.value,
+      // ...
+    };
+  } else if (isLimitsLocked && lockedLimits) {
+    // Use locked limits
+    return lockedLimits;
+  } else {
+    // Use default calculated limits
+    return xmrData.limits;
+  }
+}, [trendActive, trendLines, isLimitsLocked, lockedLimits, xmrData.limits]);
+```
+
+**Violation Detection**:
+
+```typescript
+const hasCriticalViolation =
+  lastPoint.isViolation || // Rule 1: Outside limits
+  lastPoint.isTwoOfThreeBeyondTwoSigma; // Rule 4: 2 of 3 beyond 2σ
+
+const hasPatternViolation =
+  lastPoint.isRunningPoint || // Rule 2: 8+ on one side
+  lastPoint.isFourNearLimit; // Rule 3: 3 of 4 in extreme quartiles
+
+const hasLowVariation = lastPoint.isFifteenWithinOneSigma; // Rule 5
 ```
 
 ## Visual Representation
 
-The traffic light status is displayed in the UI through various indicators:
+The traffic light status is displayed prominently in the UI:
 
-### 1. Status Badge
+### Traffic Light Indicator
 
-Located at the top of each submetric card:
-
-```
-🟢 Process In Control
-```
-
-or
+Located at the top-right of each submetric card - a colored square indicator:
 
 ```
-🔴 Process Out of Control
+🟢 Green Square - In Control - Stable
+🟡 Yellow Square - Watch Zone - Trending or significant change
+🔴 Red Square - Out of Control - Sudden violation detected
 ```
 
-### 2. Card Border Color
+The indicator includes hover tooltip with status explanation:
 
-The submetric card border changes color based on status:
+- **Red**: "Out of Control - Sudden violation detected"
+- **Yellow**: "Watch Zone - Trending or significant change"
+- **Green**: "In Control - Stable"
 
-- **Green border**: Process in control
-- **Red border**: Process out of control
+### Visual Design
 
-### 3. Chart Background
+```typescript
+<div
+  className={`w-8 h-8 rounded-sm shadow-lg ring-4 ${
+    controlIndicatorColor === "red"
+      ? "bg-red-500 ring-red-200 dark:ring-red-900"
+      : controlIndicatorColor === "yellow"
+      ? "bg-yellow-500 ring-yellow-200 dark:ring-yellow-900"
+      : "bg-green-500 ring-green-200 dark:ring-green-900"
+  }`}
+/>
+```
 
-Some implementations include a subtle background color on the chart:
+Features:
 
-- **Light green tint**: In control
-- **Light red tint**: Out of control
+- **8×8 pixel square** with rounded corners
+- **Ring effect** for enhanced visibility
+- **Theme-aware** (light/dark mode support)
+- **Shadow** for depth and prominence
 
 ## Calculation Details
 
@@ -170,9 +267,11 @@ Auto-locking (outlier removal):
 
 When trend analysis is active:
 
-- Traffic light evaluates based on the baseline limits (not trend-adjusted)
-- Trend lines show expected trajectory, traffic light shows overall stability
-- A process with a trend may still be "in control" if variation is within expected bounds
+- Traffic light evaluates based on **trend-adjusted limits** (dynamic limits at the last data point)
+- Uses the trend line values at the last point to determine the effective limits for evaluation
+- This provides context-aware assessment that accounts for the expected trend trajectory
+- A process with a trend is evaluated relative to where it should be on the trend line
+- The `effectiveLimits` calculation automatically uses trend line values when trend is active
 
 ### 4. Seasonality
 
@@ -246,24 +345,35 @@ A red traffic light doesn't always mean something is wrong:
 
 ### Performance
 
-The traffic light calculation is lightweight and memoized:
+The traffic light calculation is memoized for efficiency:
 
 ```typescript
-const processInControl = useMemo(
-  () => isProcessInControl(xmrData.limits),
-  [xmrData.limits]
-);
+const controlIndicatorColor = useMemo(() => {
+  // Complex statistical analysis and violation detection
+  // Evaluates recent data trends, violations, and process stability
+  // ...
+  return "green" | "yellow" | "red";
+}, [
+  chartData,
+  effectiveLimits,
+  xmrData.violations,
+  submetric.preferredTrend,
+  trendActive,
+  trendLines,
+]);
 ```
 
-Recalculation only occurs when limits change, ensuring efficient rendering.
+Recalculation only occurs when relevant data changes (chart data, limits, violations, trend state), ensuring efficient rendering even with complex analysis.
 
 ### Limit Sources
 
-The function evaluates whichever limits are currently active:
+The system uses "effective limits" that automatically adapt based on active state:
 
-- **Default calculated limits**: From all data points
-- **Locked limits**: User-specified fixed limits
-- **Trend-based limits**: When trend analysis is active (uses baseline limits)
+- **Default calculated limits**: From all data points (when no adjustments active)
+- **Locked limits**: User-specified fixed limits (manual or auto-locked)
+- **Trend-based limits**: Dynamic limits at the last data point when trend is active
+
+The `effectiveLimits` calculation ensures traffic light evaluation is always context-aware and uses the most appropriate limits for the current chart state.
 
 ### Edge Cases
 
@@ -284,32 +394,43 @@ The function evaluates whichever limits are currently active:
 - URL = 0, which may cause issues
 - System handles this edge case with minimum threshold
 
-## Comparison with Western Electric Rules
+## Relationship with Western Electric Rules
 
-The traffic light system provides a **summary status**, while Western Electric Rules provide **detailed violation detection**:
+The traffic light system **integrates** Western Electric Rules into its assessment:
 
-| Feature     | Traffic Light                | Western Electric Rules         |
-| ----------- | ---------------------------- | ------------------------------ |
-| Purpose     | Overall process status       | Specific violation patterns    |
-| Granularity | Single binary indicator      | Multiple violation types       |
-| Sensitivity | Moderate (based on averages) | High (point-by-point analysis) |
-| Use Case    | Quick overview               | Detailed investigation         |
+| Aspect      | Traffic Light System                               | Western Electric Rules       |
+| ----------- | -------------------------------------------------- | ---------------------------- |
+| Purpose     | Overall process status with severity levels        | Specific violation patterns  |
+| Granularity | Three-state indicator (Red/Yellow/Green)           | Five individual rule types   |
+| Integration | Uses WER violations as inputs to decision logic    | Independent violation flags  |
+| Sensitivity | Contextual (considers trends, direction, severity) | High (point-by-point)        |
+| Use Case    | Quick prioritization and triage                    | Detailed root cause analysis |
 
-Both systems complement each other:
+**How They Work Together**:
 
-- Traffic light: "Is there a problem?"
-- Violation detection: "What specifically is the problem?"
+1. **Western Electric Rules** detect specific violation patterns (Rules 1-5)
+2. **Traffic Light** evaluates these violations with additional context:
+   - Is the violation sudden or gradual?
+   - Is it favorable or unfavorable?
+   - Is it part of a consistent trend?
+   - What's the severity and acceleration?
+3. **Result**: Nuanced status that helps prioritize attention:
+   - Red = Immediate attention required
+   - Yellow = Monitor and investigate
+   - Green = Continue normal operations
 
 ## Future Enhancements
 
 Potential improvements under consideration:
 
-1. **Three-state system**: Add "Warning" state (yellow/amber) for borderline cases
-2. **Historical status tracking**: Track how long a process has been in/out of control
-3. **Confidence levels**: Show confidence in the status determination
-4. **Customizable thresholds**: Allow users to adjust sensitivity of control criteria
-5. **Automated alerts**: Integrate with notification systems for status changes
-6. **Batch status API**: Endpoint to check status of multiple metrics simultaneously
+1. **Historical status tracking**: Track how long a process has been in each state (red/yellow/green)
+2. **Status change notifications**: Alert users when status changes (e.g., green → yellow → red)
+3. **Confidence levels**: Show confidence score in the status determination
+4. **Customizable thresholds**: Allow users to adjust sensitivity of warning/critical thresholds
+5. **Batch status API**: Endpoint to check status of multiple metrics simultaneously
+6. **Status history visualization**: Timeline showing status changes over time
+7. **Predictive warnings**: Machine learning to predict potential status changes
+8. **Custom rule weights**: Allow users to prioritize certain violation types
 
 ## Related Documentation
 

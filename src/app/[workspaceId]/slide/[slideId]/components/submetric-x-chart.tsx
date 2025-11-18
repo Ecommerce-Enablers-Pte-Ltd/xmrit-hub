@@ -85,7 +85,6 @@ interface SubmetricXChartProps {
   isLimitsLocked: boolean;
   trendActive: boolean;
   trendLines: TrendLimits | null;
-  showReducedTrendLimits: boolean;
   slideId: string; // Required for comment count invalidation
   onCommentAdded?: (bucketValue: string) => void;
   batchIndex?: number; // Index for batch rendering (0-based)
@@ -607,7 +606,6 @@ const SubmetricXChartInternal = memo(
         isLimitsLocked,
         trendActive,
         trendLines,
-        showReducedTrendLimits,
         onPointClick,
         batchIndex = 0,
         batchSize,
@@ -735,13 +733,6 @@ const SubmetricXChartInternal = memo(
             trendLNPL: trendLines.lnpl[index]?.value,
             trendUpperQuartile: trendLines.upperQuartile[index]?.value,
             trendLowerQuartile: trendLines.lowerQuartile[index]?.value,
-            // Reduced limits
-            trendReducedUNPL: trendLines.reducedUnpl[index]?.value,
-            trendReducedLNPL: trendLines.reducedLnpl[index]?.value,
-            trendReducedUpperQuartile:
-              trendLines.reducedUpperQuartile[index]?.value,
-            trendReducedLowerQuartile:
-              trendLines.reducedLowerQuartile[index]?.value,
           };
         });
       }, [chartData, trendActive, trendLines]);
@@ -1151,55 +1142,6 @@ const SubmetricXChartInternal = memo(
                         connectNulls={false}
                         name="Lower Quartile"
                       />
-                      {/* Reduced Trend Limits (optional) */}
-                      {showReducedTrendLimits && (
-                        <>
-                          <Line
-                            type="linear"
-                            dataKey="trendReducedUNPL"
-                            stroke="#3b82f6"
-                            strokeWidth={2}
-                            strokeDasharray="8 4"
-                            dot={false}
-                            activeDot={false}
-                            connectNulls={false}
-                            name="Reduced Upper Limit"
-                          />
-                          <Line
-                            type="linear"
-                            dataKey="trendReducedLNPL"
-                            stroke="#3b82f6"
-                            strokeWidth={2}
-                            strokeDasharray="8 4"
-                            dot={false}
-                            activeDot={false}
-                            connectNulls={false}
-                            name="Reduced Lower Limit"
-                          />
-                          <Line
-                            type="linear"
-                            dataKey="trendReducedUpperQuartile"
-                            stroke="#93c5fd"
-                            strokeWidth={1.5}
-                            strokeDasharray="3 3"
-                            dot={false}
-                            activeDot={false}
-                            connectNulls={false}
-                            name="Reduced Upper Quartile"
-                          />
-                          <Line
-                            type="linear"
-                            dataKey="trendReducedLowerQuartile"
-                            stroke="#93c5fd"
-                            strokeWidth={1.5}
-                            strokeDasharray="3 3"
-                            dot={false}
-                            activeDot={false}
-                            connectNulls={false}
-                            name="Reduced Lower Quartile"
-                          />
-                        </>
-                      )}
                     </>
                   ) : (
                     <>
