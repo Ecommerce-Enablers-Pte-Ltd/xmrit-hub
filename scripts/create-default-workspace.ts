@@ -8,7 +8,7 @@ config();
 
 /**
  * Normalize a string to a stable key format
- * Example: "% of Total Count" -> "of-total-count"
+ * Example: "% of MCB Count" -> "of-mcb-count"
  */
 function normalizeKey(str: string): string {
   return str
@@ -21,8 +21,8 @@ function normalizeKey(str: string): string {
 /**
  * Derive submetric key from label
  * Extracts both category prefix and metric name to create a unique key
- * Example: "[Region A] - % of Total Count" -> "region-a-of-total-count"
- * Example: "[Region B] - % of Total Count" -> "region-b-of-total-count"
+ * Example: "[Adidas] - % of MCB Count" -> "adidas-of-mcb-count"
+ * Example: "[Nike] - % of MCB Count" -> "nike-of-mcb-count"
  * Example: "Transaction Count" -> "transaction-count"
  */
 function deriveSubmetricKey(label: string): string {
@@ -712,7 +712,7 @@ async function createDefaultWorkspace() {
             'Quarterly review of dashboard metrics and KPIs. Remove outdated metrics and add new strategic indicators.',
             ${workspaceId},
             ${slide2Id},
-            'backlog',
+            'todo',
             'low',
             ${existingUsers[0].id},
             (CURRENT_DATE + INTERVAL '30 days')::date,
@@ -753,7 +753,7 @@ async function createDefaultWorkspace() {
             'Document XMR analysis methodology',
             'Create documentation explaining how we calculate control limits and interpret XMR charts for the team.',
             ${workspaceId},
-            'backlog',
+            'todo',
             'low',
             ${existingUsers[0].id},
             NOW(),

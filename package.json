@@ -13,9 +13,7 @@
     "db:introspect": "drizzle-kit introspect",
     "db:studio": "drizzle-kit studio",
     "db:reset": "npx tsx scripts/reset-database.ts",
-    "db:create-default-workspace": "npx tsx scripts/create-default-workspace.ts",
-    "db:migrate-follow-up-assignees": "npx tsx scripts/migrate-follow-up-assignees.ts",
-    "db:backfill-metric-definitions": "npx tsx scripts/backfill-metric-definitions.ts"
+    "db:create-default-workspace": "npx tsx scripts/create-default-workspace.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.0",

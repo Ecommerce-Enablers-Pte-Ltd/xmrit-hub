@@ -4,9 +4,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { submetrics } from "@/lib/db/schema";
 
-const trafficLightColorSchema = z
-  .enum(["green", "yellow", "red", "none"])
-  .nullable();
+const trafficLightColorSchema = z.enum(["green", "yellow", "red"]).nullable();
 
 const updateSubmetricSchema = z.object({
   trafficLightColor: trafficLightColorSchema,

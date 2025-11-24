@@ -47,21 +47,23 @@ Content-Type: application/json
 
 ### Metric Object Structure
 
-| Field         | Type   | Required | Description                                                              |
-| ------------- | ------ | -------- | ------------------------------------------------------------------------ |
-| `metric_name` | String | Yes      | Name of the metric                                                       |
-| `description` | String | No       | Optional metric definition (workspace-level, preserved if omitted)       |
-| `ranking`     | Number | No       | Optional ranking/priority (1=top, 2=second, etc.) - slide-specific       |
-| `chart_type`  | String | No       | Chart type (default: "line")                                             |
-| `submetrics`  | Array  | Yes      | Array of submetric objects                                               |
+| Field         | Type   | Required | Description                                                        |
+| ------------- | ------ | -------- | ------------------------------------------------------------------ |
+| `metric_name` | String | Yes      | Name of the metric                                                 |
+| `description` | String | No       | Optional metric definition (workspace-level, preserved if omitted) |
+| `ranking`     | Number | No       | Optional ranking/priority (1=top, 2=second, etc.) - slide-specific |
+| `chart_type`  | String | No       | Chart type (default: "line")                                       |
+| `submetrics`  | Array  | Yes      | Array of submetric objects                                         |
 
 **Note on `description` field:**
+
 - Stores workspace-level definition in `metricDefinitions` table
 - If omitted during ingestion, existing definition is preserved (protects manual UI edits)
 - If provided, updates the definition
 - Completely optional - you can ingest data without descriptions
 
 **Note on `ranking` field:**
+
 - Slide-specific ranking/priority indicator
 - Stored separately from definition (in `metrics` table)
 - Editing definition does NOT affect ranking
@@ -253,6 +255,7 @@ The ingestion API uses a **two-tier definition system** for stable metric identi
 - **Auto-generated**: `metricKey` is derived from `metric_name` (normalized to lowercase with dashes)
 
 **Upsert Behavior:**
+
 - If `description` is provided: Creates new definition or updates existing
 - If `description` is omitted: Preserves existing definition (manual UI edits are protected)
 - **This allows you to ingest data without affecting manually-edited definitions**
@@ -265,6 +268,7 @@ The ingestion API uses a **two-tier definition system** for stable metric identi
 - **Auto-generated**: `submetricKey` includes category for uniqueness (e.g., "region-a-of-total-count")
 
 **Upsert Behavior:**
+
 - Always updates `label`, `unit`, and `preferredTrend` to match latest ingestion
 - Preserves `definitionId` for comment thread persistence
 
@@ -273,6 +277,7 @@ The ingestion API uses a **two-tier definition system** for stable metric identi
 **Important**: Metric **ranking** and **definition** are stored separately:
 
 - **Ranking** is stored in the `metrics` table (slide-specific)
+
   - Changes per slide/time period
   - Not affected by definition updates
   - Example: "Revenue" might be ranked #1 this week, #3 next week
@@ -448,16 +453,19 @@ print(response.json())
 ### 6. Metric Definition Management
 
 **When to Include Descriptions:**
+
 - **Initial setup**: Include descriptions when first creating metrics to document their meaning
 - **Documentation updates**: Include descriptions when you want to update the definition
 - **Skip descriptions**: Omit descriptions in regular data ingestion to preserve manual edits made through UI
 
 **Ranking Best Practices:**
+
 - Use `ranking` to highlight top metrics (1 = most important, 2 = second most important)
 - Ranking is slide-specific, so you can highlight different metrics each week
 - Omit ranking if all metrics are equally important
 
 **Definition vs Data Separation:**
+
 - Think of definitions as "what this metric means" (workspace-level documentation)
 - Think of data/ranking as "this week's values and priorities" (slide-specific)
 - This separation allows you to update documentation without re-ingesting all historical data

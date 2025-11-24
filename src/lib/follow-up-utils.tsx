@@ -13,13 +13,6 @@ export const STATUS_CONFIG: Record<
     dotColor: string;
   }
 > = {
-  backlog: {
-    label: "Backlog",
-    color: "text-gray-700 dark:text-gray-300",
-    badgeColor:
-      "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-800",
-    dotColor: "bg-gray-400",
-  },
   todo: {
     label: "Todo",
     color: "text-blue-700 dark:text-blue-400",
@@ -47,6 +40,13 @@ export const STATUS_CONFIG: Record<
     badgeColor:
       "bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-900",
     dotColor: "bg-red-500",
+  },
+  resolved: {
+    label: "Resolved",
+    color: "text-purple-700 dark:text-purple-400",
+    badgeColor:
+      "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-400 dark:border-purple-900",
+    dotColor: "bg-purple-500",
   },
 };
 

@@ -130,9 +130,9 @@ export function useFollowUps(
     queryKey: followUpKeys.workspace(workspaceId, params),
     queryFn: () =>
       followUpApiClient.getFollowUpsByWorkspace(workspaceId, params),
-    staleTime: 2 * 60 * 1000, // 2 minutes - follow-ups don't change frequently
-    gcTime: 10 * 60 * 1000, // 10 minutes cache
-    refetchOnWindowFocus: false, // Don't refetch on window focus
+    staleTime: 30 * 1000, // 30 seconds - follow-ups change frequently with status updates
+    gcTime: 5 * 60 * 1000, // 5 minutes cache
+    refetchOnWindowFocus: true, // Refetch on window focus to ensure fresh data
   });
 }
 
@@ -176,14 +176,15 @@ export function useCreateFollowUp(workspaceId: string) {
             "submetric-definition",
             followUp.submetricDefinitionId,
           ],
+          refetchType: "active",
         });
       }
 
       // Invalidate workspace follow-ups list
       // Will auto-refetch if the query is mounted (user is viewing it)
-      // Won't refetch if unmounted (stale data will be used until staleTime expires)
       queryClient.invalidateQueries({
         queryKey: ["follow-ups", "workspace", workspaceId],
+        refetchType: "active",
       });
     },
   });
@@ -218,12 +219,14 @@ export function useUpdateFollowUp(workspaceId: string) {
             "submetric-definition",
             followUp.submetricDefinitionId,
           ],
+          refetchType: "active",
         });
       }
 
       // Invalidate workspace list - will refetch if actively mounted
       queryClient.invalidateQueries({
         queryKey: ["follow-ups", "workspace", workspaceId],
+        refetchType: "active",
       });
     },
   });
@@ -247,10 +250,12 @@ export function useDeleteFollowUp(workspaceId: string) {
       // Invalidate related queries - will refetch if actively mounted
       queryClient.invalidateQueries({
         queryKey: ["follow-ups", "workspace", workspaceId],
+        refetchType: "active",
       });
 
       queryClient.invalidateQueries({
         queryKey: ["follow-ups", "submetric-definition"],
+        refetchType: "active",
       });
     },
   });
@@ -275,9 +280,9 @@ export function useSubmetricFollowUps(
       );
     },
     enabled: !!definitionId,
-    staleTime: 2 * 60 * 1000, // 2 minutes - follow-ups don't change frequently
-    gcTime: 10 * 60 * 1000, // 10 minutes cache
-    refetchOnWindowFocus: false, // Don't refetch on window focus
+    staleTime: 30 * 1000, // 30 seconds - follow-ups change frequently with status updates
+    gcTime: 5 * 60 * 1000, // 5 minutes cache
+    refetchOnWindowFocus: true, // Refetch on window focus to ensure fresh data
   });
 }
 
