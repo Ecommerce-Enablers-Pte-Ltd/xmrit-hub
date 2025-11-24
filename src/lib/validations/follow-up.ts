@@ -24,8 +24,8 @@ export const createFollowUpSchema = z.object({
     .optional(),
   threadId: z.string().uuid("Invalid thread ID format").optional(),
   status: z
-    .enum(["backlog", "todo", "in_progress", "done", "cancelled"])
-    .default("backlog"),
+    .enum(["todo", "in_progress", "done", "cancelled", "resolved"])
+    .default("todo"),
   priority: z
     .enum(["no_priority", "urgent", "high", "medium", "low"])
     .default("no_priority"),
@@ -63,7 +63,7 @@ export const updateFollowUpSchema = z.object({
     .nullable()
     .optional(),
   status: z
-    .enum(["backlog", "todo", "in_progress", "done", "cancelled"])
+    .enum(["todo", "in_progress", "done", "cancelled", "resolved"])
     .optional(),
   priority: z
     .enum(["no_priority", "urgent", "high", "medium", "low"])
@@ -106,7 +106,7 @@ export const followUpQuerySchema = z.object({
 
   // Filtering
   status: z
-    .enum(["backlog", "todo", "in_progress", "done", "cancelled"])
+    .enum(["todo", "in_progress", "done", "cancelled", "resolved"])
     .optional(),
   priority: z
     .enum(["no_priority", "urgent", "high", "medium", "low"])

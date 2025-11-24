@@ -124,24 +124,33 @@ async function updateFollowUp(
     }
     if (validatedData.status !== undefined) {
       updateValues.status = validatedData.status;
-      // Auto-set completedAt when status changes to done
-      if (validatedData.status === "done" && !existingFollowUp[0].completedAt) {
+
+      // Auto-set completedAt when status changes to done, cancelled, or resolved
+      if (
+        (validatedData.status === "done" ||
+          validatedData.status === "cancelled" ||
+          validatedData.status === "resolved") &&
+        !existingFollowUp[0].completedAt
+      ) {
         updateValues.completedAt = new Date();
-        // Auto-set resolvedAtSlideId when status changes to done (if slideId provided and not already set)
+        // Auto-set resolvedAtSlideId when status changes to done/resolved (if slideId provided and not already set)
         if (
+          (validatedData.status === "done" ||
+            validatedData.status === "resolved") &&
           validatedData.slideId &&
           updateValues.resolvedAtSlideId === undefined
         ) {
           updateValues.resolvedAtSlideId = validatedData.slideId;
         }
-      } else if (validatedData.status !== "done" && validatedData.status !== "cancelled") {
+      }
+      // Clear completedAt and resolvedAtSlideId when moving back to todo or in_progress
+      else if (
+        validatedData.status === "todo" ||
+        validatedData.status === "in_progress"
+      ) {
         updateValues.completedAt = null;
-        // Clear resolvedAtSlideId when status changes from done/cancelled to another status
-        // (backlog, todo, in_progress)
-        if (
-          (existingFollowUp[0].status === "done" || existingFollowUp[0].status === "cancelled") &&
-          updateValues.resolvedAtSlideId === undefined
-        ) {
+        // Clear resolvedAtSlideId when unresolving (moving from resolved/done/cancelled back to active states)
+        if (updateValues.resolvedAtSlideId === undefined) {
           updateValues.resolvedAtSlideId = null;
         }
       }

@@ -8,7 +8,7 @@ The follow-up system provides task/ticket management capabilities for tracking a
 
 - **Multi-assignee support**: Assign multiple users to a single follow-up via many-to-many junction table
 - **Flexible linking**: Link follow-ups to slides, submetric definitions, or comment threads
-- **Status workflow**: Track progress from backlog → todo → in_progress → done/cancelled
+- **Status workflow**: Track progress from todo → in_progress → done/cancelled
 - **Priority levels**: Five priority levels (no_priority, urgent, high, medium, low)
 - **Auto-generated identifiers**: Human-readable identifiers (e.g., "FU-1", "FU-2") per workspace
 - **Due date tracking**: Optional due dates with overdue filtering
@@ -31,7 +31,7 @@ CREATE TABLE follow_up (
   submetricDefinitionId TEXT REFERENCES submetric_definition(id) ON DELETE SET NULL,
   threadId TEXT REFERENCES comment_thread(id) ON DELETE SET NULL,
   resolvedAtSlideId TEXT REFERENCES slide(id) ON DELETE SET NULL,  -- NEW: Tracks resolution slide
-  status follow_up_status NOT NULL DEFAULT 'backlog',
+  status follow_up_status NOT NULL DEFAULT 'todo',
   priority follow_up_priority NOT NULL DEFAULT 'no_priority',
   assigneeId TEXT REFERENCES user(id) ON DELETE SET NULL,  -- DEPRECATED
   createdBy TEXT NOT NULL REFERENCES user(id) ON DELETE SET NULL,
@@ -70,7 +70,7 @@ CREATE INDEX follow_up_assignee_user_id_idx ON follow_up_assignee(userId);
 Status and priority enums for follow-ups:
 
 ```sql
-CREATE TYPE follow_up_status AS ENUM ('backlog', 'todo', 'in_progress', 'done', 'cancelled');
+CREATE TYPE follow_up_status AS ENUM ('todo', 'in_progress', 'done', 'cancelled');
 CREATE TYPE follow_up_priority AS ENUM ('no_priority', 'urgent', 'high', 'medium', 'low');
 ```
 
@@ -189,7 +189,7 @@ Get all follow-ups for a specific submetric definition with temporal filtering b
 - `slideId`: Optional, valid UUID
 - `submetricDefinitionId`: Optional, valid UUID
 - `threadId`: Optional, valid UUID
-- `status`: Optional, defaults to "backlog"
+- `status`: Optional, defaults to "todo"
 - `priority`: Optional, defaults to "no_priority"
 - `assigneeIds`: Optional array of user UUIDs
 - `dueDate`: Optional, YYYY-MM-DD format
@@ -272,7 +272,7 @@ GET /api/workspaces/{workspaceId}/follow-ups?page=1&limit=20&status=todo&priorit
 - `limit`: Items per page (max: 100, default: 20)
 - `sortBy`: createdAt | updatedAt | title | status | priority | dueDate | identifier
 - `sortOrder`: asc | desc (default: desc)
-- `status`: Filter by status (backlog, todo, in_progress, done, cancelled)
+- `status`: Filter by status (todo, in_progress, done, cancelled)
 - `priority`: Filter by priority (no_priority, urgent, high, medium, low)
 - `assigneeId`: Filter by assignee user ID
 - `slideId`: Filter by slide ID
@@ -328,7 +328,7 @@ GET /api/submetrics/definitions/{definitionId}/follow-ups?slideId={slideId}
   ],
   "unresolved": [
     /* Follow-ups that are:
-       - Status: "backlog", "todo", or "in_progress", OR
+       - Status: "todo", or "in_progress", OR
        - Status: "done"/"cancelled" but no resolvedAtSlideId, OR
        - Status: "done"/"cancelled" but resolved in the future (after current slide date)
        - Created on or before current slide date */
@@ -475,9 +475,8 @@ Slide-specific view of follow-ups for a submetric definition with temporal filte
 
 ### Workflow Recommendations
 
-**Backlog → Todo:**
-- Review and prioritize backlog items regularly
-- Move to "todo" when ready to work on soon
+**Todo → In Progress:**
+- Move to "in_progress" when actively working on the task
 
 **Todo → In Progress:**
 - Assign to specific team members
@@ -529,7 +528,7 @@ Slide-specific view of follow-ups for a submetric definition with temporal filte
    - Tasks requiring multiple approvals
    - Knowledge sharing across team members
 3. **Unassigned**: Use for:
-   - Backlog items not yet prioritized
+   - Todo items not yet assigned
    - General team tasks (anyone can pick up)
 
 ## Migration Guide

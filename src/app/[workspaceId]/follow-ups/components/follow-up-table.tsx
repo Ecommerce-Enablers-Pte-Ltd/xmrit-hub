@@ -49,6 +49,9 @@ import {
 } from "@/components/ui/tooltip";
 import {
   getPriorityIcon,
+  getStatusBadgeColor,
+  getStatusIcon,
+  getStatusLabel,
   PRIORITY_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
@@ -284,7 +287,12 @@ export function FollowUpTable({
             return (
               <TableRow
                 key={followUp.id}
-                className="cursor-pointer hover:bg-muted/50 group border-b transition-colors"
+                className={cn(
+                  "cursor-pointer group border-b transition-colors",
+                  followUp.status === "resolved"
+                    ? "bg-muted/20 hover:bg-muted/30"
+                    : "hover:bg-muted/50",
+                )}
                 onClick={() => onEdit(followUp)}
                 title="Click to edit"
               >
@@ -304,49 +312,61 @@ export function FollowUpTable({
                   </div>
                 </TableCell>
                 <TableCell className="py-3">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={(e) => e.stopPropagation()}
-                        className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded"
-                      >
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "text-xs font-normal cursor-pointer hover:opacity-80 transition-opacity",
-                            STATUS_COLORS[followUp.status],
-                          )}
-                        >
-                          {STATUS_LABELS[followUp.status]}
-                        </Badge>
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-36">
-                      {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                        <DropdownMenuItem
-                          key={value}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onStatusChange(followUp.id, value);
-                          }}
-                          className={cn(
-                            followUp.status === value && "bg-accent",
-                          )}
+                  {followUp.status === "resolved" ? (
+                    // Show non-interactive badge when resolved
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-xs font-normal opacity-60 cursor-not-allowed",
+                        getStatusBadgeColor(followUp.status),
+                      )}
+                      title="Reopen to change status"
+                    >
+                      {getStatusLabel(followUp.status)}
+                    </Badge>
+                  ) : (
+                    // Show dropdown menu for active statuses
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={(e) => e.stopPropagation()}
+                          className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded transition-all hover:scale-105"
                         >
                           <Badge
                             variant="outline"
                             className={cn(
-                              "text-xs font-normal",
-                              STATUS_COLORS[value],
+                              "text-xs font-normal cursor-pointer",
+                              getStatusBadgeColor(followUp.status),
                             )}
                           >
-                            {label}
+                            {getStatusLabel(followUp.status)}
                           </Badge>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-40">
+                        {Object.entries(STATUS_LABELS)
+                          .filter(([value]) => value !== "resolved")
+                          .map(([value, label]) => (
+                            <DropdownMenuItem
+                              key={value}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onStatusChange(followUp.id, value);
+                              }}
+                              className={cn(
+                                followUp.status === value && "bg-accent",
+                              )}
+                            >
+                              <div className="flex items-center gap-2">
+                                {getStatusIcon(value, "h-2 w-2")}
+                                <span className="text-xs">{label}</span>
+                              </div>
+                            </DropdownMenuItem>
+                          ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </TableCell>
                 <TableCell className="py-3">
                   <div className="flex items-center gap-1.5">
@@ -449,6 +469,8 @@ export function FollowUpTable({
                         "flex items-center gap-1.5 text-sm",
                         isOverdue(followUp.dueDate) &&
                           followUp.status !== "done" &&
+                          followUp.status !== "cancelled" &&
+                          followUp.status !== "resolved" &&
                           "text-red-600 dark:text-red-400",
                       )}
                     >
@@ -504,6 +526,20 @@ export function FollowUpTable({
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
+                      {followUp.status === "resolved" && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onStatusChange(followUp.id, "todo");
+                            }}
+                          >
+                            <Circle className="mr-2 h-4 w-4" />
+                            Reopen
+                          </DropdownMenuItem>
+                        </>
+                      )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={(e) => {

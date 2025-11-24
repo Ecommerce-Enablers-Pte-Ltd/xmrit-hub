@@ -159,15 +159,16 @@ export function FollowUpTab({
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate the specific submetric follow-ups query
-      // Will auto-refetch since we're actively viewing this component
+      // Invalidate and refetch the specific submetric follow-ups query immediately
       queryClient.invalidateQueries({
         queryKey: ["follow-ups", "submetric-definition", definitionId, slideId],
+        refetchType: "active",
       });
 
       // Invalidate workspace follow-ups (will refetch if user is viewing that page)
       queryClient.invalidateQueries({
         queryKey: ["follow-ups", "workspace", workspaceId],
+        refetchType: "active",
       });
 
       setDialogOpen(false);
@@ -215,10 +216,12 @@ export function FollowUpTab({
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["follow-ups", "submetric-definition", definitionId, slideId],
+        refetchType: "active",
       });
 
       queryClient.invalidateQueries({
         queryKey: ["follow-ups", "workspace", workspaceId],
+        refetchType: "active",
       });
 
       setDialogOpen(false);
@@ -248,10 +251,12 @@ export function FollowUpTab({
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["follow-ups", "submetric-definition", definitionId, slideId],
+        refetchType: "active",
       });
 
       queryClient.invalidateQueries({
         queryKey: ["follow-ups", "workspace", workspaceId],
+        refetchType: "active",
       });
 
       setDeleteDialogOpen(false);
@@ -321,9 +326,10 @@ export function FollowUpTab({
     );
   }
 
-  // API already filters follow-ups by creation date when slideId is provided
-  const resolved = data?.resolved || [];
-  const unresolved = data?.unresolved || [];
+  // Split follow-ups based on status
+  const allFollowUps = [...(data?.resolved || []), ...(data?.unresolved || [])];
+  const resolved = allFollowUps.filter((fu) => fu.status === "resolved");
+  const unresolved = allFollowUps.filter((fu) => fu.status !== "resolved");
 
   return (
     <>
@@ -345,16 +351,16 @@ export function FollowUpTab({
         <div className="flex-1 min-h-0 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="px-6 py-4 space-y-6">
-              {/* Unresolved Section */}
+              {/* Active Section */}
               {unresolved.length > 0 && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 pb-2">
                     <h3 className="font-semibold text-sm text-foreground">
-                      Unresolved
+                      Active
                     </h3>
                     <Badge
                       variant="secondary"
-                      className="text-xs bg-blue-600 text-white"
+                      className="text-xs bg-blue-600 dark:bg-blue-700 text-white"
                     >
                       {unresolved.length}
                     </Badge>
@@ -389,6 +395,12 @@ export function FollowUpTab({
                     <h3 className="font-semibold text-sm text-muted-foreground">
                       Resolved
                     </h3>
+                    <Badge
+                      variant="outline"
+                      className="text-xs text-muted-foreground"
+                    >
+                      {resolved.length}
+                    </Badge>
                   </div>
                   <div className="space-y-3">
                     {resolved.map((followUp) => (
@@ -527,20 +539,6 @@ function FollowUpCard({
     return currentDate < creationDate;
   })();
 
-  // Check if current slide is before the slide where follow-up was resolved
-  const isCurrentSlideBeforeResolution = (() => {
-    if (
-      !isResolved ||
-      !currentSlide?.slideDate ||
-      !followUp.resolvedAtSlide?.slideDate
-    ) {
-      return false; // If not resolved or dates missing, allow action
-    }
-    const currentDate = new Date(currentSlide.slideDate);
-    const resolutionDate = new Date(followUp.resolvedAtSlide.slideDate);
-    return currentDate < resolutionDate;
-  })();
-
   // Mutation to update follow-up status
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus: FollowUpStatus) => {
@@ -558,7 +556,7 @@ function FollowUpCard({
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate the submetric follow-ups query to refetch
+      // Invalidate the submetric follow-ups query to refetch immediately
       queryClient.invalidateQueries({
         queryKey: [
           "follow-ups",
@@ -566,11 +564,13 @@ function FollowUpCard({
           followUp.submetricDefinitionId,
           slideId,
         ],
+        refetchType: "active",
       });
 
       // Invalidate workspace follow-ups
       queryClient.invalidateQueries({
         queryKey: ["follow-ups", "workspace", workspaceId],
+        refetchType: "active",
       });
 
       toast.success("Status updated");
@@ -601,7 +601,7 @@ function FollowUpCard({
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate the submetric follow-ups query to refetch
+      // Invalidate the submetric follow-ups query to refetch immediately
       queryClient.invalidateQueries({
         queryKey: [
           "follow-ups",
@@ -609,16 +609,16 @@ function FollowUpCard({
           followUp.submetricDefinitionId,
           slideId,
         ],
+        refetchType: "active",
       });
 
       // Invalidate workspace follow-ups
       queryClient.invalidateQueries({
         queryKey: ["follow-ups", "workspace", workspaceId],
+        refetchType: "active",
       });
 
-      toast.success(
-        isResolved ? "Follow-up marked as unresolved" : "Follow-up resolved"
-      );
+      toast.success(isResolved ? "Moved to Todo" : "Follow-up resolved");
     },
     onError: (error: Error) => {
       console.error("Error updating follow-up:", error);
@@ -628,44 +628,45 @@ function FollowUpCard({
 
   const handleToggleResolve = () => {
     if (isResolved) {
-      // Unresolve: clear resolvedAtSlideId but keep the status (done/cancelled)
+      // Unresolve: Move back to todo and clear resolvedAtSlideId
       updateFollowUpMutation.mutate({
-        status: followUp.status, // Keep current status
+        status: "todo",
         resolvedAtSlideId: null,
       });
     } else {
-      // Resolve: set resolvedAtSlideId to current slide (status must already be done/cancelled)
+      // Resolve: Change status to resolved and set resolvedAtSlideId
       updateFollowUpMutation.mutate({
-        status: followUp.status, // Keep current status
+        status: "resolved",
         resolvedAtSlideId: slideId,
       });
     }
   };
 
-  // Can show resolve button if status is done or cancelled
+  // Can show resolve button if status is done or cancelled (to move to resolved)
   const canShowResolveButton =
     followUp.status === "done" || followUp.status === "cancelled";
 
-  // Can only resolve/unresolve if current slide is not before creation
-  // This applies to both resolving and unresolving
-  const canResolveOrUnresolve =
-    canShowResolveButton && !isCurrentSlideBeforeCreation;
+  // Can only resolve if current slide is not before creation
+  const canResolve = !isCurrentSlideBeforeCreation;
 
   // Tooltip message
   const resolveTooltipMessage = (() => {
     if (isCurrentSlideBeforeCreation) {
-      return isResolved
-        ? "Cannot unresolve on a slide before it was created"
-        : "Cannot resolve on a slide before it was created";
+      return "Cannot resolve on a slide before it was created";
     }
-    return isResolved ? "Mark as unresolved" : "Mark as resolved";
+    if (followUp.status === "done") {
+      return "Mark as resolved (final state)";
+    }
+    if (followUp.status === "cancelled") {
+      return "Mark as resolved (final state)";
+    }
+    return "Mark as resolved";
   })();
 
   return (
     <div
       className={cn(
-        "rounded-lg border p-4 space-y-3",
-        isResolved ? "bg-muted/20 opacity-70" : "bg-card"
+        "rounded-lg border p-4 space-y-3 transition-all bg-card hover:shadow-sm"
       )}
     >
       {/* Header with identifier and status */}
@@ -681,36 +682,42 @@ function FollowUpCard({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded"
+                disabled={isResolved}
+                className={cn(
+                  "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded transition-all",
+                  !isResolved && "hover:scale-105"
+                )}
               >
                 <Badge
                   variant="outline"
                   className={cn(
-                    "text-xs gap-1.5 cursor-pointer hover:opacity-80 transition-opacity",
-                    STATUS_COLORS[followUp.status]
+                    "text-xs gap-1.5",
+                    !isResolved && "cursor-pointer",
+                    isResolved && "opacity-60 cursor-not-allowed",
+                    getStatusBadgeColor(followUp.status)
                   )}
                 >
-                  {STATUS_LABELS[followUp.status]}
+                  {getStatusLabel(followUp.status)}
                 </Badge>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-36">
-              {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                <DropdownMenuItem
-                  key={value}
-                  onClick={() =>
-                    updateStatusMutation.mutate(value as FollowUpStatus)
-                  }
-                  className={cn(followUp.status === value && "bg-accent")}
-                >
-                  <Badge
-                    variant="outline"
-                    className={cn("text-xs font-normal", STATUS_COLORS[value])}
+            <DropdownMenuContent align="start" className="w-40">
+              {Object.entries(STATUS_LABELS)
+                .filter(([value]) => value !== "resolved") // Don't show resolved in dropdown
+                .map(([value, label]) => (
+                  <DropdownMenuItem
+                    key={value}
+                    onClick={() =>
+                      updateStatusMutation.mutate(value as FollowUpStatus)
+                    }
+                    className={cn(followUp.status === value && "bg-accent")}
                   >
-                    {label}
-                  </Badge>
-                </DropdownMenuItem>
-              ))}
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(value as FollowUpStatus, "h-2 w-2")}
+                      <span className="text-xs">{label}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
             </DropdownMenuContent>
           </DropdownMenu>
           {followUp.priority !== "no_priority" && (
@@ -721,29 +728,23 @@ function FollowUpCard({
           )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          {/* Resolve/Unresolve Button - Only shown for done/cancelled status */}
-          {canShowResolveButton && (
+          {/* Resolve Button - Only shown for done/cancelled status */}
+          {canShowResolveButton && !isResolved && (
             <TooltipProvider delayDuration={300}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 w-7 p-0"
+                    className="h-6 w-6 p-0"
                     onClick={handleToggleResolve}
-                    disabled={
-                      updateFollowUpMutation.isPending || !canResolveOrUnresolve
-                    }
+                    disabled={updateFollowUpMutation.isPending || !canResolve}
                   >
-                    {isResolved ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Circle className="h-4 w-4" />
-                    )}
+                    <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="left">
-                  {resolveTooltipMessage}
+                <TooltipContent side="top">
+                  <p className="text-xs">{resolveTooltipMessage}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -767,6 +768,18 @@ function FollowUpCard({
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
+              {isResolved && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleToggleResolve}
+                    disabled={updateFollowUpMutation.isPending}
+                  >
+                    <Circle className="mr-2 h-4 w-4" />
+                    Reopen
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => onDelete(followUp)}
@@ -810,27 +823,25 @@ function FollowUpCard({
             </button>
           </span>
         )}
-        {/* Only show resolution info if it happened on or before the current slide */}
-        {followUp.resolvedAtSlide &&
-          !isCurrentSlideBeforeResolution &&
-          isResolved && (
-            <span>
-              Resolved on{" "}
-              <button
-                type="button"
-                onClick={() =>
-                  followUp.resolvedAtSlide &&
-                  window.open(
-                    `/${workspaceId}/slide/${followUp.resolvedAtSlide.id}`,
-                    "_blank"
-                  )
-                }
-                className="text-primary hover:underline cursor-pointer"
-              >
-                {followUp.resolvedAtSlide.title}
-              </button>
-            </span>
-          )}
+        {/* Show resolution info if resolved */}
+        {followUp.resolvedAtSlide && isResolved && (
+          <span>
+            Resolved on{" "}
+            <button
+              type="button"
+              onClick={() =>
+                followUp.resolvedAtSlide &&
+                window.open(
+                  `/${workspaceId}/slide/${followUp.resolvedAtSlide.id}`,
+                  "_blank"
+                )
+              }
+              className="text-primary hover:underline cursor-pointer"
+            >
+              {followUp.resolvedAtSlide.title}
+            </button>
+          </span>
+        )}
       </div>
 
       {/* Assignees */}

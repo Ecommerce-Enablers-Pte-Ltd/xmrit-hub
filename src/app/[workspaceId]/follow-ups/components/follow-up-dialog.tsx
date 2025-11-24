@@ -68,7 +68,7 @@ const followUpFormSchema = z.object({
     .string()
     .max(2000, "Description must be less than 2000 characters")
     .optional(),
-  status: z.enum(["backlog", "todo", "in_progress", "done", "cancelled"]),
+  status: z.enum(["todo", "in_progress", "done", "cancelled", "resolved"]),
   priority: z.enum(["no_priority", "urgent", "high", "medium", "low"]),
   assigneeIds: z.array(z.string()).optional(),
   slideId: z.string().nullable().optional(),
@@ -113,12 +113,15 @@ const FormError = ({ message }: { message?: string }) => {
 };
 
 const STATUS_OPTIONS: { value: FollowUpStatus; label: string }[] = [
-  { value: "backlog", label: "Backlog" },
   { value: "todo", label: "Todo" },
   { value: "in_progress", label: "In Progress" },
   { value: "done", label: "Done" },
   { value: "cancelled", label: "Cancelled" },
 ];
+
+// Include resolved in the display-only options (for showing current status)
+const STATUS_OPTIONS_WITH_RESOLVED: { value: FollowUpStatus; label: string }[] =
+  [...STATUS_OPTIONS, { value: "resolved", label: "Resolved" }];
 
 const PRIORITY_OPTIONS: { value: FollowUpPriority; label: string }[] = [
   { value: "no_priority", label: "No Priority" },
@@ -145,6 +148,9 @@ export function FollowUpDialog({
   const clearingDateRef = useRef(false);
   const previousOpenRef = useRef(false);
   const followUpIdRef = useRef<string | undefined>(undefined);
+
+  // Check if follow-up is resolved
+  const isResolved = followUp?.status === "resolved";
   const {
     control,
     register,
@@ -350,9 +356,11 @@ export function FollowUpDialog({
             {followUp ? "Edit Follow-up" : "Create Follow-up"}
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
-            {followUp
-              ? "Update the follow-up details below."
-              : "Track action items, issues, and tasks."}
+            {isResolved
+              ? "This follow-up is resolved. You can edit details but cannot change the status. Reopen to change status."
+              : followUp
+                ? "Update the follow-up details below."
+                : "Track action items, issues, and tasks."}
           </DialogDescription>
         </DialogHeader>
 
@@ -395,20 +403,21 @@ export function FollowUpDialog({
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
-                        disabled={isLoading}
+                        disabled={isLoading || isResolved}
                       >
                         <SelectTrigger
                           id="status"
                           className={cn(
                             "w-full",
                             errors.status && "border-destructive",
+                            isResolved && "opacity-60 cursor-not-allowed",
                           )}
                         >
                           <SelectValue>
                             <div className="flex items-center gap-2 w-full">
                               {getStatusIcon(field.value)}
                               <span className="truncate">
-                                {STATUS_OPTIONS.find(
+                                {STATUS_OPTIONS_WITH_RESOLVED.find(
                                   (opt) => opt.value === field.value,
                                 )?.label || field.value}
                               </span>

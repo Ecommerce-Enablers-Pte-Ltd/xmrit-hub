@@ -7,11 +7,11 @@ import type { SubmetricDefinition } from "./submetric";
 import type { User } from "./user";
 
 export type FollowUpStatus =
-  | "backlog"
   | "todo"
   | "in_progress"
   | "done"
-  | "cancelled";
+  | "cancelled"
+  | "resolved";
 
 export type FollowUpPriority =
   | "no_priority"

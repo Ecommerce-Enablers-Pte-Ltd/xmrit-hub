@@ -402,12 +402,6 @@ export default function FollowUpsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="backlog">
-                  <div className="flex items-center gap-2.5">
-                    {getStatusIcon("backlog")}
-                    Backlog
-                  </div>
-                </SelectItem>
                 <SelectItem value="todo">
                   <div className="flex items-center gap-2.5">
                     {getStatusIcon("todo")}
@@ -430,6 +424,12 @@ export default function FollowUpsPage() {
                   <div className="flex items-center gap-2.5">
                     {getStatusIcon("cancelled")}
                     Cancelled
+                  </div>
+                </SelectItem>
+                <SelectItem value="resolved">
+                  <div className="flex items-center gap-2.5">
+                    {getStatusIcon("resolved")}
+                    Resolved
                   </div>
                 </SelectItem>
               </SelectContent>

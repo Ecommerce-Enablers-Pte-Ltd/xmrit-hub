@@ -262,11 +262,13 @@ Ran once to:
 The comment system relies on the stable definition system:
 
 **Metric Definitions (`metricDefinitions` table):**
+
 - Workspace-level documentation for metric families
 - Can be edited through UI without affecting historical data
 - Ingestion preserves definitions when description is omitted
 
 **Submetric Definitions (`submetricDefinitions` table):**
+
 - Stable identities for logical submetrics
 - Comments attach here for cross-slide persistence
 - Auto-updated during ingestion to match latest data structure

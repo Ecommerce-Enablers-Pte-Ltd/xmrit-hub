@@ -185,11 +185,11 @@ export const threadScopeEnum = pgEnum("thread_scope", ["point", "submetric"]);
 
 // Follow-up enums
 export const followUpStatusEnum = pgEnum("follow_up_status", [
-  "backlog",
   "todo",
   "in_progress",
   "done",
   "cancelled",
+  "resolved",
 ]);
 
 export const followUpPriorityEnum = pgEnum("follow_up_priority", [
@@ -204,7 +204,6 @@ export const trafficLightColorEnum = pgEnum("traffic_light_color", [
   "green",
   "yellow",
   "red",
-  "none",
 ]);
 
 // Submetric definitions - stable identities across slides
@@ -536,7 +535,7 @@ export const followUps = pgTable(
     resolvedAtSlideId: text("resolvedAtSlideId").references(() => slides.id, {
       onDelete: "set null",
     }), // tracks which slide resolved the follow-up when status changes to "done"
-    status: followUpStatusEnum("status").notNull().default("backlog"),
+    status: followUpStatusEnum("status").notNull().default("todo"),
     priority: followUpPriorityEnum("priority").notNull().default("no_priority"),
     assigneeId: text("assigneeId").references(() => users.id, {
       onDelete: "set null",

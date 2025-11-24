@@ -91,81 +91,12 @@ export async function GET(
         }
       }
 
-      // Group by resolution status relative to the slide's timeline
-      const currentSlideDate = currentSlide?.slideDate
-        ? new Date(currentSlide.slideDate)
-        : null;
+      // Group by resolution status (simplified logic)
+      // Resolved: status === "resolved"
+      resolved = filteredFollowUps.filter((fu) => fu.status === "resolved");
 
-      // Resolved: Follow-ups that were resolved on or before the current slide (chronologically)
-      resolved = filteredFollowUps.filter((fu) => {
-        // Must have done/cancelled status
-        if (fu.status !== "done" && fu.status !== "cancelled") {
-          return false;
-        }
-
-        // If no resolvedAtSlide, it's not resolved
-        if (!fu.resolvedAtSlide?.slideDate) {
-          return false;
-        }
-
-        // Compare dates: resolved if resolvedAtSlide date <= current slide date
-        const resolvedDate = new Date(fu.resolvedAtSlide.slideDate);
-        // Validate resolved date
-        if (Number.isNaN(resolvedDate.getTime())) {
-          // Invalid resolved date, treat as not resolved
-          return false;
-        }
-
-        if (!currentSlideDate) {
-          // If current slide has no date, only show if resolved at this exact slide
-          return fu.resolvedAtSlideId === slideId;
-        }
-
-        // Validate current slide date
-        if (Number.isNaN(currentSlideDate.getTime())) {
-          // Invalid current slide date, only show if resolved at this exact slide
-          return fu.resolvedAtSlideId === slideId;
-        }
-
-        return resolvedDate <= currentSlideDate;
-      });
-
-      // Unresolved: Follow-ups that either:
-      // 1. Have status other than "done" or "cancelled" (can't be resolved yet)
-      // 2. Have status "done" or "cancelled" but resolved in the future (after current slide)
-      // 3. Have status "done" or "cancelled" but no resolvedAtSlideId set
-      unresolved = filteredFollowUps.filter((fu) => {
-        // Not done/cancelled status = always unresolved
-        if (fu.status !== "done" && fu.status !== "cancelled") {
-          return true;
-        }
-
-        // Done/cancelled but no resolvedAtSlideId = unresolved
-        if (!fu.resolvedAtSlideId || !fu.resolvedAtSlide?.slideDate) {
-          return true;
-        }
-
-        // Done/cancelled with resolvedAtSlide: check if resolved in the future
-        const resolvedDate = new Date(fu.resolvedAtSlide.slideDate);
-        // Validate resolved date
-        if (Number.isNaN(resolvedDate.getTime())) {
-          // Invalid resolved date, treat as unresolved
-          return true;
-        }
-
-        if (!currentSlideDate) {
-          // If current slide has no date, show as unresolved if not resolved at this exact slide
-          return fu.resolvedAtSlideId !== slideId;
-        }
-
-        // Validate current slide date
-        if (Number.isNaN(currentSlideDate.getTime())) {
-          // Invalid current slide date, show as unresolved if not resolved at this exact slide
-          return fu.resolvedAtSlideId !== slideId;
-        }
-
-        return resolvedDate > currentSlideDate;
-      });
+      // Unresolved: status !== "resolved"
+      unresolved = filteredFollowUps.filter((fu) => fu.status !== "resolved");
     }
 
     return NextResponse.json(

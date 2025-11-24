@@ -34,7 +34,7 @@ import {
  *       "submetrics": [
  *         {
  *           "label": "Transaction Count",
- *           "category": "Region A",
+ *           "category": "Adidas",
  *           "timezone": "ltz",
  *           "xaxis": "period",
  *           "yaxis": "value",
@@ -98,7 +98,7 @@ interface IngestRequest {
 
 /**
  * Normalize a string to a stable key format
- * Example: "% of Total Count" -> "of-total-count"
+ * Example: "% of MCB Count" -> "of-mcb-count"
  */
 function normalizeKey(str: string): string {
   return str
@@ -111,8 +111,8 @@ function normalizeKey(str: string): string {
 /**
  * Derive submetric key from label
  * Extracts both category prefix and metric name to create a unique key
- * Example: "[Region A] - % of Total Count" -> "region-a-of-total-count"
- * Example: "[Region B] - % of Total Count" -> "region-b-of-total-count"
+ * Example: "[Adidas] - % of MCB Count" -> "adidas-of-mcb-count"
+ * Example: "[Nike] - % of MCB Count" -> "nike-of-mcb-count"
  * Example: "Transaction Count" -> "transaction-count"
  */
 function deriveSubmetricKey(label: string): string {
@@ -143,7 +143,7 @@ function validateApiKey(request: NextRequest): {
   // Check if API key is configured
   if (!apiKey) {
     console.error(
-      "[SECURITY] METRICS_API_KEY environment variable not set. Ingestion endpoint is disabled."
+      "[SECURITY] METRICS_API_KEY environment variable not set. Ingestion endpoint is disabled.",
     );
     return { valid: false, error: "Service temporarily unavailable" };
   }
@@ -151,7 +151,7 @@ function validateApiKey(request: NextRequest): {
   // Validate API key strength (minimum 32 characters)
   if (apiKey.length < 32) {
     console.error(
-      "[SECURITY] METRICS_API_KEY is too weak (< 32 characters). Please use a stronger key."
+      "[SECURITY] METRICS_API_KEY is too weak (< 32 characters). Please use a stronger key.",
     );
     return { valid: false, error: "Service configuration error" };
   }
@@ -163,7 +163,7 @@ function validateApiKey(request: NextRequest): {
         request.headers.get("x-forwarded-for") ||
         request.headers.get("x-real-ip") ||
         "unknown IP"
-      }`
+      }`,
     );
     return { valid: false, error: "Invalid authorization header" };
   }
@@ -177,7 +177,7 @@ function validateApiKey(request: NextRequest): {
         request.headers.get("x-forwarded-for") ||
         request.headers.get("x-real-ip") ||
         "unknown IP"
-      }`
+      }`,
     );
     return { valid: false, error: "Invalid API key" };
   }
@@ -193,7 +193,7 @@ function validateApiKey(request: NextRequest): {
       request.headers.get("x-forwarded-for") ||
       request.headers.get("x-real-ip") ||
       "unknown IP"
-    }`
+    }`,
   );
   return { valid: false, error: "Invalid API key" };
 }
@@ -210,11 +210,11 @@ export async function POST(request: NextRequest) {
     const authResult = validateApiKey(request);
     if (!authResult.valid) {
       console.warn(
-        `[SECURITY] Unauthorized ingest attempt from ${clientIp}: ${authResult.error}`
+        `[SECURITY] Unauthorized ingest attempt from ${clientIp}: ${authResult.error}`,
       );
       return NextResponse.json(
         { error: authResult.error || "Unauthorized" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json(
         { error: "Invalid request - 'metrics' array is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
       if (!workspace) {
         return NextResponse.json(
           { error: `Workspace with id '${workspaceId}' not found` },
-          { status: 404 }
+          { status: 404 },
         );
       }
     }
@@ -269,7 +269,7 @@ export async function POST(request: NextRequest) {
       if (!body.slide_title) {
         return NextResponse.json(
           { error: "Either 'slide_id' or 'slide_title' is required" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -293,14 +293,14 @@ export async function POST(request: NextRequest) {
       if (!slide) {
         return NextResponse.json(
           { error: `Slide with id '${slideId}' not found` },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
       if (slide.workspaceId !== workspaceId) {
         return NextResponse.json(
           { error: "Slide does not belong to the specified workspace" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -428,7 +428,7 @@ export async function POST(request: NextRequest) {
       `[AUDIT] Successfully ingested metrics from ${clientIp}: ` +
         `workspace=${workspaceId}, slide=${slideId}, ` +
         `metrics=${insertedMetrics.length}, submetrics=${totalSubmetrics}, ` +
-        `datapoints=${totalDataPoints}, duration=${duration}ms`
+        `datapoints=${totalDataPoints}, duration=${duration}ms`,
     );
 
     return NextResponse.json(
@@ -444,13 +444,13 @@ export async function POST(request: NextRequest) {
           metric_ids: insertedMetrics,
         },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     const duration = Date.now() - startTime;
     console.error(
       `[ERROR] Failed to ingest metrics from ${clientIp} after ${duration}ms:`,
-      error
+      error,
     );
 
     // Don't leak internal error details to the client
@@ -469,7 +469,7 @@ export async function POST(request: NextRequest) {
           debug: error instanceof Error ? error.message : "Unknown error",
         }),
       },
-      { status: isValidationError ? 400 : 500 }
+      { status: isValidationError ? 400 : 500 },
     );
   }
 }
@@ -484,11 +484,11 @@ export async function GET(request: NextRequest) {
   const authResult = validateApiKey(request);
   if (!authResult.valid) {
     console.warn(
-      `[SECURITY] Unauthorized GET attempt to ingest endpoint from ${clientIp}`
+      `[SECURITY] Unauthorized GET attempt to ingest endpoint from ${clientIp}`,
     );
     return NextResponse.json(
       { error: "Unauthorized - API documentation requires authentication" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
@@ -511,14 +511,14 @@ export async function GET(request: NextRequest) {
       slide_description: "Optional description",
       metrics: [
         {
-          metric_name: "% of Verified Count to Total Transactions",
+          metric_name: "% of MCB Count to Total Transactions",
           description: "Optional description",
           ranking: 1,
           chart_type: "line",
           submetrics: [
             {
-              label: "[Region A] - % of Verified Count",
-              category: "Region A",
+              label: "[Adidas] - % of MCB Count",
+              category: "Adidas",
               timezone: "ltz",
               xaxis: "period",
               yaxis: "value",

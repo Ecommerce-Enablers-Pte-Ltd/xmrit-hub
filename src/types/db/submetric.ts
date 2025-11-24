@@ -22,7 +22,7 @@ export interface SubmetricDefinition {
   updatedAt: Date;
 }
 
-export type TrafficLightColor = "green" | "yellow" | "red" | "none";
+export type TrafficLightColor = "green" | "yellow" | "red";
 
 export interface Submetric {
   id: string;

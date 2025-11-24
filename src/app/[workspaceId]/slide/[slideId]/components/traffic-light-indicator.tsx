@@ -72,13 +72,11 @@ export const TrafficLightIndicator = memo(
     }, [queryClient, slideId, getTrafficLightColor]);
 
     const handleTrafficLightClick = useCallback(() => {
-      const colorCycle: Record<TrafficLightColor | "green", TrafficLightColor> =
-        {
-          green: "yellow",
-          yellow: "red",
-          red: "none",
-          none: "green",
-        };
+      const colorCycle: Record<TrafficLightColor, TrafficLightColor> = {
+        green: "yellow",
+        yellow: "red",
+        red: "green",
+      };
 
       const nextColor = colorCycle[controlIndicatorColor];
 
@@ -110,20 +108,16 @@ export const TrafficLightIndicator = memo(
             ? "bg-red-500 ring-red-200 dark:ring-red-900"
             : controlIndicatorColor === "yellow"
               ? "bg-yellow-500 ring-yellow-200 dark:ring-yellow-900"
-              : controlIndicatorColor === "none"
-                ? "bg-gray-400 ring-gray-200 dark:ring-gray-700"
-                : "bg-green-500 ring-green-200 dark:ring-green-900"
+              : "bg-green-500 ring-green-200 dark:ring-green-900"
         }`}
         title={
           updateTrafficLightMutation.isPending
             ? "Updating..."
             : controlIndicatorColor === "red"
-              ? "Red - Click to cycle to None"
+              ? "Red - Click to cycle to Green"
               : controlIndicatorColor === "yellow"
                 ? "Yellow - Click to cycle to Red"
-                : controlIndicatorColor === "none"
-                  ? "None - Click to cycle to Green"
-                  : "Green - Click to cycle to Yellow"
+                : "Green - Click to cycle to Yellow"
         }
       />
     );
