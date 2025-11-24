@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useMemo, useEffect, memo, useCallback } from "react";
+import { Trash2, Undo2 } from "lucide-react";
+import { memo, useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -17,14 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trash2, Undo2 } from "lucide-react";
 import {
-  type XMRLimits,
   type DataPoint,
   generateXMRData,
-  detectViolations,
-  calculateXMRLimits,
+  type XMRLimits,
 } from "@/lib/xmr-calculations";
 
 interface SubmetricLockLimitsDialogProps {
@@ -35,7 +34,7 @@ interface SubmetricLockLimitsDialogProps {
   onLockLimits: (
     limits: XMRLimits,
     isManuallyModified: boolean,
-    excludedIndices: number[]
+    excludedIndices: number[],
   ) => void;
   submetricName: string;
   outlierIndices?: number[];
@@ -95,8 +94,8 @@ const DataPointRow = memo(
               !canExclude
                 ? "Cannot exclude - minimum 3 data points required"
                 : isExcluded
-                ? "Include row back"
-                : "Exclude row"
+                  ? "Include row back"
+                  : "Exclude row"
             }
           >
             {isExcluded ? (
@@ -108,7 +107,7 @@ const DataPointRow = memo(
         </TableCell>
       </TableRow>
     );
-  }
+  },
 );
 
 DataPointRow.displayName = "DataPointRow";
@@ -156,7 +155,7 @@ export function SubmetricLockLimitsDialog({
     }
     // Filter out excluded indices for limit calculation
     const filteredDataPoints = editedDataPoints.filter(
-      (_, index) => !excludedIndices.includes(index)
+      (_, index) => !excludedIndices.includes(index),
     );
 
     // Use filtered data points if we have enough, otherwise use all
@@ -175,7 +174,7 @@ export function SubmetricLockLimitsDialog({
   const [unpl, setUnpl] = useState<string>(() => currentLimits.UNPL.toString());
   const [lnpl, setLnpl] = useState<string>(() => currentLimits.LNPL.toString());
   const [avgMovement, setAvgMovement] = useState<string>(() =>
-    currentLimits.avgMovement.toString()
+    currentLimits.avgMovement.toString(),
   );
   const [url, setUrl] = useState<string>(() => currentLimits.URL.toString());
 
@@ -237,14 +236,7 @@ export function SubmetricLockLimitsDialog({
       setAvgMovement(recalculated.limits.avgMovement.toFixed(2));
       setUrl(recalculated.limits.URL.toFixed(2));
     }
-  }, [
-    editedDataPoints,
-    excludedIndices,
-    useMedian,
-    open,
-    calculateXMRFromCurrentState,
-    isModified,
-  ]);
+  }, [open, calculateXMRFromCurrentState, isModified]);
 
   // Reset data points to original (clears all exclusions)
   const handleResetToOriginal = useCallback(() => {
@@ -266,7 +258,7 @@ export function SubmetricLockLimitsDialog({
   // Handle data point value edit
   const handleEditValue = useCallback((index: number, newValue: string) => {
     const parsed = parseFloat(newValue);
-    if (!isNaN(parsed)) {
+    if (!Number.isNaN(parsed)) {
       setEditedDataPoints((prevPoints) => {
         const newDataPoints = [...prevPoints];
         newDataPoints[index] = { ...newDataPoints[index], value: parsed };
@@ -275,7 +267,7 @@ export function SubmetricLockLimitsDialog({
 
       // Remove from excluded indices if user edits an excluded value
       setExcludedIndices((prevIndices) =>
-        prevIndices.filter((i) => i !== index)
+        prevIndices.filter((i) => i !== index),
       );
 
       // Mark that user has made changes
@@ -322,7 +314,7 @@ export function SubmetricLockLimitsDialog({
           "Average X must be between LNPL and UNPL.\n" +
           `Current: Avg X = ${parsedAvgX.toFixed(2)}, ` +
           `LNPL = ${parsedLnpl.toFixed(2)}, ` +
-          `UNPL = ${parsedUnpl.toFixed(2)}`
+          `UNPL = ${parsedUnpl.toFixed(2)}`,
       );
       return;
     }
@@ -333,7 +325,7 @@ export function SubmetricLockLimitsDialog({
         "Validation Error:\n\n" +
           "Average Movement must be ≤ URL.\n" +
           `Current: Avg Movement = ${parsedAvgMovement.toFixed(2)}, ` +
-          `URL = ${parsedUrl.toFixed(2)}`
+          `URL = ${parsedUrl.toFixed(2)}`,
       );
       return;
     }
@@ -344,7 +336,7 @@ export function SubmetricLockLimitsDialog({
         "Validation Error:\n\n" +
           "UNPL must be greater than LNPL.\n" +
           `Current: UNPL = ${parsedUnpl.toFixed(2)}, ` +
-          `LNPL = ${parsedLnpl.toFixed(2)}`
+          `LNPL = ${parsedLnpl.toFixed(2)}`,
       );
       return;
     }
@@ -355,7 +347,7 @@ export function SubmetricLockLimitsDialog({
 
     // Determine lock type: manual (user made changes) vs auto (accepted auto-detected limits)
     const hasManualLimitModifications = Object.values(isModified).some(
-      (v) => v
+      (v) => v,
     );
     const isManuallyModified =
       hasUserMadeChanges || hasManualLimitModifications;
@@ -371,7 +363,7 @@ export function SubmetricLockLimitsDialog({
         upperQuartile: Math.round(upperQuartile * 100) / 100,
       },
       isManuallyModified,
-      excludedIndices // Pass the current excluded indices
+      excludedIndices, // Pass the current excluded indices
     );
 
     onOpenChange(false);
@@ -402,7 +394,7 @@ export function SubmetricLockLimitsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="!max-w-[50vw] max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-[50vw]! max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <div className="flex items-center justify-between pr-8">
             <DialogTitle className="text-2xl font-bold">
@@ -445,8 +437,11 @@ export function SubmetricLockLimitsDialog({
           {/* Limit Inputs */}
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Avg X</label>
+              <Label htmlFor="avgX" className="text-sm font-medium">
+                Avg X
+              </Label>
               <Input
+                id="avgX"
                 type="number"
                 step="0.01"
                 value={avgX}
@@ -460,10 +455,11 @@ export function SubmetricLockLimitsDialog({
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">
+              <Label htmlFor="unpl" className="text-sm font-medium">
                 Upper X Limit (UNPL)
-              </label>
+              </Label>
               <Input
+                id="unpl"
                 type="number"
                 step="0.01"
                 value={unpl}
@@ -477,10 +473,11 @@ export function SubmetricLockLimitsDialog({
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">
+              <Label htmlFor="lnpl" className="text-sm font-medium">
                 Lower X Limit (LNPL)
-              </label>
+              </Label>
               <Input
+                id="lnpl"
                 type="number"
                 step="0.01"
                 value={lnpl}
@@ -497,8 +494,11 @@ export function SubmetricLockLimitsDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Avg Movement</label>
+              <Label htmlFor="avgMovement" className="text-sm font-medium">
+                Avg Movement
+              </Label>
               <Input
+                id="avgMovement"
                 type="number"
                 step="0.01"
                 value={avgMovement}
@@ -512,10 +512,11 @@ export function SubmetricLockLimitsDialog({
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">
+              <Label htmlFor="url" className="text-sm font-medium">
                 Upper Movement Limit (URL)
-              </label>
+              </Label>
               <Input
+                id="url"
                 type="number"
                 step="0.01"
                 value={url}

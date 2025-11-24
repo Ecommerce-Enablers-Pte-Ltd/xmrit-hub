@@ -1,26 +1,26 @@
 "use client";
 
-import { createContext, useContext, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createContext, useCallback, useContext, useMemo } from "react";
 import type { TimeBucket } from "@/lib/time-buckets";
 
 interface CommentCountsContextValue {
   getCounts: (
     definitionId: string,
-    bucketType: TimeBucket
+    bucketType: TimeBucket,
   ) => Record<string, number>;
   isLoading: boolean;
 }
 
 const CommentCountsContext = createContext<CommentCountsContextValue | null>(
-  null
+  null,
 );
 
 export function useCommentCounts() {
   const context = useContext(CommentCountsContext);
   if (!context) {
     throw new Error(
-      "useCommentCounts must be used within CommentCountsProvider"
+      "useCommentCounts must be used within CommentCountsProvider",
     );
   }
   return context;
@@ -64,7 +64,7 @@ export function CommentCountsProvider({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ definitionIds }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -87,7 +87,7 @@ export function CommentCountsProvider({
       const key = `${definitionId}:${bucketType}`;
       return countsData?.counts?.[key] || {};
     },
-    [countsData]
+    [countsData],
   );
 
   const value = useMemo(
@@ -95,7 +95,7 @@ export function CommentCountsProvider({
       getCounts,
       isLoading,
     }),
-    [getCounts, isLoading]
+    [getCounts, isLoading],
   );
 
   return (
@@ -116,7 +116,7 @@ export function useInvalidateCommentCounts() {
         queryKey: commentCountsKeys.slide(slideId),
       });
     },
-    [queryClient]
+    [queryClient],
   );
 
   return { invalidateCounts };

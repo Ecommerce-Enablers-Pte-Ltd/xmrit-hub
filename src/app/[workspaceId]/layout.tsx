@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
-import { use } from "react";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useWorkspaces, useWorkspace } from "@/lib/api";
-import { DashboardLayout } from "./components/dashboard-layout";
 import { LoaderCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { use, useEffect, useMemo } from "react";
+import { useWorkspaceSlidesList, useWorkspaces } from "@/lib/api";
+import { DashboardLayout } from "./components/dashboard-layout";
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
@@ -22,19 +21,29 @@ export default function WorkspaceLayout({
   const { workspaceId } = use(params);
   const { data: session, status } = useSession();
   const router = useRouter();
+
+  // Fetch lightweight data for layout
   const {
     workspaces,
     loading: workspacesLoading,
     error: workspacesError,
   } = useWorkspaces();
-  const {
-    workspace,
-    loading: workspaceLoading,
-    error: workspaceError,
-  } = useWorkspace(workspaceId);
 
-  const loading = workspacesLoading || workspaceLoading;
-  const error = workspacesError || workspaceError;
+  // Use lightweight endpoint that only loads slide metadata (no metrics/submetrics)
+  const {
+    slides,
+    loading: slidesLoading,
+    error: slidesError,
+  } = useWorkspaceSlidesList(workspaceId);
+
+  // Find current workspace from the workspaces list
+  const workspace = useMemo(
+    () => workspaces.find((w) => w.id === workspaceId),
+    [workspaces, workspaceId],
+  );
+
+  const loading = workspacesLoading || slidesLoading;
+  const error = workspacesError || slidesError;
 
   useEffect(() => {
     // If not authenticated, redirect to sign-in
@@ -45,11 +54,11 @@ export default function WorkspaceLayout({
   }, [status, router]);
 
   useEffect(() => {
-    if (!loading && workspaceError) {
-      // Workspace not found, redirect to 404
+    if (!loading && !workspace && workspaces.length > 0) {
+      // Workspace not found in the list, redirect to 404
       router.push("/404");
     }
-  }, [loading, workspaceError, router]);
+  }, [loading, workspace, workspaces, router]);
 
   if (status === "loading") {
     return (
@@ -106,7 +115,7 @@ export default function WorkspaceLayout({
       session={session}
       workspaces={workspaces}
       currentWorkspace={workspace}
-      slides={workspace.slides}
+      slides={slides}
     >
       {children}
     </DashboardLayout>

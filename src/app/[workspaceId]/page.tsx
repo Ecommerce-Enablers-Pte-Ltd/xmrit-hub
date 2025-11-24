@@ -1,11 +1,11 @@
-import { Metadata } from "next";
+import { desc, eq } from "drizzle-orm";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getAuthSession } from "@/lib/auth";
-import { eq, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { workspaces, slides } from "@/lib/db/schema";
-import { WorkspaceClient } from "./components/workspace-client";
+import { slides, workspaces } from "@/lib/db/schema";
 import type { WorkspaceWithSlides } from "@/types/db/workspace";
+import { WorkspaceClient } from "./components/workspace-client";
 
 interface WorkspacePageProps {
   params: Promise<{
@@ -13,10 +13,14 @@ interface WorkspacePageProps {
   }>;
 }
 
-// Server-side data fetching - simple fetch, no caching
-// React Query handles all caching on the client side
+// Enable ISR caching for workspace pages
+// This significantly reduces latency on subsequent visits
+export const revalidate = 60; // Revalidate every 60 seconds
+
+// Optimized workspace data fetch with reduced nesting
+// Only loads what's needed for the workspace overview page
 async function getWorkspaceData(
-  workspaceId: string
+  workspaceId: string,
 ): Promise<WorkspaceWithSlides | null> {
   const session = await getAuthSession();
   if (!session) return null;
@@ -26,19 +30,32 @@ async function getWorkspaceData(
     with: {
       slides: {
         orderBy: [desc(slides.createdAt)],
-        limit: 100, // Limit to most recent 100 slides
+        limit: 50, // Reduced from 100 to 50 for faster initial load
         with: {
           metrics: {
             orderBy: (metrics, { asc }) => [
               asc(metrics.sortOrder),
               asc(metrics.ranking),
             ],
+            // Only load metrics count, not full metric data
+            columns: {
+              id: true,
+              slideId: true,
+              sortOrder: true,
+              ranking: true,
+            },
             with: {
+              // Load minimal definition data
+              definition: {
+                columns: {
+                  id: true,
+                  definition: true,
+                },
+              },
+              // Load minimal submetrics data (no dataPoints)
               submetrics: {
                 orderBy: (submetrics, { asc }) => [asc(submetrics.createdAt)],
                 columns: {
-                  // Exclude heavy dataPoints column on the workspace overview
-                  // Individual slide pages will load full data
                   id: true,
                   label: true,
                   category: true,
@@ -53,7 +70,7 @@ async function getWorkspaceData(
                   metadata: true,
                   createdAt: true,
                   updatedAt: true,
-                  // dataPoints: false - exclude the large JSON array
+                  // Explicitly exclude heavy dataPoints column
                 },
               },
             },

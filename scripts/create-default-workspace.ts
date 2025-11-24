@@ -1,14 +1,14 @@
-import { config } from "dotenv";
-import { neon } from "@neondatabase/serverless";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { neon } from "@neondatabase/serverless";
+import { config } from "dotenv";
 
 // Load environment variables
 config();
 
 /**
  * Normalize a string to a stable key format
- * Example: "% of MCB Count" -> "of-mcb-count"
+ * Example: "% of Total Count" -> "of-total-count"
  */
 function normalizeKey(str: string): string {
   return str
@@ -21,8 +21,8 @@ function normalizeKey(str: string): string {
 /**
  * Derive submetric key from label
  * Extracts both category prefix and metric name to create a unique key
- * Example: "[Adidas] - % of MCB Count" -> "adidas-of-mcb-count"
- * Example: "[Nike] - % of MCB Count" -> "nike-of-mcb-count"
+ * Example: "[Region A] - % of Total Count" -> "region-a-of-total-count"
+ * Example: "[Region B] - % of Total Count" -> "region-b-of-total-count"
  * Example: "Transaction Count" -> "transaction-count"
  */
 function deriveSubmetricKey(label: string): string {
@@ -57,7 +57,7 @@ function generateSampleDataPoints(
   count: number,
   baseValue: number,
   variance: number,
-  source: string = "sample_data"
+  source: string = "sample_data",
 ): Array<{
   timestamp: string;
   value: number;
@@ -175,13 +175,33 @@ async function createDefaultWorkspace() {
       console.log("  ✅ Created slide: Sales Performance Dashboard");
 
       // Create Metric 1: Revenue
+      const revenueMetricKey = normalizeKey("Revenue");
+
+      // Create metric definition (workspace-level)
+      const revenueDef = await sql`
+        INSERT INTO "metric_definition" (id, "workspaceId", "metricKey", definition, "createdAt", "updatedAt")
+        VALUES (
+          gen_random_uuid()::text,
+          ${workspaceId},
+          ${revenueMetricKey},
+          'Total revenue over time across all channels and regions',
+          NOW(),
+          NOW()
+        )
+        ON CONFLICT ("workspaceId", "metricKey") DO UPDATE
+        SET "updatedAt" = NOW()
+        RETURNING id
+      `;
+
+      // Create metric instance (slide-specific)
       const metric1 = await sql`
-        INSERT INTO "metric" (id, name, description, "slideId", "sortOrder", "chartType", "createdAt", "updatedAt")
+        INSERT INTO "metric" (id, name, "slideId", "definitionId", "sortOrder", ranking, "chartType", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           'Revenue',
-          'Total revenue over time',
           ${slide1Id},
+          ${revenueDef[0].id},
+          1,
           1,
           'line',
           NOW(),
@@ -196,17 +216,16 @@ async function createDefaultWorkspace() {
         30,
         50000,
         10000,
-        "sales_database"
+        "sales_database",
       );
       const revenueLabel = "All Regions - Total Revenue";
       const revenueCategory = "sales";
-      const revenueMetricKey = normalizeKey("Revenue");
       const revenueSubmetricKey = buildSubmetricKey(
         revenueCategory,
-        revenueLabel
+        revenueLabel,
       );
 
-      const revenueDef = await sql`
+      const revenueSubmetricDef = await sql`
         INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", label, unit, "preferredTrend", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
@@ -229,7 +248,7 @@ async function createDefaultWorkspace() {
           ${revenueLabel},
           'sales',
           ${metric1Id},
-          ${revenueDef[0].id},
+          ${revenueSubmetricDef[0].id},
           'date',
           'UTC',
           'uptrend',
@@ -247,13 +266,13 @@ async function createDefaultWorkspace() {
         30,
         30000,
         6000,
-        "ecommerce_platform"
+        "ecommerce_platform",
       );
       const onlineRevenueLabel = "Online - Revenue";
       const onlineRevenueCategory = "sales";
       const onlineRevenueSubmetricKey = buildSubmetricKey(
         onlineRevenueCategory,
-        onlineRevenueLabel
+        onlineRevenueLabel,
       );
 
       const onlineRevenueDef = await sql`
@@ -295,13 +314,33 @@ async function createDefaultWorkspace() {
       console.log("    ✓ Added metric: Revenue (with 2 submetrics)");
 
       // Create Metric 2: Customer Acquisition
+      const customerMetricKey = normalizeKey("Customer Acquisition");
+
+      // Create metric definition (workspace-level)
+      const customerDef = await sql`
+        INSERT INTO "metric_definition" (id, "workspaceId", "metricKey", definition, "createdAt", "updatedAt")
+        VALUES (
+          gen_random_uuid()::text,
+          ${workspaceId},
+          ${customerMetricKey},
+          'New customers acquired through various channels including paid and organic sources',
+          NOW(),
+          NOW()
+        )
+        ON CONFLICT ("workspaceId", "metricKey") DO UPDATE
+        SET "updatedAt" = NOW()
+        RETURNING id
+      `;
+
+      // Create metric instance (slide-specific)
       const metric2 = await sql`
-        INSERT INTO "metric" (id, name, description, "slideId", "sortOrder", "chartType", "createdAt", "updatedAt")
+        INSERT INTO "metric" (id, name, "slideId", "definitionId", "sortOrder", ranking, "chartType", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           'Customer Acquisition',
-          'New customers acquired over time',
           ${slide1Id},
+          ${customerDef[0].id},
+          2,
           2,
           'line',
           NOW(),
@@ -318,7 +357,7 @@ async function createDefaultWorkspace() {
       const customersMetricKey = normalizeKey("Customer Acquisition");
       const customersSubmetricKey = buildSubmetricKey(
         customersCategory,
-        customersLabel
+        customersLabel,
       );
 
       const customersDef = await sql`
@@ -362,7 +401,7 @@ async function createDefaultWorkspace() {
         30,
         200,
         40,
-        "marketing_automation"
+        "marketing_automation",
       );
       const trialsLabel = "Free Trial - Sign-ups";
       const trialsCategory = "acquisition";
@@ -405,7 +444,7 @@ async function createDefaultWorkspace() {
       `;
 
       console.log(
-        "    ✓ Added metric: Customer Acquisition (with 2 submetrics)"
+        "    ✓ Added metric: Customer Acquisition (with 2 submetrics)",
       );
 
       // Create Sample Slide 2: Product Metrics
@@ -428,13 +467,33 @@ async function createDefaultWorkspace() {
       console.log("  ✅ Created slide: Product Engagement Metrics");
 
       // Create Metric 3: Active Users
+      const activeUsersMetricKey = normalizeKey("Active Users");
+
+      // Create metric definition (workspace-level)
+      const activeUsersDef = await sql`
+        INSERT INTO "metric_definition" (id, "workspaceId", "metricKey", definition, "createdAt", "updatedAt")
+        VALUES (
+          gen_random_uuid()::text,
+          ${workspaceId},
+          ${activeUsersMetricKey},
+          'Daily and monthly active users across mobile and web platforms',
+          NOW(),
+          NOW()
+        )
+        ON CONFLICT ("workspaceId", "metricKey") DO UPDATE
+        SET "updatedAt" = NOW()
+        RETURNING id
+      `;
+
+      // Create metric instance (slide-specific)
       const metric3 = await sql`
-        INSERT INTO "metric" (id, name, description, "slideId", "sortOrder", "chartType", "createdAt", "updatedAt")
+        INSERT INTO "metric" (id, name, "slideId", "definitionId", "sortOrder", ranking, "chartType", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           'Active Users',
-          'Daily and monthly active users',
           ${slide2Id},
+          ${activeUsersDef[0].id},
+          1,
           1,
           'line',
           NOW(),
@@ -449,7 +508,7 @@ async function createDefaultWorkspace() {
         30,
         5000,
         500,
-        "analytics_platform"
+        "analytics_platform",
       );
       const dauLabel = "Mobile + Web - Daily Active Users";
       const dauCategory = "engagement";
@@ -497,13 +556,13 @@ async function createDefaultWorkspace() {
         30,
         12,
         2,
-        "analytics_platform"
+        "analytics_platform",
       );
       const sessionLabel = "Average - Session Duration";
       const sessionCategory = "engagement";
       const sessionSubmetricKey = buildSubmetricKey(
         sessionCategory,
-        sessionLabel
+        sessionLabel,
       );
 
       const sessionDef = await sql`
@@ -544,11 +603,180 @@ async function createDefaultWorkspace() {
 
       console.log("    ✓ Added metric: Active Users (with 2 submetrics)\n");
 
+      // ==========================================
+      // 4. CREATE SAMPLE FOLLOW-UPS
+      // ==========================================
+      console.log("📋 Creating sample follow-ups...\n");
+
+      // Get the first authenticated user (if any exists) for follow-up creation
+      const existingUsers = await sql`
+        SELECT id, name, email FROM "user"
+        LIMIT 3
+      `;
+
+      if (existingUsers.length > 0) {
+        console.log(
+          `  Found ${existingUsers.length} existing user(s) for follow-up assignments`,
+        );
+
+        // Create Follow-up 1: Linked to Revenue submetric definition
+        const followUp1 = await sql`
+          INSERT INTO "follow_up" (
+            id, identifier, title, description, "workspaceId", "slideId",
+            "submetricDefinitionId", status, priority, "createdBy", "dueDate",
+            "createdAt", "updatedAt"
+          )
+          VALUES (
+            gen_random_uuid()::text,
+            'FU-1',
+            'Investigate revenue spike in Q4',
+            'Revenue increased by 25% in the last week. Investigate if this is due to seasonal factors or a specific campaign.',
+            ${workspaceId},
+            ${slide1Id},
+            ${revenueSubmetricDef[0].id},
+            'in_progress',
+            'high',
+            ${existingUsers[0].id},
+            (CURRENT_DATE + INTERVAL '7 days')::date,
+            NOW(),
+            NOW()
+          )
+          RETURNING id
+        `;
+
+        // Assign multiple users to Follow-up 1
+        if (existingUsers.length >= 2) {
+          await sql`
+            INSERT INTO "follow_up_assignee" (id, "followUpId", "userId", "createdAt")
+            VALUES
+              (gen_random_uuid()::text, ${followUp1[0].id}, ${existingUsers[0].id}, NOW()),
+              (gen_random_uuid()::text, ${followUp1[0].id}, ${existingUsers[1].id}, NOW())
+          `;
+          console.log(
+            "  ✅ Created follow-up: Investigate revenue spike (2 assignees)",
+          );
+        } else {
+          await sql`
+            INSERT INTO "follow_up_assignee" (id, "followUpId", "userId", "createdAt")
+            VALUES (gen_random_uuid()::text, ${followUp1[0].id}, ${existingUsers[0].id}, NOW())
+          `;
+          console.log(
+            "  ✅ Created follow-up: Investigate revenue spike (1 assignee)",
+          );
+        }
+
+        // Create Follow-up 2: Linked to Customer Acquisition
+        const followUp2 = await sql`
+          INSERT INTO "follow_up" (
+            id, identifier, title, description, "workspaceId", "slideId",
+            "submetricDefinitionId", status, priority, "createdBy", "dueDate",
+            "createdAt", "updatedAt"
+          )
+          VALUES (
+            gen_random_uuid()::text,
+            'FU-2',
+            'Optimize trial-to-paid conversion funnel',
+            'Trial sign-ups are increasing but conversion rate is declining. Need to analyze friction points in the onboarding flow.',
+            ${workspaceId},
+            ${slide1Id},
+            ${trialsDef[0].id},
+            'todo',
+            'medium',
+            ${existingUsers[0].id},
+            (CURRENT_DATE + INTERVAL '14 days')::date,
+            NOW(),
+            NOW()
+          )
+          RETURNING id
+        `;
+
+        await sql`
+          INSERT INTO "follow_up_assignee" (id, "followUpId", "userId", "createdAt")
+          VALUES (gen_random_uuid()::text, ${followUp2[0].id}, ${existingUsers[0].id}, NOW())
+        `;
+        console.log(
+          "  ✅ Created follow-up: Optimize trial conversion (1 assignee)",
+        );
+
+        // Create Follow-up 3: General slide-level task (no submetric definition)
+        const followUp3 = await sql`
+          INSERT INTO "follow_up" (
+            id, identifier, title, description, "workspaceId", "slideId",
+            status, priority, "createdBy", "dueDate",
+            "createdAt", "updatedAt"
+          )
+          VALUES (
+            gen_random_uuid()::text,
+            'FU-3',
+            'Review and update dashboard metrics',
+            'Quarterly review of dashboard metrics and KPIs. Remove outdated metrics and add new strategic indicators.',
+            ${workspaceId},
+            ${slide2Id},
+            'backlog',
+            'low',
+            ${existingUsers[0].id},
+            (CURRENT_DATE + INTERVAL '30 days')::date,
+            NOW(),
+            NOW()
+          )
+          RETURNING id
+        `;
+
+        // Assign all available users to Follow-up 3 (team task)
+        if (existingUsers.length >= 3) {
+          await sql`
+            INSERT INTO "follow_up_assignee" (id, "followUpId", "userId", "createdAt")
+            VALUES
+              (gen_random_uuid()::text, ${followUp3[0].id}, ${existingUsers[0].id}, NOW()),
+              (gen_random_uuid()::text, ${followUp3[0].id}, ${existingUsers[1].id}, NOW()),
+              (gen_random_uuid()::text, ${followUp3[0].id}, ${existingUsers[2].id}, NOW())
+          `;
+          console.log("  ✅ Created follow-up: Review dashboard (3 assignees)");
+        } else {
+          await sql`
+            INSERT INTO "follow_up_assignee" (id, "followUpId", "userId", "createdAt")
+            VALUES (gen_random_uuid()::text, ${followUp3[0].id}, ${existingUsers[0].id}, NOW())
+          `;
+          console.log("  ✅ Created follow-up: Review dashboard (1 assignee)");
+        }
+
+        // Create Follow-up 4: Unassigned task
+        await sql`
+          INSERT INTO "follow_up" (
+            id, identifier, title, description, "workspaceId",
+            status, priority, "createdBy",
+            "createdAt", "updatedAt"
+          )
+          VALUES (
+            gen_random_uuid()::text,
+            'FU-4',
+            'Document XMR analysis methodology',
+            'Create documentation explaining how we calculate control limits and interpret XMR charts for the team.',
+            ${workspaceId},
+            'backlog',
+            'low',
+            ${existingUsers[0].id},
+            NOW(),
+            NOW()
+          )
+        `;
+        console.log(
+          "  ✅ Created follow-up: Document methodology (unassigned)",
+        );
+
+        console.log("\n✅ Sample follow-ups created successfully!\n");
+      } else {
+        console.log("  ⚠️  No users found - skipping follow-up creation");
+        console.log(
+          "     Sign in to the app first, then re-run this script to create sample follow-ups\n",
+        );
+      }
+
       console.log("✅ Sample data created successfully!\n");
     }
 
     // ==========================================
-    // 3. UPDATE N8N.JSON
+    // 5. UPDATE N8N.JSON
     // ==========================================
     const n8nJsonPath = join(process.cwd(), "n8n.json");
 
@@ -562,10 +790,10 @@ async function createDefaultWorkspace() {
           node.type === "n8n-nodes-base.httpRequest"
         ) {
           const bodyParam = node.parameters.body;
-          if (bodyParam && bodyParam.includes("workspace_id")) {
+          if (bodyParam?.includes("workspace_id")) {
             node.parameters.body = bodyParam.replace(
               /workspace_id:\s*"[^"]*"/,
-              `workspace_id: "${workspaceId}"`
+              `workspace_id: "${workspaceId}"`,
             );
             updated = true;
             console.log("✅ Updated n8n.json with workspace ID");
@@ -577,20 +805,29 @@ async function createDefaultWorkspace() {
         writeFileSync(n8nJsonPath, JSON.stringify(n8nConfig, null, 2));
         console.log(`  File: ${n8nJsonPath}\n`);
       }
-    } catch (fileError) {
+    } catch (_fileError) {
       console.log("⚠️  Could not update n8n.json file");
     }
 
     // ==========================================
-    // 4. SUMMARY
+    // 6. SUMMARY
     // ==========================================
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     console.log("🎉 Workspace initialization complete!\n");
-    console.log("📍 Workspace ID: " + workspaceId);
+    console.log(`📍 Workspace ID: ${workspaceId}`);
+    console.log("\n📊 Sample Data Created:");
+    console.log("   • 2 Slides with 3 metrics and 6 submetrics");
+    console.log("   • 3 Metric definitions (workspace-level documentation)");
+    console.log(
+      "   • 6 Submetric definitions (stable identities for comments)",
+    );
+    console.log("   • 180+ data points across all metrics");
+    console.log("   • 4 Follow-up tasks (if users exist)");
     console.log("\n📝 Next steps:");
     console.log("   1. Run 'npm run dev' to start the development server");
-    console.log("   2. View sample slides in the dashboard");
-    console.log("   3. Configure n8n workflow for data ingestion");
+    console.log("   2. Sign in to create your user account");
+    console.log("   3. View sample slides and follow-ups in the dashboard");
+    console.log("   4. Configure n8n workflow for data ingestion");
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
   } catch (error) {
     console.error("\n❌ Failed to initialize workspace:", error);

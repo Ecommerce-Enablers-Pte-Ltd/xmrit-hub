@@ -1,6 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import * as React from "react";
+import { toast } from "sonner";
+import { ZodError } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,8 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateWorkspace } from "@/lib/api";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { createWorkspaceSchema } from "@/lib/validations/workspace";
 
 interface CreateWorkspaceDialogProps {
   open: boolean;
@@ -42,20 +44,18 @@ export function CreateWorkspaceDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim()) {
-      toast.error("Workspace name is required");
-      return;
-    }
-
+    // Validate with Zod before sending to backend
     try {
-      const loadingToast = toast.loading("Creating workspace...");
-
-      const newWorkspace = await createWorkspace.mutateAsync({
+      const validatedData = createWorkspaceSchema.parse({
         name: name.trim(),
         description: description.trim() || null,
         isArchived: false,
         isPublic: true,
       });
+
+      const loadingToast = toast.loading("Creating workspace...");
+
+      const newWorkspace = await createWorkspace.mutateAsync(validatedData);
 
       toast.dismiss(loadingToast);
       toast.success("Workspace created successfully", {
@@ -67,6 +67,15 @@ export function CreateWorkspaceDialog({
       // Navigate to the new workspace
       router.push(`/${newWorkspace.id}`);
     } catch (error) {
+      if (error instanceof ZodError) {
+        // Show validation errors to user
+        const firstError = error.issues[0];
+        toast.error("Validation Error", {
+          description: firstError.message,
+        });
+        return;
+      }
+
       console.error("Error creating workspace:", error);
       toast.error("Failed to create workspace", {
         description:
@@ -132,4 +141,3 @@ export function CreateWorkspaceDialog({
     </Dialog>
   );
 }
-

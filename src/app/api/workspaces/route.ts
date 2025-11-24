@@ -1,8 +1,10 @@
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { ZodError } from "zod";
 import { getAuthSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { workspaces } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { createWorkspaceSchema } from "@/lib/validations/workspace";
 
 export async function GET() {
   try {
@@ -17,7 +19,7 @@ export async function GET() {
       console.error("Session missing user ID:", session);
       return NextResponse.json(
         { error: "Invalid session - user ID missing" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -32,7 +34,7 @@ export async function GET() {
     console.error("Error fetching workspaces:", error);
     return NextResponse.json(
       { error: "Failed to fetch workspaces" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -50,29 +52,45 @@ export async function POST(request: Request) {
       console.error("Session missing user ID:", session);
       return NextResponse.json(
         { error: "Invalid session - user ID missing" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     const body = await request.json();
 
+    // Validate request body with Zod
+    const validatedData = createWorkspaceSchema.parse(body);
+
     const newWorkspace = await db
       .insert(workspaces)
       .values({
-        name: body.name || "Untitled Workspace",
-        description: body.description,
-        settings: body.settings,
-        isArchived: body.isArchived || false,
-        isPublic: body.isPublic ?? true,
+        name: validatedData.name,
+        description: validatedData.description,
+        settings: validatedData.settings,
+        isArchived: validatedData.isArchived,
+        isPublic: validatedData.isPublic,
       })
       .returning();
 
     return NextResponse.json({ workspace: newWorkspace[0] }, { status: 201 });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          details: error.issues.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        },
+        { status: 400 },
+      );
+    }
+
     console.error("Error creating workspace:", error);
     return NextResponse.json(
       { error: "Failed to create workspace" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

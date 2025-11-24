@@ -1,9 +1,9 @@
 "use client";
 
-import { useRouter, useParams } from "next/navigation";
-import { useDeleteSlide, useWorkspace } from "@/lib/api";
-import { SlideTable } from "./slide-table";
-import { EditSlideNameDialog } from "./edit-slide-name-dialog";
+import { Settings } from "lucide-react";
+import { useParams } from "next/navigation";
+import * as React from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,10 +14,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
-import * as React from "react";
-import type { WorkspaceWithSlides } from "@/types/db/workspace";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useDeleteSlide, useWorkspace } from "@/lib/api";
 import type { SlideWithMetrics } from "@/types/db/slide";
+import type { WorkspaceWithSlides } from "@/types/db/workspace";
+import { EditSlideNameDialog } from "./edit-slide-name-dialog";
+import { SlideTable } from "./slide-table";
+import { WorkspaceSettingsDialog } from "./workspace-settings-dialog";
 
 interface WorkspaceClientProps {
   workspace: WorkspaceWithSlides;
@@ -26,15 +30,11 @@ interface WorkspaceClientProps {
 export function WorkspaceClient({
   workspace: initialWorkspace,
 }: WorkspaceClientProps) {
-  const router = useRouter();
   const params = useParams();
   const workspaceId = params.workspaceId as string;
 
   // Hybrid approach: hydrate React Query with server data, then use client cache
-  const { workspace, loading, isFetching } = useWorkspace(
-    workspaceId,
-    initialWorkspace
-  );
+  const { workspace, loading } = useWorkspace(workspaceId, initialWorkspace);
   const deleteSlide = useDeleteSlide();
 
   // Use the live workspace data from React Query (hydrated with SSR data)
@@ -46,17 +46,12 @@ export function WorkspaceClient({
 
   // Edit slide dialog state
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
-  const [slideToEdit, setSlideToEdit] = React.useState<SlideWithMetrics | null>(null);
+  const [slideToEdit, setSlideToEdit] = React.useState<SlideWithMetrics | null>(
+    null,
+  );
 
-  const handleCreateSlide = React.useCallback(() => {
-    // TODO: Implement slide creation
-    console.log("Creating new slide");
-  }, []);
-
-  const handleCreateMetric = React.useCallback((slideId: string) => {
-    // TODO: Implement metric creation
-    console.log("Creating new metric for slide:", slideId);
-  }, []);
+  // Workspace settings dialog state
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   const handleEditSlide = React.useCallback((slide: SlideWithMetrics) => {
     setSlideToEdit(slide);
@@ -101,23 +96,71 @@ export function WorkspaceClient({
     }
   }, [slideToDelete, deleteSlide, currentWorkspace.id]);
 
-  const handleViewSlide = React.useCallback(
-    (slideId: string) => {
-      router.push(`/${currentWorkspace.id}/slide/${slideId}`);
-    },
-    [router, currentWorkspace.id]
-  );
-
   return (
-    <>
-      <SlideTable
-        currentWorkspace={currentWorkspace}
-        slides={currentWorkspace.slides}
-        onCreateSlide={handleCreateSlide}
-        onEditSlide={handleEditSlide}
-        onDeleteSlide={handleDeleteSlide}
-        isLoading={loading}
-      />
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <div className="flex-1 min-w-0">
+              {loading ? (
+                <>
+                  <Skeleton className="h-8 w-64" />
+                  <Skeleton className="h-4 w-96 mt-1" />
+                </>
+              ) : (
+                <>
+                  <h1 className="text-2xl font-semibold tracking-tight">
+                    {currentWorkspace.name}
+                  </h1>
+                  {currentWorkspace.description && (
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {currentWorkspace.description}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSettingsOpen(true)}
+              title="Workspace settings"
+              className="shrink-0"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="flex-1 overflow-auto">
+        <SlideTable
+          currentWorkspace={currentWorkspace}
+          slides={currentWorkspace.slides}
+          onEditSlide={handleEditSlide}
+          onDeleteSlide={handleDeleteSlide}
+          isLoading={loading}
+        />
+      </div>
+
+      {/* Total Count - Below Table (only show if there are slides or loading) */}
+      {(loading || currentWorkspace.slides.length > 0) && (
+        <div className="border-t bg-muted/30 px-6 py-3">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {loading ? (
+              <Skeleton className="h-4 w-32" />
+            ) : (
+              <span>
+                {currentWorkspace.slides.length} total slide
+                {currentWorkspace.slides.length !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {slideToEdit && (
         <EditSlideNameDialog
           open={editDialogOpen}
@@ -131,6 +174,13 @@ export function WorkspaceClient({
           workspaceId={currentWorkspace.id}
         />
       )}
+
+      <WorkspaceSettingsDialog
+        workspace={currentWorkspace}
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+      />
+
       <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -151,6 +201,6 @@ export function WorkspaceClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

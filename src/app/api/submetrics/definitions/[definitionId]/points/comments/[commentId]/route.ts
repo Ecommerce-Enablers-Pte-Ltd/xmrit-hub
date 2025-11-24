@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq, inArray } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { comments } from "@/lib/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
 
 /**
  * PATCH /api/submetrics/definitions/[definitionId]/points/comments/[commentId]
@@ -10,7 +10,7 @@ import { eq, and, inArray } from "drizzle-orm";
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ definitionId: string; commentId: string }> }
+  { params }: { params: Promise<{ definitionId: string; commentId: string }> },
 ) {
   try {
     const session = await auth();
@@ -25,7 +25,7 @@ export async function PATCH(
     if (!commentBody || typeof commentBody !== "string") {
       return NextResponse.json(
         { error: "Comment body is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -37,15 +37,15 @@ export async function PATCH(
         and(
           eq(comments.id, commentId),
           eq(comments.userId, session.user.id),
-          eq(comments.isDeleted, false)
-        )
+          eq(comments.isDeleted, false),
+        ),
       )
       .limit(1);
 
     if (!existingComment) {
       return NextResponse.json(
         { error: "Comment not found or you don't have permission to edit it" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -64,7 +64,7 @@ export async function PATCH(
     console.error("Error updating comment:", error);
     return NextResponse.json(
       { error: "Failed to update comment" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -74,8 +74,8 @@ export async function PATCH(
  * Delete a comment (only by owner) and cascade delete all replies
  */
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ definitionId: string; commentId: string }> }
+  _request: NextRequest,
+  { params }: { params: Promise<{ definitionId: string; commentId: string }> },
 ) {
   try {
     const session = await auth();
@@ -93,15 +93,17 @@ export async function DELETE(
         and(
           eq(comments.id, commentId),
           eq(comments.userId, session.user.id),
-          eq(comments.isDeleted, false)
-        )
+          eq(comments.isDeleted, false),
+        ),
       )
       .limit(1);
 
     if (!existingComment) {
       return NextResponse.json(
-        { error: "Comment not found or you don't have permission to delete it" },
-        { status: 404 }
+        {
+          error: "Comment not found or you don't have permission to delete it",
+        },
+        { status: 404 },
       );
     }
 
@@ -112,17 +114,14 @@ export async function DELETE(
         .select({ id: comments.id })
         .from(comments)
         .where(
-          and(
-            eq(comments.parentId, parentId),
-            eq(comments.isDeleted, false)
-          )
+          and(eq(comments.parentId, parentId), eq(comments.isDeleted, false)),
         );
 
       const childIds = children.map((c) => c.id);
 
       // Recursively get grandchildren
       const grandchildIds = await Promise.all(
-        childIds.map((id) => getAllChildIds(id))
+        childIds.map((id) => getAllChildIds(id)),
       );
 
       return [parentId, ...childIds, ...grandchildIds.flat()];
@@ -138,22 +137,18 @@ export async function DELETE(
         updatedAt: new Date(),
       })
       .where(
-        and(
-          eq(comments.isDeleted, false),
-          inArray(comments.id, idsToDelete)
-        )
+        and(eq(comments.isDeleted, false), inArray(comments.id, idsToDelete)),
       );
 
     return NextResponse.json({
       success: true,
-      deletedIds: idsToDelete
+      deletedIds: idsToDelete,
     });
   } catch (error) {
     console.error("Error deleting comment:", error);
     return NextResponse.json(
       { error: "Failed to delete comment" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

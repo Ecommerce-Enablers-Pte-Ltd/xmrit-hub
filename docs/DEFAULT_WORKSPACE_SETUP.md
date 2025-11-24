@@ -52,6 +52,8 @@ All sample data includes:
 - **Consistent blue color** (#3b82f6) for all line charts
 - **Unit specifications** ($, customers, users, minutes, etc.)
 - **Category labels** with dash separator format (e.g., `All Regions - Total Revenue`, `Paid - New Customers`)
+- **Metric definitions** for workspace-level documentation
+- **Submetric definitions** for stable identities and persistent comments
 
 ## Usage
 
@@ -207,17 +209,34 @@ The script automatically updates `n8n.json` with the workspace ID, making it eas
 
 ## Database Schema
 
-The script creates data following this hierarchy:
+The script creates data following this dual hierarchy:
 
+**Definition Hierarchy (Workspace-Level, Shared):**
+```
+Workspace
+  ├── MetricDefinition(s)
+  │     └── definition: Documentation text
+  └── SubmetricDefinition(s)
+        ├── label: Display label
+        ├── unit: Measurement unit
+        └── preferredTrend: Expected direction
+```
+
+**Instance Hierarchy (Slide-Specific, Temporal):**
 ```
 Workspace
   └── Slide(s)
-        └── Metric(s)
-              └── Submetric(s)
+        └── Metric(s) → links to MetricDefinition
+              └── Submetric(s) → links to SubmetricDefinition
                     └── Data Points (JSON array)
 ```
 
-Each level has timestamps, descriptions, and configuration options for visualization and analysis.
+**Key Points:**
+- **Definitions** are workspace-level and shared across all slides
+- **Instances** are slide-specific with unique data points
+- **Metrics** can have optional rankings (slide-specific priority)
+- **Definitions** enable persistent comments and documentation
+- Each level has timestamps, descriptions, and configuration options for visualization and analysis
 
 ## Troubleshooting
 

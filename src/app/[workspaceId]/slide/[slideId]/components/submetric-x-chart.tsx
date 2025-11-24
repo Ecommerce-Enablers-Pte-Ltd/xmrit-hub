@@ -1,38 +1,38 @@
 "use client";
 
+import { MessageSquare } from "lucide-react";
 import {
+  forwardRef,
   memo,
   useCallback,
-  useMemo,
-  useState,
-  useRef,
   useEffect,
   useImperativeHandle,
-  forwardRef,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 import {
-  LineChart,
+  CartesianGrid,
+  Label,
+  LabelList,
   Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LabelList,
-  ReferenceLine,
-  Label,
 } from "recharts";
-import type { Submetric } from "@/types/db/submetric";
-import type { XMRLimits, TrendLimits } from "@/lib/xmr-calculations";
-import { PointCommentsSheet, type DataPoint } from "./point-comments-sheet";
+import { useChartTheme } from "@/hooks/use-chart-theme";
 import {
   detectBucketType,
   normalizeToBucket,
   type TimeBucket,
 } from "@/lib/time-buckets";
-import { MessageSquare } from "lucide-react";
-import { useChartTheme } from "@/hooks/use-chart-theme";
-import { useCommentCounts } from "./comment-counts-provider";
+import type { TrendLimits, XMRLimits } from "@/lib/xmr-calculations";
+import { useCommentCounts } from "@/providers/comment-counts-provider";
+import type { Submetric } from "@/types/db/submetric";
+import { type DataPoint, SlideSheet } from "./slide-sheet";
 
 // Separate component for dialog management to prevent chart re-renders
 interface DialogManagerProps {
@@ -42,6 +42,7 @@ interface DialogManagerProps {
   bucketType: TimeBucket;
   allDataPoints: DataPoint[];
   slideId: string;
+  workspaceId: string;
   onOpenChange: (open: boolean) => void;
   onCommentAdded: (bucketValue: string) => void;
 }
@@ -54,13 +55,14 @@ const DialogManager = memo(
     bucketType,
     allDataPoints,
     slideId,
+    workspaceId,
     onOpenChange,
     onCommentAdded,
   }: DialogManagerProps) => {
     if (!definitionId || !selectedPoint) return null;
 
     return (
-      <PointCommentsSheet
+      <SlideSheet
         open={isOpen}
         onOpenChange={onOpenChange}
         definitionId={definitionId}
@@ -69,10 +71,11 @@ const DialogManager = memo(
         bucketLabel={selectedPoint.timestamp}
         allDataPoints={allDataPoints}
         slideId={slideId}
+        workspaceId={workspaceId}
         onCommentAdded={onCommentAdded}
       />
     );
-  }
+  },
 );
 
 DialogManager.displayName = "DialogManager";
@@ -86,6 +89,7 @@ interface SubmetricXChartProps {
   trendActive: boolean;
   trendLines: TrendLimits | null;
   slideId: string; // Required for comment count invalidation
+  workspaceId: string; // Required for follow-ups functionality
   onCommentAdded?: (bucketValue: string) => void;
   batchIndex?: number; // Index for batch rendering (0-based)
   batchSize?: number; // Number of charts per batch (default: 10, renders instantly)
@@ -96,86 +100,66 @@ export interface SubmetricXChartHandle {
   invalidateCommentCache: (bucketValue: string) => void;
 }
 
-// Memoized custom label component - now using CSS variables for smooth transitions!
-const CustomLabel = memo(
-  ({
-    x,
-    y,
-    value,
-    payload,
-  }: {
-    x: number;
-    y: number;
-    value: number;
-    payload: any;
-  }) => {
-    const highestPriorityViolation = payload?.highestPriorityViolation;
+// Memoized custom label component
+const CustomLabel = memo((props: any) => {
+  const { x, y, value, index, chartData } = props;
 
-    // Use CSS variables - colors transition smoothly via CSS, no re-render needed!
-    const labelBgColor = "var(--chart-label-bg)";
-    const labelTextColor = "var(--chart-label-text)";
-    const labelBorderColor = "var(--chart-label-border)";
+  // Use the index to look up the data point from chartData
+  const dataPoint = chartData?.[index];
+  const highestPriorityViolation = dataPoint?.highestPriorityViolation;
 
-    // Determine color based on highest priority violation
-    let borderColor = labelBorderColor;
-    let textColor = labelTextColor;
+  // Determine color based on highest priority violation
+  // Default to foreground color if no violation
+  let textColor = "currentColor";
 
-    if (highestPriorityViolation === "rule1") {
-      borderColor = "#ef4444"; // red
-      textColor = "#ef4444";
-    } else if (highestPriorityViolation === "rule4") {
-      borderColor = "#f97316"; // orange
-      textColor = "#f97316";
-    } else if (highestPriorityViolation === "rule3") {
-      borderColor = "#f59e0b"; // amber
-      textColor = "#f59e0b";
-    } else if (highestPriorityViolation === "rule2") {
-      borderColor = "#3b82f6"; // blue
-      textColor = "#3b82f6";
-    } else if (highestPriorityViolation === "rule5") {
-      borderColor = "#10b981"; // green
-      textColor = "#10b981";
-    }
-
-    // Calculate text width (approximate: 11px font, ~6.5px per character)
-    const text = Number(value).toFixed(2);
-    const charWidth = 6.5;
-    const textWidth = text.length * charWidth;
-    const horizontalPadding = 4; // 2px on each side
-    const rectWidth = textWidth + horizontalPadding;
-    const rectHeight = 18;
-
-    return (
-      <g>
-        {/* Background rectangle for better readability */}
-        <rect
-          x={x - rectWidth / 2}
-          y={y - 25}
-          width={rectWidth}
-          height={rectHeight}
-          fill={labelBgColor}
-          stroke={borderColor}
-          strokeWidth={1.5}
-          rx={4}
-          style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.15))" }}
-        />
-        <text
-          x={x}
-          y={y - 16}
-          fill={textColor}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          className="text-xs font-bold"
-          style={{ fontSize: "11px", fontWeight: "bold" }}
-        >
-          {text}
-        </text>
-      </g>
-    );
+  if (highestPriorityViolation === "rule1") {
+    textColor = "#ef4444"; // red
+  } else if (highestPriorityViolation === "rule4") {
+    textColor = "#f97316"; // orange
+  } else if (highestPriorityViolation === "rule3") {
+    textColor = "#f59e0b"; // amber
+  } else if (highestPriorityViolation === "rule2") {
+    textColor = "#3b82f6"; // blue
+  } else if (highestPriorityViolation === "rule5") {
+    textColor = "#10b981"; // green
   }
-);
+
+  const text = formatNumber(value);
+
+  return (
+    <text
+      x={x}
+      y={y - 16}
+      textAnchor="middle"
+      dominantBaseline="middle"
+      className="recharts-label"
+      style={{
+        fontSize: "11px",
+        fontWeight: "bold",
+        fill: textColor,
+      }}
+    >
+      {text}
+    </text>
+  );
+});
 
 CustomLabel.displayName = "CustomLabel";
+
+// Smart number formatter - removes .00 for integers, keeps necessary decimals
+const formatNumber = (value: number | null | undefined): string => {
+  if (value == null) return "N/A";
+
+  // Check if it's a whole number
+  if (Number.isInteger(value)) {
+    return value.toString();
+  }
+
+  // For decimals, use toFixed(2) but remove trailing zeros
+  const formatted = value.toFixed(2);
+  // Remove trailing zeros and decimal point if not needed
+  return formatted.replace(/\.?0+$/, "");
+};
 
 // Custom Y-axis label component that properly rotates text
 const YAxisLabel = memo((props: any) => {
@@ -187,7 +171,7 @@ const YAxisLabel = memo((props: any) => {
   let labelY = y;
 
   // If viewBox is available, use it to center vertically
-  if (viewBox && viewBox.height) {
+  if (viewBox?.height) {
     labelY = viewBox.y + viewBox.height / 2;
   }
 
@@ -210,7 +194,7 @@ const YAxisLabel = memo((props: any) => {
       fontWeight={600}
       textAnchor="middle"
       dominantBaseline="middle"
-      className="recharts-label fill-muted-foreground"
+      className="recharts-label fill-foreground/50"
       transform={`rotate(-90, ${labelX}, ${labelY})`}
     >
       {value}
@@ -270,7 +254,7 @@ const XAxisTick = memo(
       prevProps.x === nextProps.x &&
       prevProps.y === nextProps.y
     );
-  }
+  },
 );
 
 XAxisTick.displayName = "XAxisTick";
@@ -280,7 +264,7 @@ XAxisTick.displayName = "XAxisTick";
 const CommentIndicatorDot = memo(
   ({
     cx,
-    cy,
+    cy: _cy,
     payload,
     bucketType,
     bucketsWithComments,
@@ -301,21 +285,31 @@ const CommentIndicatorDot = memo(
     if (!hasComments) return null;
 
     const xAxisTickY = 440;
+    const iconSize = 14;
+    const iconX = cx - iconSize / 2;
+    const iconY = xAxisTickY - iconSize / 2;
 
     return (
-      <circle
-        cx={cx}
-        cy={xAxisTickY}
-        r={2.5}
-        fill="#a855f7"
-        stroke="#a855f7"
-        strokeWidth={0.5}
+      <foreignObject
+        x={iconX}
+        y={iconY}
+        width={iconSize}
+        height={iconSize}
         style={{
-          filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))",
+          filter: "drop-shadow(0 1px 2px rgba(168, 85, 247, 0.5))",
         }}
-      />
+      >
+        <MessageSquare
+          className="w-full h-full"
+          style={{
+            stroke: "#a855f7",
+            fill: "#a855f7",
+            strokeWidth: 2,
+          }}
+        />
+      </foreignObject>
     );
-  }
+  },
 );
 
 CommentIndicatorDot.displayName = "CommentIndicatorDot";
@@ -340,7 +334,7 @@ const ChartTooltip = memo(
     onFetchComments: (timestamp: string) => void;
   }) => {
     // Local state to trigger re-renders when comments load
-    const [refreshKey, setRefreshKey] = useState(0);
+    const [_refreshKey, setRefreshKey] = useState(0);
     const prevCacheKeyRef = useRef<string | null>(null);
 
     // Check if comments have loaded for the current point
@@ -472,7 +466,7 @@ const ChartTooltip = memo(
 
           <div className="space-y-1">
             <p className="text-primary font-medium text-lg">
-              {displayValue != null ? Number(displayValue).toFixed(2) : "N/A"}
+              {formatNumber(displayValue)}
               {submetric.unit && (
                 <span className="text-sm text-muted-foreground ml-1">
                   {submetric.unit}
@@ -484,7 +478,7 @@ const ChartTooltip = memo(
               <div>
                 <span className="text-muted-foreground">Range:</span>
                 <span className="font-medium ml-1">
-                  {data?.range != null ? data.range.toFixed(2) : "N/A"}
+                  {formatNumber(data?.range)}
                 </span>
               </div>
               {data?.confidence != null && (
@@ -546,7 +540,7 @@ const ChartTooltip = memo(
                 </div>
               </div>
             ) : pointComments?.comments && pointComments.comments.length > 0 ? (
-              <div className="space-y-2">
+              <div className="space-y-2 max-w-[14vw]">
                 {pointComments.comments.slice(0, 2).map((comment: any) => (
                   <div
                     key={comment.id}
@@ -584,7 +578,7 @@ const ChartTooltip = memo(
         </div>
       </div>
     );
-  }
+  },
 );
 
 ChartTooltip.displayName = "ChartTooltip";
@@ -610,7 +604,7 @@ const SubmetricXChartInternal = memo(
         batchIndex = 0,
         batchSize,
       },
-      ref
+      ref,
     ) => {
       // Track theme for dots (lightweight, singleton observer)
       const isDark = useChartTheme();
@@ -620,7 +614,7 @@ const SubmetricXChartInternal = memo(
       const fetchingRef = useRef<Set<string>>(new Set());
 
       // Use the shared comment counts provider (batch-fetched)
-      const { getCounts, isLoading: isLoadingCounts } = useCommentCounts();
+      const { getCounts } = useCommentCounts();
 
       // Simple batch size - render many charts immediately for instant display
       const calculatedBatchSize = useMemo(() => {
@@ -655,7 +649,7 @@ const SubmetricXChartInternal = memo(
         () => ({
           invalidateCommentCache,
         }),
-        [invalidateCommentCache]
+        [invalidateCommentCache],
       );
 
       // Detect bucket type from data
@@ -704,7 +698,7 @@ const SubmetricXChartInternal = memo(
             //            viewing charts 10-19 → charts 10-29 rendered
             //            viewing charts 20-29 → charts 20-39 rendered, etc.
             rootMargin: "5000px",
-          }
+          },
         );
 
         observer.observe(chartContainerRef.current);
@@ -737,12 +731,12 @@ const SubmetricXChartInternal = memo(
         });
       }, [chartData, trendActive, trendLines]);
 
-      // Memoize custom label wrapper - no theme dependency needed!
+      // Memoize custom label wrapper - pass chartData for violation lookup
       const renderCustomLabel = useCallback(
         (props: any) => {
-          return <CustomLabel {...props} />;
+          return <CustomLabel {...props} chartData={chartData} />;
         },
-        [] // Labels use CSS variables, no need to re-render on theme change
+        [chartData], // Re-render when chartData changes to get latest violations
       );
 
       // Fetch comments for a point when hovering
@@ -769,11 +763,11 @@ const SubmetricXChartInternal = memo(
               const params = new URLSearchParams({
                 bucketType,
                 bucketValue,
-                limit: "20", // Get enough comments to show count (dialog will show all)
+                limit: "20", // Load more comments for tooltip preview (dialog will show all)
               });
 
               const response = await fetch(
-                `/api/submetrics/definitions/${submetric.definitionId}/points?${params}`
+                `/api/submetrics/definitions/${submetric.definitionId}/points?${params}`,
               );
 
               if (response.ok) {
@@ -789,7 +783,7 @@ const SubmetricXChartInternal = memo(
             }
           })();
         },
-        [submetric.definitionId, bucketType]
+        [submetric.definitionId, bucketType],
       );
 
       // Tooltip wrapper that uses the separate ChartTooltip component
@@ -805,7 +799,7 @@ const SubmetricXChartInternal = memo(
             onFetchComments={fetchCommentsForPoint}
           />
         ),
-        [submetric, bucketType, fetchCommentsForPoint]
+        [submetric, bucketType, fetchCommentsForPoint],
       );
 
       // Memoize dot renderer
@@ -873,7 +867,7 @@ const SubmetricXChartInternal = memo(
             />
           );
         },
-        [isDark, submetric.color] // Depends on theme and submetric color
+        [isDark, submetric.color], // Depends on theme and submetric color
       );
 
       // Handle point click
@@ -889,7 +883,7 @@ const SubmetricXChartInternal = memo(
             bucketValue,
           });
         },
-        [submetric.definitionId, bucketType, onPointClick]
+        [submetric.definitionId, bucketType, onPointClick],
       );
 
       // Memoize active dot renderer
@@ -924,6 +918,7 @@ const SubmetricXChartInternal = memo(
           }
 
           return (
+            // biome-ignore lint/a11y/useSemanticElements: Chart library requires SVG circle element for rendering
             <circle
               cx={cx}
               cy={cy}
@@ -931,28 +926,36 @@ const SubmetricXChartInternal = memo(
               fill={fillColor}
               stroke={strokeColor}
               strokeWidth={3}
+              role="button"
+              tabIndex={0}
               style={{
                 filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.3))",
                 cursor: "pointer",
               }}
               onClick={() => handlePointClick(payload)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handlePointClick(payload);
+                }
+              }}
             />
           );
         },
-        [isDark, submetric.color, handlePointClick] // Depends on theme, color, and click handler
+        [isDark, submetric.color, handlePointClick], // Depends on theme, color, and click handler
       );
 
       // Memoize tick formatter
       const tickFormatter = useCallback(
         (value: number) => Number(value).toFixed(1),
-        []
+        [],
       );
 
       // Memoize custom X-axis tick renderer (simplified - no comment indicators)
       // Use chartData instead of mergedChartData to avoid unnecessary re-renders from trend changes
       const renderXAxisTick = useCallback(
         (props: any) => <XAxisTick {...props} chartData={chartData} />,
-        [chartData]
+        [chartData],
       );
 
       // Memoize comment indicator dot renderer - renders for ALL data points
@@ -969,24 +972,24 @@ const SubmetricXChartInternal = memo(
             />
           );
         },
-        [bucketType, bucketsWithComments]
+        [bucketType, bucketsWithComments],
       );
 
       // Memoize static axis configurations
       const axisLineConfig = useMemo(
         () => ({ stroke: "currentColor", strokeWidth: 1 }),
-        []
+        [],
       );
       const tickLineConfig = useMemo(
         () => ({ stroke: "currentColor", strokeWidth: 1 }),
-        []
+        [],
       );
       const tickConfig = useMemo(() => ({ fontSize: 12 }), []);
 
       // Memoize reference line labels
       const avgLabel = useMemo(
         () => ({
-          value: `Avg: ${xmrLimits.avgX.toFixed(2)}`,
+          value: `Avg: ${formatNumber(xmrLimits.avgX)}`,
           position: "insideTopRight" as const,
           style: {
             fontSize: "12px",
@@ -994,12 +997,12 @@ const SubmetricXChartInternal = memo(
             fill: "#10b981",
           },
         }),
-        [xmrLimits.avgX]
+        [xmrLimits.avgX],
       );
 
       const unplLabel = useMemo(
         () => ({
-          value: `UNPL: ${xmrLimits.UNPL.toFixed(2)}`,
+          value: `UNPL: ${formatNumber(xmrLimits.UNPL)}`,
           position: "insideTopRight" as const,
           style: {
             fontSize: "11px",
@@ -1007,12 +1010,12 @@ const SubmetricXChartInternal = memo(
             fill: "#94a3b8",
           },
         }),
-        [xmrLimits.UNPL]
+        [xmrLimits.UNPL],
       );
 
       const lnplLabel = useMemo(
         () => ({
-          value: `LNPL: ${xmrLimits.LNPL.toFixed(2)}`,
+          value: `LNPL: ${formatNumber(xmrLimits.LNPL)}`,
           position: "insideBottomRight" as const,
           style: {
             fontSize: "11px",
@@ -1020,214 +1023,212 @@ const SubmetricXChartInternal = memo(
             fill: "#94a3b8",
           },
         }),
-        [xmrLimits.LNPL]
+        [xmrLimits.LNPL],
       );
 
       return (
-        <>
-          <div
-            ref={chartContainerRef}
-            className="chart-container h-[500px] w-full overflow-visible [&_.recharts-cartesian-grid-horizontal>line]:stroke-muted-foreground/20 [&_.recharts-cartesian-grid-vertical>line]:stroke-muted-foreground/20 [&_.recharts-tooltip-wrapper]:z-50 [&_.recharts-label-list]:z-50 [&_.recharts-wrapper]:overflow-visible [&_.recharts-surface]:overflow-visible"
-            style={{ contentVisibility: "auto" }}
-          >
-            {isVisible ? (
-              <ResponsiveContainer width="100%" height="100%" debounce={350}>
-                <LineChart
-                  data={mergedChartData}
-                  margin={{ top: 40, right: 100, left: 0, bottom: 40 }}
+        <div
+          ref={chartContainerRef}
+          className="chart-container h-[500px] w-full overflow-visible [&_.recharts-cartesian-grid-horizontal>line]:stroke-muted-foreground/20 [&_.recharts-cartesian-grid-vertical>line]:stroke-muted-foreground/20 [&_.recharts-tooltip-wrapper]:z-50 [&_.recharts-label-list]:z-50 [&_.recharts-wrapper]:overflow-visible [&_.recharts-surface]:overflow-visible"
+          style={{ contentVisibility: "auto" }}
+        >
+          {isVisible ? (
+            <ResponsiveContainer width="100%" height="100%" debounce={350}>
+              <LineChart
+                data={mergedChartData}
+                margin={{ top: 40, right: 60, left: 0, bottom: 40 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="2 2"
+                  stroke="currentColor"
+                  opacity={0.1}
+                />
+                <XAxis
+                  dataKey="timestamp"
+                  className="text-sm fill-foreground"
+                  axisLine={axisLineConfig}
+                  tickLine={tickLineConfig}
+                  tick={renderXAxisTick}
+                  height={60}
                 >
-                  <CartesianGrid
-                    strokeDasharray="2 2"
-                    stroke="currentColor"
-                    opacity={0.1}
+                  <Label
+                    value={`${submetric.xAxis}${
+                      submetric.timezone ? ` (${submetric.timezone})` : ""
+                    } - X Plot`}
+                    offset={-10}
+                    position="insideBottom"
+                    style={{ fontSize: "11px", fontWeight: "600" }}
                   />
-                  <XAxis
-                    dataKey="timestamp"
-                    className="text-sm fill-foreground"
-                    axisLine={axisLineConfig}
-                    tickLine={tickLineConfig}
-                    tick={renderXAxisTick}
-                    height={60}
-                  >
+                </XAxis>
+                <YAxis
+                  className="text-sm fill-foreground"
+                  axisLine={axisLineConfig}
+                  tickLine={tickLineConfig}
+                  tick={tickConfig}
+                  tickFormatter={tickFormatter}
+                  domain={yAxisDomain}
+                  width={60}
+                >
+                  {(submetric.yAxis || submetric.unit) && (
                     <Label
-                      value={`${submetric.xAxis}${
-                        submetric.timezone ? ` (${submetric.timezone})` : ""
-                      } - X Plot`}
-                      offset={-10}
-                      position="insideBottom"
-                      style={{ fontSize: "11px", fontWeight: "600" }}
+                      content={(props: any) => (
+                        <YAxisLabel
+                          {...props}
+                          value={submetric.yAxis || submetric.unit || ""}
+                        />
+                      )}
+                      position="left"
                     />
-                  </XAxis>
-                  <YAxis
-                    className="text-sm fill-foreground"
-                    axisLine={axisLineConfig}
-                    tickLine={tickLineConfig}
-                    tick={tickConfig}
-                    tickFormatter={tickFormatter}
-                    domain={yAxisDomain}
-                    width={60}
-                  >
-                    {(submetric.yAxis || submetric.unit) && (
-                      <Label
-                        content={(props: any) => (
-                          <YAxisLabel
-                            {...props}
-                            value={submetric.yAxis || submetric.unit || ""}
-                          />
-                        )}
-                        position="left"
-                      />
-                    )}
-                  </YAxis>
-
-                  <Tooltip content={CustomTooltip} />
-
-                  {/* Control Limit Lines - Use trend lines if active, otherwise use reference lines */}
-                  {trendActive && trendLines ? (
-                    <>
-                      {/* Trend Centre Line */}
-                      <Line
-                        type="linear"
-                        dataKey="trendCentre"
-                        stroke="#10b981"
-                        strokeWidth={3}
-                        strokeDasharray="8 4"
-                        dot={false}
-                        activeDot={false}
-                        connectNulls={false}
-                        name="Trend Centre"
-                      />
-                      {/* Standard Trend Limits */}
-                      <Line
-                        type="linear"
-                        dataKey="trendUNPL"
-                        stroke="#94a3b8"
-                        strokeWidth={2.5}
-                        strokeDasharray=""
-                        dot={false}
-                        activeDot={false}
-                        connectNulls={false}
-                        name="Upper Limit"
-                      />
-                      <Line
-                        type="linear"
-                        dataKey="trendLNPL"
-                        stroke="#94a3b8"
-                        strokeWidth={2.5}
-                        strokeDasharray=""
-                        dot={false}
-                        activeDot={false}
-                        connectNulls={false}
-                        name="Lower Limit"
-                      />
-                      <Line
-                        type="linear"
-                        dataKey="trendUpperQuartile"
-                        stroke="#9ca3af"
-                        strokeWidth={1.5}
-                        strokeDasharray="3 2"
-                        dot={false}
-                        activeDot={false}
-                        connectNulls={false}
-                        name="Upper Quartile"
-                      />
-                      <Line
-                        type="linear"
-                        dataKey="trendLowerQuartile"
-                        stroke="#9ca3af"
-                        strokeWidth={1.5}
-                        strokeDasharray="3 2"
-                        dot={false}
-                        activeDot={false}
-                        connectNulls={false}
-                        name="Lower Quartile"
-                      />
-                    </>
-                  ) : (
-                    <>
-                      {/* Standard Reference Lines */}
-                      <ReferenceLine
-                        y={xmrLimits.avgX}
-                        stroke="#10b981"
-                        strokeWidth={3}
-                        strokeDasharray="8 4"
-                        label={avgLabel}
-                      />
-                      <ReferenceLine
-                        y={xmrLimits.UNPL}
-                        stroke="#94a3b8"
-                        strokeWidth={isLimitsLocked ? 2.5 : 2}
-                        strokeDasharray={isLimitsLocked ? "" : "6 3"}
-                        label={unplLabel}
-                      />
-                      <ReferenceLine
-                        y={xmrLimits.LNPL}
-                        stroke="#94a3b8"
-                        strokeWidth={isLimitsLocked ? 2.5 : 2}
-                        strokeDasharray={isLimitsLocked ? "" : "6 3"}
-                        label={lnplLabel}
-                      />
-                      {/* Quartile Lines (without labels) */}
-                      <ReferenceLine
-                        y={xmrLimits.upperQuartile}
-                        stroke="#9ca3af"
-                        strokeWidth={1.5}
-                        strokeDasharray="3 2"
-                      />
-                      <ReferenceLine
-                        y={xmrLimits.lowerQuartile}
-                        stroke="#9ca3af"
-                        strokeWidth={1.5}
-                        strokeDasharray="3 2"
-                      />
-                    </>
                   )}
+                </YAxis>
 
-                  <Line
-                    type="linear"
-                    dataKey="value"
-                    stroke={submetric.color || "#3b82f6"}
-                    strokeWidth={3}
-                    dot={renderDot}
-                    activeDot={renderActiveDot}
-                    connectNulls={false}
-                  />
+                <Tooltip content={CustomTooltip} />
 
-                  {/* Render labels after the line to ensure they appear on top */}
-                  <Line
-                    type="linear"
-                    dataKey="value"
-                    stroke="transparent"
-                    strokeWidth={0}
-                    dot={false}
-                    activeDot={false}
-                    connectNulls={false}
-                  >
-                    <LabelList content={renderCustomLabel} />
-                  </Line>
+                {/* Control Limit Lines - Use trend lines if active, otherwise use reference lines */}
+                {trendActive && trendLines ? (
+                  <>
+                    {/* Trend Centre Line */}
+                    <Line
+                      type="linear"
+                      dataKey="trendCentre"
+                      stroke="#10b981"
+                      strokeWidth={3}
+                      strokeDasharray="8 4"
+                      dot={false}
+                      activeDot={false}
+                      connectNulls={false}
+                      name="Trend Centre"
+                    />
+                    {/* Standard Trend Limits */}
+                    <Line
+                      type="linear"
+                      dataKey="trendUNPL"
+                      stroke="#94a3b8"
+                      strokeWidth={2.5}
+                      strokeDasharray=""
+                      dot={false}
+                      activeDot={false}
+                      connectNulls={false}
+                      name="Upper Limit"
+                    />
+                    <Line
+                      type="linear"
+                      dataKey="trendLNPL"
+                      stroke="#94a3b8"
+                      strokeWidth={2.5}
+                      strokeDasharray=""
+                      dot={false}
+                      activeDot={false}
+                      connectNulls={false}
+                      name="Lower Limit"
+                    />
+                    <Line
+                      type="linear"
+                      dataKey="trendUpperQuartile"
+                      stroke="#9ca3af"
+                      strokeWidth={1.5}
+                      strokeDasharray="3 2"
+                      dot={false}
+                      activeDot={false}
+                      connectNulls={false}
+                      name="Upper Quartile"
+                    />
+                    <Line
+                      type="linear"
+                      dataKey="trendLowerQuartile"
+                      stroke="#9ca3af"
+                      strokeWidth={1.5}
+                      strokeDasharray="3 2"
+                      dot={false}
+                      activeDot={false}
+                      connectNulls={false}
+                      name="Lower Quartile"
+                    />
+                  </>
+                ) : (
+                  <>
+                    {/* Standard Reference Lines */}
+                    <ReferenceLine
+                      y={xmrLimits.avgX}
+                      stroke="#10b981"
+                      strokeWidth={3}
+                      strokeDasharray="8 4"
+                      label={avgLabel}
+                    />
+                    <ReferenceLine
+                      y={xmrLimits.UNPL}
+                      stroke="#94a3b8"
+                      strokeWidth={isLimitsLocked ? 2.5 : 2}
+                      strokeDasharray={isLimitsLocked ? "" : "6 3"}
+                      label={unplLabel}
+                    />
+                    <ReferenceLine
+                      y={xmrLimits.LNPL}
+                      stroke="#94a3b8"
+                      strokeWidth={isLimitsLocked ? 2.5 : 2}
+                      strokeDasharray={isLimitsLocked ? "" : "6 3"}
+                      label={lnplLabel}
+                    />
+                    {/* Quartile Lines (without labels) */}
+                    <ReferenceLine
+                      y={xmrLimits.upperQuartile}
+                      stroke="#9ca3af"
+                      strokeWidth={1.5}
+                      strokeDasharray="3 2"
+                    />
+                    <ReferenceLine
+                      y={xmrLimits.lowerQuartile}
+                      stroke="#9ca3af"
+                      strokeWidth={1.5}
+                      strokeDasharray="3 2"
+                    />
+                  </>
+                )}
 
-                  {/* Render comment indicators for ALL data points (independent of tick visibility) */}
-                  <Line
-                    type="linear"
-                    dataKey="value"
-                    stroke="transparent"
-                    strokeWidth={0}
-                    dot={renderCommentIndicator}
-                    activeDot={false}
-                    connectNulls={false}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              // Empty placeholder - no skeleton, browser will optimize with content-visibility
-              <div className="h-full w-full" />
-            )}
-          </div>
-        </>
+                <Line
+                  type="linear"
+                  dataKey="value"
+                  stroke={submetric.color || "#3b82f6"}
+                  strokeWidth={3}
+                  dot={renderDot}
+                  activeDot={renderActiveDot}
+                  connectNulls={false}
+                />
+
+                {/* Render labels after the line to ensure they appear on top */}
+                <Line
+                  type="linear"
+                  dataKey="value"
+                  stroke="transparent"
+                  strokeWidth={0}
+                  dot={false}
+                  activeDot={false}
+                  connectNulls={false}
+                >
+                  <LabelList content={renderCustomLabel} />
+                </Line>
+
+                {/* Render comment indicators for ALL data points (independent of tick visibility) */}
+                <Line
+                  type="linear"
+                  dataKey="value"
+                  stroke="transparent"
+                  strokeWidth={0}
+                  dot={renderCommentIndicator}
+                  activeDot={false}
+                  connectNulls={false}
+                  isAnimationActive={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            // Empty placeholder - no skeleton, browser will optimize with content-visibility
+            <div className="h-full w-full" />
+          )}
+        </div>
       );
-    }
-  )
+    },
+  ),
 );
 
 SubmetricXChartInternal.displayName = "SubmetricXChartInternal";
@@ -1262,14 +1263,15 @@ export const SubmetricXChart = memo((props: SubmetricXChartProps) => {
       setSelectedPoint(data);
       setCommentsDialogOpen(true);
     },
-    []
+    [],
   );
 
   // Handle dialog close
   const handleDialogOpenChange = useCallback((open: boolean) => {
     setCommentsDialogOpen(open);
     if (!open) {
-      setSelectedPoint(null);
+      // Delay clearing selected point to allow exit animation to complete
+      setTimeout(() => setSelectedPoint(null), 350); // Sheet animation is 300ms
     }
   }, []);
 
@@ -1281,9 +1283,9 @@ export const SubmetricXChart = memo((props: SubmetricXChartProps) => {
       // Call parent callback if provided
       props.onCommentAdded?.(bucketValue);
       // Note: Comment counts will be automatically refetched by React Query
-      // when the mutations in PointCommentsSheet invalidate the query
+      // when the mutations in SlideSheet invalidate the query
     },
-    [props.onCommentAdded]
+    [props.onCommentAdded],
   );
 
   return (
@@ -1300,6 +1302,7 @@ export const SubmetricXChart = memo((props: SubmetricXChartProps) => {
         bucketType={bucketType}
         allDataPoints={allDataPoints}
         slideId={props.slideId}
+        workspaceId={props.workspaceId}
         onOpenChange={handleDialogOpenChange}
         onCommentAdded={handleCommentAdded}
       />

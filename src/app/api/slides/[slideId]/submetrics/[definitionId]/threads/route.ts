@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { type NextRequest, NextResponse } from "next/server";
 import {
-  getWorkspaceIdFromSlide,
-  getSlideThreads,
   createSlideComment,
+  getSlideThreads,
+  getWorkspaceIdFromSlide,
 } from "@/lib/api/comments";
+import { auth } from "@/lib/auth";
 
 /**
  * GET /api/slides/[slideId]/submetrics/[definitionId]/threads
@@ -12,7 +12,7 @@ import {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slideId: string; definitionId: string }> }
+  { params }: { params: Promise<{ slideId: string; definitionId: string }> },
 ) {
   try {
     // Auth check
@@ -26,9 +26,8 @@ export async function GET(
     // Get query params
     const searchParams = request.nextUrl.searchParams;
     const cursor = searchParams.get("cursor") || undefined;
-    const limit = searchParams.get("limit")
-      ? Number.parseInt(searchParams.get("limit")!, 10)
-      : undefined;
+    const limitParam = searchParams.get("limit");
+    const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined;
 
     // Get workspace from slide and verify access
     const workspaceId = await getWorkspaceIdFromSlide(slideId);
@@ -56,7 +55,7 @@ export async function GET(
     console.error("Error getting slide threads:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -67,7 +66,7 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ slideId: string; definitionId: string }> }
+  { params }: { params: Promise<{ slideId: string; definitionId: string }> },
 ) {
   try {
     // Auth check
@@ -86,7 +85,7 @@ export async function POST(
     if (!commentBody) {
       return NextResponse.json(
         { error: "Missing required field: body" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -94,14 +93,14 @@ export async function POST(
     if (typeof commentBody !== "string" || commentBody.trim().length === 0) {
       return NextResponse.json(
         { error: "Comment body cannot be empty" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (commentBody.length > 10000) {
       return NextResponse.json(
         { error: "Comment body too long (max 10000 characters)" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -121,7 +120,7 @@ export async function POST(
       session.user.id,
       commentBody.trim(),
       parentId,
-      title
+      title,
     );
 
     return NextResponse.json(result, { status: 201 });
@@ -131,14 +130,13 @@ export async function POST(
     if (error.message === "Invalid parent comment") {
       return NextResponse.json(
         { error: "Invalid parent comment" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

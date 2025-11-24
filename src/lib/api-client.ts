@@ -4,11 +4,11 @@
 // Re-export everything from the new API structure for backward compatibility
 export {
   ApiClient,
-  apiClient,
-  useWorkspaces,
-  useWorkspace,
-  useSlide,
   type ApiError,
+  apiClient,
+  useSlide,
+  useWorkspace,
+  useWorkspaces,
 } from "@/lib/api";
 
 // This file is kept for backward compatibility only

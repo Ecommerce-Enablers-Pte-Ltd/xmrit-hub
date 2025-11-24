@@ -543,7 +543,6 @@ This occurs when:
 - Outliers heavily influence regression
 
 **Solutions**:
-
 - Consider segmenting data into periods with consistent trends
 - Remove outliers using Auto-Lock or Lock Limits first
 - Check if seasonality should be applied instead

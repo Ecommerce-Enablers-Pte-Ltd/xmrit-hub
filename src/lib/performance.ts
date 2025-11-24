@@ -27,8 +27,8 @@ export function measureThemeChangePerformance(callback: () => void): void {
         if (duration > 100) {
           console.warn(
             `[Theme] Slow theme change detected: ${duration.toFixed(
-              2
-            )}ms (target: <100ms)`
+              2,
+            )}ms (target: <100ms)`,
           );
         }
       }

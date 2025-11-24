@@ -1,50 +1,69 @@
 // Main API client exports - centralized access point
 
-// Export all API clients
-export { BaseApiClient } from "./base";
-export { WorkspaceApiClient, workspaceApiClient } from "./workspaces";
-export { SlideApiClient, slideApiClient } from "./slides";
-export { MetricApiClient, metricApiClient } from "./metrics";
-
-// Export all hooks
-export {
-  useWorkspaces,
-  useWorkspace,
-  usePrefetchWorkspace,
-  useCreateWorkspace,
-  useUpdateWorkspace,
-  useDeleteWorkspace,
-  workspaceKeys,
-} from "./workspaces";
-export {
-  useSlide,
-  usePrefetchSlide,
-  useCreateSlide,
-  useUpdateSlide,
-  useDeleteSlide,
-  slideKeys,
-} from "./slides";
-export { useMetric } from "./metrics";
-
 // Export types
 export type { ApiError } from "./base";
+// Export all API clients
+export { BaseApiClient } from "./base";
+export {
+  FollowUpApiClient,
+  followUpApiClient,
+  followUpKeys,
+  useCreateFollowUp,
+  useDeleteFollowUp,
+  useFollowUp,
+  useFollowUps,
+  useUpdateFollowUp,
+} from "./follow-ups";
+export { MetricApiClient, metricApiClient, useMetric } from "./metrics";
+export {
+  SlideApiClient,
+  slideApiClient,
+  slideKeys,
+  useCreateSlide,
+  useDeleteSlide,
+  usePrefetchSlide,
+  useSlide,
+  useUpdateSlide,
+} from "./slides";
+export {
+  SubmetricApiClient,
+  submetricApiClient,
+  useUpdateTrafficLightColor,
+} from "./submetrics";
+export { UserApiClient, userApiClient, userKeys, useUsers } from "./users";
+// Export all hooks
+export {
+  useCreateWorkspace,
+  useDeleteWorkspace,
+  usePrefetchWorkspace,
+  useUpdateWorkspace,
+  useWorkspace,
+  useWorkspaceSlidesList,
+  useWorkspaces,
+  WorkspaceApiClient,
+  workspaceApiClient,
+  workspaceKeys,
+} from "./workspaces";
 
 // Legacy compatibility - create a combined client for backward compatibility
 import { BaseApiClient } from "./base";
-import { WorkspaceApiClient } from "./workspaces";
-import { SlideApiClient } from "./slides";
+import { FollowUpApiClient } from "./follow-ups";
 import { MetricApiClient } from "./metrics";
+import { SlideApiClient } from "./slides";
+import { WorkspaceApiClient } from "./workspaces";
 
 export class ApiClient extends BaseApiClient {
   public workspaces: WorkspaceApiClient;
   public slides: SlideApiClient;
   public metrics: MetricApiClient;
+  public followUps: FollowUpApiClient;
 
   constructor(baseUrl: string = "") {
     super(baseUrl);
     this.workspaces = new WorkspaceApiClient(baseUrl);
     this.slides = new SlideApiClient(baseUrl);
     this.metrics = new MetricApiClient(baseUrl);
+    this.followUps = new FollowUpApiClient(baseUrl);
   }
 
   // Legacy methods for backward compatibility

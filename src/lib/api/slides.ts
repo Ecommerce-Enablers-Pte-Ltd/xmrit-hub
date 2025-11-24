@@ -1,14 +1,14 @@
 // Slide API client and hooks
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { BaseApiClient } from "./base";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SlideWithMetrics } from "@/types/db/slide";
+import { BaseApiClient } from "./base";
 import { workspaceKeys } from "./workspaces";
 
 export class SlideApiClient extends BaseApiClient {
   async getSlideById(slideId: string): Promise<SlideWithMetrics> {
     const response = await this.request<{ slide: SlideWithMetrics }>(
-      `/slides/${slideId}`
+      `/slides/${slideId}`,
     );
     return response.slide;
   }
@@ -19,7 +19,7 @@ export class SlideApiClient extends BaseApiClient {
       {
         method: "POST",
         body: JSON.stringify(data),
-      }
+      },
     );
     return response.slide;
   }
@@ -30,13 +30,13 @@ export class SlideApiClient extends BaseApiClient {
       {
         method: "PUT",
         body: JSON.stringify(data),
-      }
+      },
     );
     return response.slide;
   }
 
   async deleteSlide(
-    slideId: string
+    slideId: string,
   ): Promise<{ message: string; slideId: string }> {
     return this.request(`/slides/${slideId}`, {
       method: "DELETE",
@@ -66,8 +66,8 @@ export function useSlide(slideId: string, initialData?: SlideWithMetrics) {
     queryFn: () => slideApiClient.getSlideById(slideId),
     enabled: !!slideId,
     initialData, // Hydrate from SSR data
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 10 * 60 * 1000, // 10 minutes (increased since definitions are stable)
+    gcTime: 20 * 60 * 1000, // 20 minutes
     refetchOnWindowFocus: true,
     // Stale-while-revalidate: show stale data while refetching
     placeholderData: (previousData) => previousData,
@@ -90,7 +90,7 @@ export function usePrefetchSlide() {
     queryClient.prefetchQuery({
       queryKey: slideKeys.detail(slideId),
       queryFn: () => slideApiClient.getSlideById(slideId),
-      staleTime: 5 * 60 * 1000,
+      staleTime: 10 * 60 * 1000, // Match the useSlide staleTime
     });
   };
 }
@@ -107,6 +107,10 @@ export function useCreateSlide() {
       queryClient.invalidateQueries({
         queryKey: workspaceKeys.detail(variables.workspaceId),
       });
+      // Invalidate the slides list cache used by the sidebar
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.slidesList(variables.workspaceId),
+      });
     },
   });
 }
@@ -117,7 +121,7 @@ export function useUpdateSlide() {
   return useMutation({
     mutationFn: ({
       slideId,
-      workspaceId,
+      workspaceId: _workspaceId,
       data,
     }: {
       slideId: string;
@@ -135,7 +139,7 @@ export function useUpdateSlide() {
             ...oldData,
             ...updatedSlide,
           };
-        }
+        },
       );
 
       // Update the workspace cache to reflect slide changes in the list
@@ -148,10 +152,23 @@ export function useUpdateSlide() {
             slides: oldWorkspace.slides.map((slide: any) =>
               slide.id === variables.slideId
                 ? { ...slide, ...updatedSlide }
-                : slide
+                : slide,
             ),
           };
-        }
+        },
+      );
+
+      // Update the slides list cache used by the sidebar
+      queryClient.setQueryData(
+        workspaceKeys.slidesList(variables.workspaceId),
+        (oldSlides: any) => {
+          if (!oldSlides) return oldSlides;
+          return oldSlides.map((slide: any) =>
+            slide.id === variables.slideId
+              ? { ...slide, ...updatedSlide }
+              : slide,
+          );
+        },
       );
     },
   });
@@ -163,7 +180,7 @@ export function useDeleteSlide() {
   return useMutation({
     mutationFn: ({
       slideId,
-      workspaceId,
+      workspaceId: _workspaceId,
     }: {
       slideId: string;
       workspaceId: string;
@@ -176,6 +193,10 @@ export function useDeleteSlide() {
       // Invalidate the specific workspace to update the slides list
       queryClient.invalidateQueries({
         queryKey: workspaceKeys.detail(variables.workspaceId),
+      });
+      // Invalidate the slides list cache used by the sidebar
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.slidesList(variables.workspaceId),
       });
       // Also invalidate workspace list in case we're on a different page
       queryClient.invalidateQueries({ queryKey: workspaceKeys.list() });

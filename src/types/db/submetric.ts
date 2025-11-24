@@ -22,6 +22,8 @@ export interface SubmetricDefinition {
   updatedAt: Date;
 }
 
+export type TrafficLightColor = "green" | "yellow" | "red" | "none";
+
 export interface Submetric {
   id: string;
   label: string;
@@ -35,6 +37,7 @@ export interface Submetric {
   unit: string | null;
   aggregationType: string | null;
   color: string | null;
+  trafficLightColor: TrafficLightColor | null; // Manual traffic light indicator (per submetric, not auto-calculated)
   metadata: any; // JSON object for additional metadata
   dataPoints: DataPointJson[] | null; // Data points stored as JSON array
   createdAt: Date;

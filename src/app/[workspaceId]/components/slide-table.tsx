@@ -4,12 +4,11 @@ import {
   BarChart3,
   FolderOpen,
   MoreVertical,
-  Settings,
+  Pencil,
   Trash2,
 } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -25,17 +25,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Pencil } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { WorkspaceSettingsDialog } from "./workspace-settings-dialog";
+import { usePrefetchSlide } from "@/lib/api";
 import type { SlideWithMetrics } from "@/types/db/slide";
 import type { Workspace } from "@/types/db/workspace";
-import { usePrefetchSlide } from "@/lib/api";
 
 interface SlideTableProps {
   currentWorkspace: Workspace;
   slides: SlideWithMetrics[];
-  onCreateSlide: () => void;
   onEditSlide: (slide: SlideWithMetrics) => void;
   onDeleteSlide: (slideId: string) => void;
   isLoading?: boolean;
@@ -44,12 +40,10 @@ interface SlideTableProps {
 export function SlideTable({
   currentWorkspace,
   slides,
-  onCreateSlide,
   onEditSlide,
   onDeleteSlide,
   isLoading = false,
 }: SlideTableProps) {
-  const [settingsOpen, setSettingsOpen] = React.useState(false);
   const prefetchSlide = usePrefetchSlide();
 
   const handleRowClick = (slideId: string) => {
@@ -58,124 +52,90 @@ export function SlideTable({
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <Skeleton className="h-9 w-64" />
-            <Skeleton className="h-5 w-96" />
-          </div>
-        </div>
-
-        <Card className="!py-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent !px-4">
-                <TableHead className="w-[40%]">Name</TableHead>
-                <TableHead className="w-[35%]">Details</TableHead>
-                <TableHead className="w-[20%]">Location</TableHead>
-                <TableHead className="w-[5%]"></TableHead>
+      <div className="px-6 py-6">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="h-10 w-[40%] font-medium text-xs">
+                Name
+              </TableHead>
+              <TableHead className="h-10 w-[35%] font-medium text-xs">
+                Details
+              </TableHead>
+              <TableHead className="h-10 w-[20%] font-medium text-xs">
+                Location
+              </TableHead>
+              <TableHead className="h-10 w-[5%]"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {[0, 1, 2, 3, 4].map((rowNum) => (
+              <TableRow key={`skeleton-slide-${rowNum}`}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-5 w-5 rounded" />
+                    <Skeleton className="h-5 w-48" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-4 rounded" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-8 w-8 rounded" />
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Array.from({ length: 5 }).map((_, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="h-5 w-5 rounded" />
-                      <Skeleton className="h-5 w-48" />
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Skeleton className="h-4 w-20" />
-                      <Skeleton className="h-4 w-20" />
-                      <Skeleton className="h-4 w-24" />
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Skeleton className="h-4 w-4 rounded" />
-                      <Skeleton className="h-4 w-32" />
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-8 w-8 rounded" />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-start gap-3 flex-1 min-w-0">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-3xl font-bold">{currentWorkspace.name}</h1>
-            {currentWorkspace.description && (
-              <p className="text-muted-foreground mt-2">
-                {currentWorkspace.description}
-              </p>
-            )}
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSettingsOpen(true)}
-            title="Workspace settings"
-            className="shrink-0 mt-1"
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-        </div>
-        {/* <Button onClick={onCreateSlide} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          New Slide
-        </Button> */}
-      </div>
-
-      <WorkspaceSettingsDialog
-        workspace={currentWorkspace}
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-      />
-
+    <div className="px-6 pb-6 overflow-auto">
       {slides.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <BarChart3 className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium text-muted-foreground mb-2">
-              No slides yet
-            </h3>
-            <p className="text-sm text-muted-foreground text-center mb-4">
-              Create your first slide to start building your metrics dashboard.
-            </p>
-            {/* <Button onClick={onCreateSlide} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Create First Slide
-            </Button> */}
-          </CardContent>
-        </Card>
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="rounded-full bg-muted p-4 mb-4">
+            <BarChart3 className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold mb-1">No slides found</h3>
+          <p className="text-sm text-muted-foreground max-w-sm">
+            Create your first slide to start building your metrics dashboard and
+            tracking performance.
+          </p>
+        </div>
       ) : (
-        <Card className="!py-0">
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="hover:bg-transparent !px-4">
-                <TableHead className="w-[40%]">Name</TableHead>
-                <TableHead className="w-[35%]">Details</TableHead>
-                <TableHead className="w-[20%]">Location</TableHead>
-                <TableHead className="w-[5%]"></TableHead>
+              <TableRow className="hover:bg-transparent border-t">
+                <TableHead className="h-10 w-[40%] font-medium text-xs">
+                  Name
+                </TableHead>
+                <TableHead className="h-10 w-[35%] font-medium text-xs">
+                  Details
+                </TableHead>
+                <TableHead className="h-10 w-[20%] font-medium text-xs">
+                  Location
+                </TableHead>
+                <TableHead className="h-10 w-[5%]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {slides.map((slide) => {
                 const totalSubmetrics = slide.metrics.reduce(
                   (sum, metric) => sum + metric.submetrics.length,
-                  0
+                  0,
                 );
 
                 return (
@@ -187,7 +147,7 @@ export function SlideTable({
                   >
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="flex-shrink-0">
+                        <div className="shrink-0">
                           <BarChart3 className="h-5 w-5 text-yellow-500" />
                         </div>
                         <span className="font-normal">{slide.title}</span>
@@ -214,7 +174,7 @@ export function SlideTable({
                                   month: "short",
                                   day: "numeric",
                                   year: "numeric",
-                                }
+                                },
                               )}
                             </span>
                           </>
@@ -269,7 +229,7 @@ export function SlideTable({
               })}
             </TableBody>
           </Table>
-        </Card>
+        </div>
       )}
     </div>
   );

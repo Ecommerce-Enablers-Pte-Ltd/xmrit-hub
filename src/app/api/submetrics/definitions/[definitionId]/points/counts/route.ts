@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { type NextRequest, NextResponse } from "next/server";
 import {
-  getWorkspaceIdFromDefinition,
   getPointCommentCounts,
+  getWorkspaceIdFromDefinition,
 } from "@/lib/api/comments";
+import { auth } from "@/lib/auth";
 import type { TimeBucket } from "@/lib/time-buckets";
 
 /**
@@ -12,7 +12,7 @@ import type { TimeBucket } from "@/lib/time-buckets";
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ definitionId: string }> }
+  { params }: { params: Promise<{ definitionId: string }> },
 ) {
   try {
     // Auth check
@@ -32,12 +32,14 @@ export async function GET(
     if (!bucketType || !bucketValuesParam) {
       return NextResponse.json(
         { error: "Missing required parameters: bucketType, bucketValues" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Parse bucket values (comma-separated)
-    const bucketValues = bucketValuesParam.split(",").filter((v) => v.length > 0);
+    const bucketValues = bucketValuesParam
+      .split(",")
+      .filter((v) => v.length > 0);
 
     if (bucketValues.length === 0) {
       return NextResponse.json({ counts: {} });
@@ -47,7 +49,7 @@ export async function GET(
     if (bucketValues.length > 100) {
       return NextResponse.json(
         { error: "Too many bucket values (max 100)" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -62,7 +64,7 @@ export async function GET(
     if (!validBuckets.includes(bucketType)) {
       return NextResponse.json(
         { error: "Invalid bucketType" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -71,7 +73,7 @@ export async function GET(
     if (!workspaceId) {
       return NextResponse.json(
         { error: "Definition not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -81,7 +83,7 @@ export async function GET(
     const counts = await getPointCommentCounts(
       definitionId,
       bucketType,
-      bucketValues
+      bucketValues,
     );
 
     return NextResponse.json({ counts });
@@ -89,8 +91,7 @@ export async function GET(
     console.error("Error getting point comment counts:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

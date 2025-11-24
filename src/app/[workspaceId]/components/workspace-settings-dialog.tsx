@@ -1,6 +1,20 @@
 "use client";
 
+import { Settings2, Trash2, Users } from "lucide-react";
+import { useRouter } from "next/navigation";
 import * as React from "react";
+import { toast } from "sonner";
+import { ZodError } from "zod";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,22 +26,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useUpdateWorkspace, useDeleteWorkspace } from "@/lib/api";
-import { toast } from "sonner";
-import type { Workspace } from "@/types/db/workspace";
+import { useDeleteWorkspace, useUpdateWorkspace } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { Settings2, Trash2, Users } from "lucide-react";
-import { useRouter } from "next/navigation";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { updateWorkspaceSchema } from "@/lib/validations/workspace";
+import type { Workspace } from "@/types/db/workspace";
 
 interface WorkspaceSettingsDialogProps {
   workspace: Workspace;
@@ -45,21 +47,29 @@ export function WorkspaceSettingsDialog({
   const [activeTab, setActiveTab] = React.useState<SettingsTab>("general");
   const [name, setName] = React.useState(workspace.name);
   const [description, setDescription] = React.useState(
-    workspace.description || ""
+    workspace.description || "",
   );
   const [deleteAlertOpen, setDeleteAlertOpen] = React.useState(false);
   const updateWorkspace = useUpdateWorkspace();
   const deleteWorkspace = useDeleteWorkspace();
   const router = useRouter();
 
-  // Reset form when workspace changes or dialog opens
+  // Reset form when dialog opens (not on every render)
   React.useEffect(() => {
     if (open) {
       setName(workspace.name);
       setDescription(workspace.description || "");
       setActiveTab("general");
     }
-  }, [workspace, open]);
+  }, [open, workspace.description, workspace.name]); // Only depend on open state
+
+  // Update form if workspace changes while dialog is open
+  React.useEffect(() => {
+    if (open) {
+      setName(workspace.name);
+      setDescription(workspace.description || "");
+    }
+  }, [workspace.name, workspace.description, open]);
 
   // Check if form has changes
   const hasChanges = React.useMemo(() => {
@@ -72,20 +82,18 @@ export function WorkspaceSettingsDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim()) {
-      toast.error("Workspace name is required");
-      return;
-    }
-
+    // Validate with Zod before sending to backend
     try {
+      const validatedData = updateWorkspaceSchema.parse({
+        name: name.trim(),
+        description: description.trim() || null,
+      });
+
       const loadingToast = toast.loading("Updating workspace...");
 
       await updateWorkspace.mutateAsync({
         workspaceId: workspace.id,
-        data: {
-          name: name.trim(),
-          description: description.trim() || null,
-        },
+        data: validatedData,
       });
 
       toast.dismiss(loadingToast);
@@ -94,6 +102,15 @@ export function WorkspaceSettingsDialog({
       });
       onOpenChange(false);
     } catch (error) {
+      if (error instanceof ZodError) {
+        // Show validation errors to user
+        const firstError = error.issues[0];
+        toast.error("Validation Error", {
+          description: firstError.message,
+        });
+        return;
+      }
+
       console.error("Error updating workspace:", error);
       toast.error("Failed to update workspace", {
         description:
@@ -155,7 +172,7 @@ export function WorkspaceSettingsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[800px] max-h-[85vh] p-0 gap-0 flex flex-col">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <DialogTitle>Workspace Settings</DialogTitle>
           <DialogDescription>
             Manage your workspace settings and preferences.
@@ -164,11 +181,12 @@ export function WorkspaceSettingsDialog({
 
         <div className="flex flex-1 overflow-hidden min-h-0">
           {/* Side Menu */}
-          <div className="w-48 border-r bg-muted/20 p-4 flex-shrink-0">
+          <div className="w-48 border-r bg-muted/20 p-4 shrink-0">
             <nav className="space-y-1">
               {menuItems.map((item) => (
                 <button
                   key={item.id}
+                  type="button"
                   onClick={() => !item.disabled && setActiveTab(item.id)}
                   disabled={item.disabled}
                   className={cn(
@@ -176,11 +194,11 @@ export function WorkspaceSettingsDialog({
                     item.disabled
                       ? "opacity-50 cursor-not-allowed"
                       : activeTab === item.id
-                      ? ""
-                      : "hover:bg-muted",
+                        ? ""
+                        : "hover:bg-muted",
                     activeTab === item.id
                       ? "bg-background text-foreground font-medium"
-                      : "text-muted-foreground"
+                      : "text-muted-foreground",
                   )}
                 >
                   {item.icon}

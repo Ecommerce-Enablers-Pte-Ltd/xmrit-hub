@@ -1,8 +1,9 @@
 // Metrics API client and hooks
 
-import * as React from "react";
-import { BaseApiClient } from "./base";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Metric } from "@/types/db/metric";
+import { BaseApiClient } from "./base";
+import { slideKeys } from "./slides";
 
 export class MetricApiClient extends BaseApiClient {
   async createMetric(slideId: string, data: any): Promise<Metric> {
@@ -13,10 +14,14 @@ export class MetricApiClient extends BaseApiClient {
   }
 
   async updateMetric(metricId: string, data: any): Promise<Metric> {
-    return this.request(`/metrics/${metricId}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
+    const response = await this.request<{ metric: Metric }>(
+      `/metrics/${metricId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(data),
+      },
+    );
+    return response.metric;
   }
 
   async deleteMetric(metricId: string): Promise<void> {
@@ -27,7 +32,7 @@ export class MetricApiClient extends BaseApiClient {
 
   async getMetricById(metricId: string): Promise<Metric> {
     const response = await this.request<{ metric: Metric }>(
-      `/metrics/${metricId}`
+      `/metrics/${metricId}`,
     );
     return response.metric;
   }
@@ -36,37 +41,54 @@ export class MetricApiClient extends BaseApiClient {
 // Default metric client instance
 export const metricApiClient = new MetricApiClient();
 
-// React hooks for metric data fetching
+// Query keys for React Query cache management
+export const metricKeys = {
+  all: ["metrics"] as const,
+  lists: () => [...metricKeys.all, "list"] as const,
+  list: (slideId?: string) =>
+    slideId ? ([...metricKeys.lists(), slideId] as const) : metricKeys.lists(),
+  details: () => [...metricKeys.all, "detail"] as const,
+  detail: (id: string) => [...metricKeys.details(), id] as const,
+};
+
+// React Query hooks for metric data fetching
 export function useMetric(metricId: string) {
-  const [metric, setMetric] = React.useState<Metric | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!metricId) return;
-
-    metricApiClient
-      .getMetricById(metricId)
-      .then(setMetric)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [metricId]);
-
-  const refetch = React.useCallback(() => {
-    if (!metricId) return;
-    setLoading(true);
-    setError(null);
-    metricApiClient
-      .getMetricById(metricId)
-      .then(setMetric)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [metricId]);
+  const query = useQuery({
+    queryKey: metricKeys.detail(metricId),
+    queryFn: () => metricApiClient.getMetricById(metricId),
+    enabled: !!metricId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
 
   return {
-    metric,
-    loading,
-    error,
-    refetch,
+    metric: query.data || null,
+    loading: query.isLoading,
+    error: query.error?.message || null,
+    refetch: query.refetch,
   };
+}
+
+// Mutation hook for updating metric
+export function useUpdateMetric() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ metricId, data }: { metricId: string; data: any }) =>
+      metricApiClient.updateMetric(metricId, data),
+    onSuccess: (updatedMetric, variables) => {
+      // Update the metric cache directly
+      queryClient.setQueryData<Metric>(
+        metricKeys.detail(variables.metricId),
+        updatedMetric,
+      );
+
+      // Find which slide this metric belongs to and invalidate its cache
+      // This ensures the slide view reflects the updated metric
+      queryClient.invalidateQueries({
+        queryKey: slideKeys.all,
+        refetchType: "active",
+      });
+    },
+  });
 }

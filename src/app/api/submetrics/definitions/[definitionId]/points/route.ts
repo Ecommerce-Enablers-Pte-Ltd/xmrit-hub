@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { type NextRequest, NextResponse } from "next/server";
 import {
-  getWorkspaceIdFromDefinition,
-  getPointThread,
-  getAllPointComments,
   createPointComment,
+  getAllPointComments,
+  getPointThread,
+  getWorkspaceIdFromDefinition,
 } from "@/lib/api/comments";
+import { auth } from "@/lib/auth";
 import type { TimeBucket } from "@/lib/time-buckets";
 
 /**
@@ -14,7 +14,7 @@ import type { TimeBucket } from "@/lib/time-buckets";
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ definitionId: string }> }
+  { params }: { params: Promise<{ definitionId: string }> },
 ) {
   try {
     // Auth check
@@ -30,16 +30,15 @@ export async function GET(
     const bucketType = searchParams.get("bucketType") as TimeBucket | null;
     const bucketValue = searchParams.get("bucketValue");
     const cursor = searchParams.get("cursor") || undefined;
-    const limit = searchParams.get("limit")
-      ? Number.parseInt(searchParams.get("limit")!, 10)
-      : undefined;
+    const limitParam = searchParams.get("limit");
+    const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined;
 
     // Get workspace from definition and verify access
     const workspaceId = await getWorkspaceIdFromDefinition(definitionId);
     if (!workspaceId) {
       return NextResponse.json(
         { error: "Definition not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -63,7 +62,7 @@ export async function GET(
     if (!validBuckets.includes(bucketType)) {
       return NextResponse.json(
         { error: "Invalid bucketType" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -73,7 +72,7 @@ export async function GET(
       bucketType,
       bucketValue,
       cursor,
-      limit
+      limit,
     );
 
     if (!result) {
@@ -91,7 +90,7 @@ export async function GET(
     console.error("Error getting point thread:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -102,7 +101,7 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ definitionId: string }> }
+  { params }: { params: Promise<{ definitionId: string }> },
 ) {
   try {
     // Auth check
@@ -121,7 +120,7 @@ export async function POST(
     if (!bucketType || !bucketValue || !commentBody) {
       return NextResponse.json(
         { error: "Missing required fields: bucketType, bucketValue, body" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -136,7 +135,7 @@ export async function POST(
     if (!validBuckets.includes(bucketType)) {
       return NextResponse.json(
         { error: "Invalid bucketType" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -144,14 +143,14 @@ export async function POST(
     if (typeof commentBody !== "string" || commentBody.trim().length === 0) {
       return NextResponse.json(
         { error: "Comment body cannot be empty" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (commentBody.length > 10000) {
       return NextResponse.json(
         { error: "Comment body too long (max 10000 characters)" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -160,7 +159,7 @@ export async function POST(
     if (!workspaceId) {
       return NextResponse.json(
         { error: "Definition not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -174,7 +173,7 @@ export async function POST(
       bucketValue,
       session.user.id,
       commentBody.trim(),
-      parentId
+      parentId,
     );
 
     return NextResponse.json(result, { status: 201 });
@@ -184,14 +183,13 @@ export async function POST(
     if (error.message === "Invalid parent comment") {
       return NextResponse.json(
         { error: "Invalid parent comment" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

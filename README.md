@@ -38,7 +38,6 @@ Comprehensive documentation is available in the [`docs/`](./docs) folder:
 
 ### Feature Documentation
 
-- **[Controller Logic (Traffic Light)](./docs/CONTROLLER_TRAFFIC_LIGHT.md)** - Process control status indicators
 - **[Data Ingestion API](./docs/DATA_INGESTION.md)** - REST API for programmatic data ingestion
 - **[Comment System](./docs/COMMENT_SYSTEM.md)** - Persistent comments and discussion threads on data points
 - **[Auto Lock Limit](./docs/AUTO_LOCK_LIMIT.md)** - Automatic outlier detection and removal

@@ -5,7 +5,6 @@ import {
   index,
   integer,
   json,
-  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -46,7 +45,7 @@ export const accounts = pgTable(
     compoundKey: primaryKey({
       columns: [account.provider, account.providerAccountId],
     }),
-  })
+  }),
 );
 
 export const sessions = pgTable("session", {
@@ -77,7 +76,9 @@ export const workspaces = pgTable(
   },
   (table) => ({
     nameIdx: index("workspace_name_idx").on(table.name),
-  })
+    updatedAtIdx: index("workspace_updated_at_idx").on(table.updatedAt), // For ordering workspaces
+    isArchivedIdx: index("workspace_is_archived_idx").on(table.isArchived), // For filtering archived workspaces
+  }),
 );
 
 // Slides table - replaces folders as presentation containers
@@ -107,7 +108,35 @@ export const slides = pgTable(
     workspaceIdIdx: index("slide_workspace_id_idx").on(table.workspaceId),
     dateIdx: index("slide_date_idx").on(table.slideDate),
     sortOrderIdx: index("slide_sort_order_idx").on(table.sortOrder),
-  })
+    createdAtIdx: index("slide_created_at_idx").on(table.createdAt), // For ordering recent slides
+  }),
+);
+
+// Metric definitions - stable identities across slides
+export const metricDefinitions = pgTable(
+  "metric_definition",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    workspaceId: text("workspaceId")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    metricKey: text("metricKey").notNull(), // stable key for metric family
+    definition: text("definition"), // metric definition/description
+    createdAt: timestamp("createdAt", { mode: "date" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: timestamp("updatedAt", { mode: "date" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    workspaceMetricIdx: uniqueIndex("metric_definition_ws_metric_idx").on(
+      table.workspaceId,
+      table.metricKey,
+    ),
+  }),
 );
 
 // Metrics table - high-level metric containers
@@ -118,10 +147,12 @@ export const metrics = pgTable(
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     name: text("name").notNull(),
-    description: text("description"),
     slideId: text("slideId")
       .notNull()
       .references(() => slides.id, { onDelete: "cascade" }),
+    definitionId: text("definitionId").references(() => metricDefinitions.id, {
+      onDelete: "set null",
+    }),
     sortOrder: integer("sortOrder").default(0),
     ranking: integer("ranking"), // Optional ranking: 1 = top, 2 = second, etc.
     chartType: text("chartType").default("line"), // line, bar, area, etc.
@@ -137,7 +168,8 @@ export const metrics = pgTable(
     slideIdIdx: index("metric_slide_id_idx").on(table.slideId),
     sortOrderIdx: index("metric_sort_order_idx").on(table.sortOrder),
     rankingIdx: index("metric_ranking_idx").on(table.ranking),
-  })
+    definitionIdIdx: index("metric_definition_id_idx").on(table.definitionId),
+  }),
 );
 
 // Enums for comment system
@@ -150,6 +182,30 @@ export const timeBucketEnum = pgEnum("time_bucket", [
 ]);
 
 export const threadScopeEnum = pgEnum("thread_scope", ["point", "submetric"]);
+
+// Follow-up enums
+export const followUpStatusEnum = pgEnum("follow_up_status", [
+  "backlog",
+  "todo",
+  "in_progress",
+  "done",
+  "cancelled",
+]);
+
+export const followUpPriorityEnum = pgEnum("follow_up_priority", [
+  "no_priority",
+  "urgent",
+  "high",
+  "medium",
+  "low",
+]);
+
+export const trafficLightColorEnum = pgEnum("traffic_light_color", [
+  "green",
+  "yellow",
+  "red",
+  "none",
+]);
 
 // Submetric definitions - stable identities across slides
 export const submetricDefinitions = pgTable(
@@ -175,9 +231,9 @@ export const submetricDefinitions = pgTable(
   },
   (table) => ({
     workspaceMetricSubIdx: uniqueIndex(
-      "submetric_definition_ws_metric_sub_idx"
+      "submetric_definition_ws_metric_sub_idx",
     ).on(table.workspaceId, table.metricKey, table.submetricKey),
-  })
+  }),
 );
 
 // Submetrics table - specific metric implementations with visualization config
@@ -194,7 +250,7 @@ export const submetrics = pgTable(
       .references(() => metrics.id, { onDelete: "cascade" }),
     definitionId: text("definitionId").references(
       () => submetricDefinitions.id,
-      { onDelete: "set null" }
+      { onDelete: "set null" },
     ),
     // Visualization configuration
     xAxis: text("xAxis").notNull().default("date"),
@@ -204,17 +260,19 @@ export const submetrics = pgTable(
     unit: text("unit"), // %, $, units, etc.
     aggregationType: text("aggregationType").default("none"), // sum, avg, count, etc.
     color: text("color"), // hex color for visualization
+    trafficLightColor: trafficLightColorEnum("trafficLightColor"), // Manual traffic light indicator (per submetric, not auto-calculated)
     metadata: json("metadata"), // JSON for additional submetric metadata
     // Data points stored as JSON array
-    dataPoints: json("dataPoints").$type<
-      Array<{
-        timestamp: string; // ISO date string
-        value: number;
-        confidence?: number | null;
-        source?: string | null;
-        dimensions?: Record<string, unknown> | null;
-      }>
-    >(),
+    dataPoints:
+      json("dataPoints").$type<
+        Array<{
+          timestamp: string; // ISO date string
+          value: number;
+          confidence?: number | null;
+          source?: string | null;
+          dimensions?: Record<string, unknown> | null;
+        }>
+      >(),
     createdAt: timestamp("createdAt", { mode: "date" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -226,9 +284,9 @@ export const submetrics = pgTable(
     metricIdIdx: index("submetric_metric_id_idx").on(table.metricId),
     categoryIdx: index("submetric_category_idx").on(table.category),
     definitionIdIdx: index("submetric_definition_id_idx").on(
-      table.definitionId
+      table.definitionId,
     ),
-  })
+  }),
 );
 
 // Comment threads - supports both point-level and submetric-scoped
@@ -269,7 +327,7 @@ export const commentThreads = pgTable(
     wsDefScopeIdx: index("comment_thread_ws_def_scope_idx").on(
       table.workspaceId,
       table.definitionId,
-      table.scope
+      table.scope,
     ),
     // pointLookupIdx removed in migration 0006 - was redundant, covered by groupingIdx
     slideIdx: index("comment_thread_slide_idx").on(table.slideId),
@@ -277,20 +335,20 @@ export const commentThreads = pgTable(
       table.definitionId,
       table.scope,
       table.bucketType,
-      table.bucketValue
+      table.bucketValue,
     ),
     // Optimized indexes for batch comment count queries (100+ definitions)
     scopeDefIdx: index("comment_thread_scope_def_idx").on(
       table.scope,
-      table.definitionId
+      table.definitionId,
     ),
     groupingIdx: index("comment_thread_grouping_idx").on(
       table.definitionId,
       table.bucketType,
       table.bucketValue,
-      table.scope
+      table.scope,
     ),
-  })
+  }),
 );
 
 // Comments - items within a thread (supports replies)
@@ -322,14 +380,14 @@ export const comments = pgTable(
     threadCreatedIdx: index("comment_thread_created_idx").on(
       table.threadId,
       table.createdAt,
-      table.id
+      table.id,
     ),
     // Optimized for batch count queries with LEFT JOIN and isDeleted filter
     threadDeletedIdx: index("comment_thread_deleted_idx").on(
       table.threadId,
-      table.isDeleted
+      table.isDeleted,
     ),
-  })
+  }),
 );
 
 // ============================================================================
@@ -368,10 +426,25 @@ export const slidesRelations = relations(slides, ({ one, many }) => ({
   metrics: many(metrics),
 }));
 
+export const metricDefinitionsRelations = relations(
+  metricDefinitions,
+  ({ one, many }) => ({
+    workspace: one(workspaces, {
+      fields: [metricDefinitions.workspaceId],
+      references: [workspaces.id],
+    }),
+    metrics: many(metrics),
+  }),
+);
+
 export const metricsRelations = relations(metrics, ({ one, many }) => ({
   slide: one(slides, {
     fields: [metrics.slideId],
     references: [slides.id],
+  }),
+  definition: one(metricDefinitions, {
+    fields: [metrics.definitionId],
+    references: [metricDefinitions.id],
   }),
   submetrics: many(submetrics),
 }));
@@ -385,7 +458,7 @@ export const submetricDefinitionsRelations = relations(
     }),
     submetrics: many(submetrics),
     commentThreads: many(commentThreads),
-  })
+  }),
 );
 
 export const submetricsRelations = relations(submetrics, ({ one }) => ({
@@ -419,7 +492,7 @@ export const commentThreadsRelations = relations(
       references: [users.id],
     }),
     comments: many(comments),
-  })
+  }),
 );
 
 export const commentsRelations = relations(comments, ({ one }) => ({
@@ -436,3 +509,138 @@ export const commentsRelations = relations(comments, ({ one }) => ({
     references: [comments.id],
   }),
 }));
+
+// Follow-ups table - task/ticket management
+export const followUps = pgTable(
+  "follow_up",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    identifier: text("identifier").notNull(), // e.g., "FU-123"
+    title: text("title").notNull(),
+    description: text("description"),
+    workspaceId: text("workspaceId")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    slideId: text("slideId").references(() => slides.id, {
+      onDelete: "set null",
+    }), // optional link to a slide
+    submetricDefinitionId: text("submetricDefinitionId").references(
+      () => submetricDefinitions.id,
+      { onDelete: "set null" },
+    ), // optional link to a submetric definition
+    threadId: text("threadId").references(() => commentThreads.id, {
+      onDelete: "set null",
+    }), // optional link to a comment thread
+    resolvedAtSlideId: text("resolvedAtSlideId").references(() => slides.id, {
+      onDelete: "set null",
+    }), // tracks which slide resolved the follow-up when status changes to "done"
+    status: followUpStatusEnum("status").notNull().default("backlog"),
+    priority: followUpPriorityEnum("priority").notNull().default("no_priority"),
+    assigneeId: text("assigneeId").references(() => users.id, {
+      onDelete: "set null",
+    }), // DEPRECATED: kept for backward compatibility, use followUpAssignees instead
+    createdBy: text("createdBy")
+      .notNull()
+      .references(() => users.id, { onDelete: "set null" }),
+    dueDate: date("dueDate"),
+    completedAt: timestamp("completedAt", { mode: "date" }),
+    createdAt: timestamp("createdAt", { mode: "date" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: timestamp("updatedAt", { mode: "date" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    workspaceIdIdx: index("follow_up_workspace_id_idx").on(table.workspaceId),
+    assigneeIdIdx: index("follow_up_assignee_id_idx").on(table.assigneeId),
+    statusIdx: index("follow_up_status_idx").on(table.status),
+    submetricDefinitionIdIdx: index("follow_up_submetric_definition_id_idx").on(
+      table.submetricDefinitionId,
+    ),
+    resolvedAtSlideIdIdx: index("follow_up_resolved_at_slide_id_idx").on(
+      table.resolvedAtSlideId,
+    ),
+    identifierIdx: uniqueIndex("follow_up_identifier_idx").on(
+      table.workspaceId,
+      table.identifier,
+    ),
+  }),
+);
+
+// Follow-up assignees junction table - many-to-many relationship
+export const followUpAssignees = pgTable(
+  "follow_up_assignee",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    followUpId: text("followUpId")
+      .notNull()
+      .references(() => followUps.id, { onDelete: "cascade" }),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt", { mode: "date" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    followUpUserIdx: uniqueIndex("follow_up_assignee_follow_up_user_idx").on(
+      table.followUpId,
+      table.userId,
+    ),
+    followUpIdIdx: index("follow_up_assignee_follow_up_id_idx").on(
+      table.followUpId,
+    ),
+    userIdIdx: index("follow_up_assignee_user_id_idx").on(table.userId),
+  }),
+);
+
+export const followUpsRelations = relations(followUps, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [followUps.workspaceId],
+    references: [workspaces.id],
+  }),
+  slide: one(slides, {
+    fields: [followUps.slideId],
+    references: [slides.id],
+  }),
+  resolvedAtSlide: one(slides, {
+    fields: [followUps.resolvedAtSlideId],
+    references: [slides.id],
+  }),
+  submetricDefinition: one(submetricDefinitions, {
+    fields: [followUps.submetricDefinitionId],
+    references: [submetricDefinitions.id],
+  }),
+  thread: one(commentThreads, {
+    fields: [followUps.threadId],
+    references: [commentThreads.id],
+  }),
+  assignee: one(users, {
+    fields: [followUps.assigneeId],
+    references: [users.id],
+  }),
+  createdByUser: one(users, {
+    fields: [followUps.createdBy],
+    references: [users.id],
+  }),
+  assignees: many(followUpAssignees),
+}));
+
+export const followUpAssigneesRelations = relations(
+  followUpAssignees,
+  ({ one }) => ({
+    followUp: one(followUps, {
+      fields: [followUpAssignees.followUpId],
+      references: [followUps.id],
+    }),
+    user: one(users, {
+      fields: [followUpAssignees.userId],
+      references: [users.id],
+    }),
+  }),
+);
