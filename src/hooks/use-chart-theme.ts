@@ -52,7 +52,9 @@ class ChartThemeStore {
   };
 
   private notifyListeners() {
-    this.listeners.forEach((listener) => listener());
+    this.listeners.forEach((listener) => {
+      listener();
+    });
   }
 }
 
@@ -68,7 +70,6 @@ export function useChartTheme(): boolean {
   return useSyncExternalStore(
     themeStore.subscribe,
     themeStore.getSnapshot,
-    themeStore.getServerSnapshot
+    themeStore.getServerSnapshot,
   );
 }
-

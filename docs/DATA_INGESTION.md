@@ -47,12 +47,24 @@ Content-Type: application/json
 
 ### Metric Object Structure
 
-| Field         | Type   | Required | Description                  |
-| ------------- | ------ | -------- | ---------------------------- |
-| `metric_name` | String | Yes      | Name of the metric           |
-| `description` | String | No       | Optional metric description  |
-| `chart_type`  | String | No       | Chart type (default: "line") |
-| `submetrics`  | Array  | Yes      | Array of submetric objects   |
+| Field         | Type   | Required | Description                                                              |
+| ------------- | ------ | -------- | ------------------------------------------------------------------------ |
+| `metric_name` | String | Yes      | Name of the metric                                                       |
+| `description` | String | No       | Optional metric definition (workspace-level, preserved if omitted)       |
+| `ranking`     | Number | No       | Optional ranking/priority (1=top, 2=second, etc.) - slide-specific       |
+| `chart_type`  | String | No       | Chart type (default: "line")                                             |
+| `submetrics`  | Array  | Yes      | Array of submetric objects                                               |
+
+**Note on `description` field:**
+- Stores workspace-level definition in `metricDefinitions` table
+- If omitted during ingestion, existing definition is preserved (protects manual UI edits)
+- If provided, updates the definition
+- Completely optional - you can ingest data without descriptions
+
+**Note on `ranking` field:**
+- Slide-specific ranking/priority indicator
+- Stored separately from definition (in `metrics` table)
+- Editing definition does NOT affect ranking
 
 ### Submetric Object Structure
 
@@ -223,9 +235,54 @@ Content-Type: application/json
 2. **Request Parsing**: Parse and validate JSON payload
 3. **Workspace Resolution**: Get existing workspace or create new public workspace
 4. **Slide Resolution**: Get existing slide by ID or create/update by title and date
-5. **Metric Insertion**: Insert metrics with configured chart types
-6. **Submetric Insertion**: Insert submetrics with all attributes and data points
-7. **Response**: Return success with IDs and counts
+5. **Metric Definition Upsert**: Create or update metric definitions (workspace-level, shared across slides)
+6. **Metric Insertion**: Insert metrics linked to definitions with configured chart types and rankings
+7. **Submetric Definition Upsert**: Create or update submetric definitions (workspace-level, stable identities)
+8. **Submetric Insertion**: Insert submetrics linked to definitions with all attributes and data points
+9. **Response**: Return success with IDs and counts
+
+### Metric Definition System
+
+The ingestion API uses a **two-tier definition system** for stable metric identities:
+
+#### Metric Definitions (`metricDefinitions` table)
+
+- **Purpose**: Centralized definition/documentation for metric families across slides
+- **Key**: `(workspaceId, metricKey)` - unique per workspace
+- **Fields**: `definition` (description text), `metricKey` (stable identifier)
+- **Auto-generated**: `metricKey` is derived from `metric_name` (normalized to lowercase with dashes)
+
+**Upsert Behavior:**
+- If `description` is provided: Creates new definition or updates existing
+- If `description` is omitted: Preserves existing definition (manual UI edits are protected)
+- **This allows you to ingest data without affecting manually-edited definitions**
+
+#### Submetric Definitions (`submetricDefinitions` table)
+
+- **Purpose**: Stable identities for logical submetrics, enables persistent comments across slides
+- **Key**: `(workspaceId, metricKey, submetricKey)` - unique per workspace
+- **Fields**: `label`, `unit`, `preferredTrend`
+- **Auto-generated**: `submetricKey` includes category for uniqueness (e.g., "region-a-of-total-count")
+
+**Upsert Behavior:**
+- Always updates `label`, `unit`, and `preferredTrend` to match latest ingestion
+- Preserves `definitionId` for comment thread persistence
+
+### Ranking vs Definition Separation
+
+**Important**: Metric **ranking** and **definition** are stored separately:
+
+- **Ranking** is stored in the `metrics` table (slide-specific)
+  - Changes per slide/time period
+  - Not affected by definition updates
+  - Example: "Revenue" might be ranked #1 this week, #3 next week
+
+- **Definition** is stored in the `metricDefinitions` table (workspace-level)
+  - Shared across all slides
+  - Provides documentation/description
+  - Example: "Total revenue by region including online and offline sales"
+
+**Editing a definition will NOT affect rankings or ordering** - they are independent concerns.
 
 ### Workspace Creation
 
@@ -387,6 +444,23 @@ print(response.json())
 - Use descriptive slide titles for easy identification
 - Include slide dates for time-based organization
 - Add descriptions for context and documentation
+
+### 6. Metric Definition Management
+
+**When to Include Descriptions:**
+- **Initial setup**: Include descriptions when first creating metrics to document their meaning
+- **Documentation updates**: Include descriptions when you want to update the definition
+- **Skip descriptions**: Omit descriptions in regular data ingestion to preserve manual edits made through UI
+
+**Ranking Best Practices:**
+- Use `ranking` to highlight top metrics (1 = most important, 2 = second most important)
+- Ranking is slide-specific, so you can highlight different metrics each week
+- Omit ranking if all metrics are equally important
+
+**Definition vs Data Separation:**
+- Think of definitions as "what this metric means" (workspace-level documentation)
+- Think of data/ranking as "this week's values and priorities" (slide-specific)
+- This separation allows you to update documentation without re-ingesting all historical data
 
 ## Troubleshooting
 

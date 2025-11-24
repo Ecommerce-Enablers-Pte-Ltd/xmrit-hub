@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -45,10 +45,10 @@ export function SubmetricTrendDialog({
 
   // State for manually entered equation values
   const [gradient, setGradient] = useState<string>(
-    initialStats?.m.toFixed(8) || "0"
+    initialStats?.m.toFixed(8) || "0",
   );
   const [intercept, setIntercept] = useState<string>(
-    initialStats?.c.toFixed(6) || "0"
+    initialStats?.c.toFixed(6) || "0",
   );
 
   // Track if user has manually edited gradient/intercept
@@ -79,7 +79,7 @@ export function SubmetricTrendDialog({
   // Handle value change in table
   const handleValueChange = useCallback((index: number, newValue: string) => {
     const numValue = parseFloat(newValue);
-    if (!isNaN(numValue)) {
+    if (!Number.isNaN(numValue)) {
       setEditedDataPoints((prevPoints) => {
         const newDataPoints = [...prevPoints];
         newDataPoints[index] = { ...newDataPoints[index], value: numValue };
@@ -107,7 +107,7 @@ export function SubmetricTrendDialog({
     const m = stats ? stats.m : parseFloat(gradient);
     const c = stats ? stats.c : parseFloat(intercept);
 
-    if (isNaN(m) || isNaN(c)) {
+    if (Number.isNaN(m) || Number.isNaN(c)) {
       alert("Please enter valid numbers for gradient and intercept");
       return;
     }
@@ -117,8 +117,8 @@ export function SubmetricTrendDialog({
   };
 
   // Parse values for display
-  const parsedGradient = parseFloat(gradient);
-  const parsedIntercept = parseFloat(intercept);
+  const _parsedGradient = parseFloat(gradient);
+  const _parsedIntercept = parseFloat(intercept);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -197,7 +197,7 @@ export function SubmetricTrendDialog({
                 </TableHeader>
                 <TableBody>
                   {editedDataPoints.map((point, index) => (
-                    <TableRow key={index}>
+                    <TableRow key={`${point.timestamp}-${index}`}>
                       <TableCell className="font-mono text-sm">
                         {point.timestamp}
                       </TableCell>
@@ -216,14 +216,15 @@ export function SubmetricTrendDialog({
                   ))}
                   {/* Empty rows for visual consistency */}
                   {editedDataPoints.length < 15 &&
-                    Array.from({ length: 15 - editedDataPoints.length }).map(
-                      (_, i) => (
-                        <TableRow key={`empty-${i}`}>
-                          <TableCell className="h-10"></TableCell>
-                          <TableCell></TableCell>
-                        </TableRow>
-                      )
-                    )}
+                    Array.from(
+                      { length: 15 - editedDataPoints.length },
+                      (_, i) => i,
+                    ).map((rowNum) => (
+                      <TableRow key={`empty-row-${rowNum}`}>
+                        <TableCell className="h-10"></TableCell>
+                        <TableCell></TableCell>
+                      </TableRow>
+                    ))}
                 </TableBody>
               </Table>
             </ScrollArea>

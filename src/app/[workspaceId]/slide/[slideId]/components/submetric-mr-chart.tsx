@@ -2,19 +2,19 @@
 
 import { memo, useCallback, useMemo } from "react";
 import {
-  LineChart,
+  CartesianGrid,
+  Label,
   Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-  Label,
 } from "recharts";
-import type { Submetric } from "@/types/db/submetric";
-import type { XMRLimits } from "@/lib/xmr-calculations";
 import { useChartTheme } from "@/hooks/use-chart-theme";
+import type { XMRLimits } from "@/lib/xmr-calculations";
+import type { Submetric } from "@/types/db/submetric";
 
 interface SubmetricMRChartProps {
   chartData: any[];
@@ -102,7 +102,7 @@ export const SubmetricMRChart = memo(
         }
         return null;
       },
-      [submetric.unit]
+      [submetric.unit],
     );
 
     // Memoize dot renderer
@@ -137,7 +137,7 @@ export const SubmetricMRChart = memo(
           />
         );
       },
-      [isDark, submetric.color] // Depends on theme and submetric color
+      [isDark, submetric.color], // Depends on theme and submetric color
     );
 
     // Memoize active dot renderer
@@ -169,23 +169,23 @@ export const SubmetricMRChart = memo(
           />
         );
       },
-      [isDark, submetric.color] // Depends on theme and submetric color
+      [isDark, submetric.color], // Depends on theme and submetric color
     );
 
     // Memoize tick formatter
     const tickFormatter = useCallback(
       (value: number) => Number(value).toFixed(1),
-      []
+      [],
     );
 
     // Memoize static axis configurations
     const axisLineConfig = useMemo(
       () => ({ stroke: "currentColor", strokeWidth: 1 }),
-      []
+      [],
     );
     const tickLineConfig = useMemo(
       () => ({ stroke: "currentColor", strokeWidth: 1 }),
-      []
+      [],
     );
     const tickConfig = useMemo(() => ({ fontSize: 12 }), []);
 
@@ -200,7 +200,7 @@ export const SubmetricMRChart = memo(
           fill: "#10b981",
         },
       }),
-      [xmrLimits.avgMovement]
+      [xmrLimits.avgMovement],
     );
 
     const urlLabel = useMemo(
@@ -213,7 +213,7 @@ export const SubmetricMRChart = memo(
           fill: "#94a3b8",
         },
       }),
-      [xmrLimits.URL]
+      [xmrLimits.URL],
     );
 
     return (
@@ -288,7 +288,7 @@ export const SubmetricMRChart = memo(
         </ResponsiveContainer>
       </div>
     );
-  }
+  },
 );
 
 SubmetricMRChart.displayName = "SubmetricMRChart";

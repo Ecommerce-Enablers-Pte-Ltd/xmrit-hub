@@ -1,9 +1,15 @@
 "use client";
 
-import { BarChart3, FileText, Github, Home, Settings } from "lucide-react";
+import {
+  ExternalLink,
+  Github,
+  Home,
+  ListTodo,
+  type LucideIcon,
+  Settings,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -15,7 +21,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import type { SlideWithMetrics } from "@/types/db/slide";
+import { usePrefetchSlide } from "@/lib/api";
+import type { Slide } from "@/types/db/slide";
 import type { Workspace } from "@/types/db/workspace";
 import { ThemeToggle } from "./theme-toggle";
 import { WorkspaceSelector } from "./workspace-selector";
@@ -23,11 +30,17 @@ import { WorkspaceSelector } from "./workspace-selector";
 interface DashboardSidebarProps {
   workspaces: Workspace[];
   currentWorkspace: Workspace;
-  slides: SlideWithMetrics[];
+  slides: Slide[]; // Changed from SlideWithMetrics[] to Slide[] for lightweight loading
   onWorkspaceChange: (workspace: Workspace) => void;
   onCreateWorkspace: () => void;
-  onCreateSlide: () => void;
-  onCreateMetric: (slideId: string) => void;
+  onOpenSettings: () => void;
+}
+
+interface NavigationItem {
+  icon: LucideIcon;
+  label: string;
+  href?: string;
+  onClick?: () => void;
 }
 
 export function DashboardSidebar({
@@ -36,32 +49,32 @@ export function DashboardSidebar({
   slides,
   onWorkspaceChange,
   onCreateWorkspace,
-  onCreateSlide,
-  onCreateMetric,
+  onOpenSettings,
 }: DashboardSidebarProps) {
   const pathname = usePathname();
+  const prefetchSlide = usePrefetchSlide();
 
-  const _navigationItems = [
+  const navigationItems: NavigationItem[] = [
     {
-      title: "Dashboard",
-      href: `/${currentWorkspace.id}`,
       icon: Home,
+      label: "Home",
+      href: `/${currentWorkspace.id}`,
     },
     {
-      title: "Analytics",
-      href: `/${currentWorkspace.id}/analytics`,
-      icon: BarChart3,
+      icon: ListTodo,
+      label: "Follow-ups",
+      href: `/${currentWorkspace.id}/follow-ups`,
     },
     {
-      title: "Settings",
-      href: `/${currentWorkspace.id}/settings`,
       icon: Settings,
+      label: "Settings",
+      onClick: onOpenSettings,
     },
   ];
 
   return (
     <Sidebar>
-      <SidebarHeader className="p-3 pt-2">
+      <SidebarHeader className="p-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Xmrit Hub</h2>
           <ThemeToggle />
@@ -74,18 +87,30 @@ export function DashboardSidebar({
         />
       </SidebarHeader>
       <SidebarContent>
-        {/* <SidebarMenu>
+        <SidebarMenu>
           {navigationItems.map((item) => (
-            <SidebarMenuItem key={item.href}>
-              <SidebarMenuButton asChild isActive={pathname === item.href}>
-                <Link href={item.href}>
-                  <item.icon className="h-4 w-4" />
-                  <span>{item.title}</span>
-                </Link>
+            <SidebarMenuItem key={item.label} className="px-3">
+              <SidebarMenuButton
+                asChild={!!item.href}
+                isActive={item.href ? pathname === item.href : false}
+                onClick={item.onClick}
+                className="cursor-pointer"
+              >
+                {item.href ? (
+                  <Link href={item.href}>
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                ) : (
+                  <>
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </>
+                )}
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
-        </SidebarMenu> */}
+        </SidebarMenu>
 
         <Separator className="my-2" />
 
@@ -94,22 +119,13 @@ export function DashboardSidebar({
             <h3 className="text-sm font-medium text-muted-foreground">
               Slides
             </h3>
-            {/* <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={onCreateSlide}
-            >
-               <Plus className="h-4 w-4" />
-              <span className="sr-only">Add slide</span>
-            </Button> */}
           </div>
         </div>
 
         <ScrollArea className="flex-1 px-3">
           <SidebarMenu>
             {slides.map((slide) => (
-              <SidebarMenuItem key={slide.id}>
+              <SidebarMenuItem key={slide.id} className="group/item">
                 <SidebarMenuButton
                   asChild
                   isActive={pathname.includes(`/slide/${slide.id}`)}
@@ -118,34 +134,13 @@ export function DashboardSidebar({
                     href={`/${currentWorkspace.id}/slide/${slide.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onMouseEnter={() => prefetchSlide(slide.id)}
+                    className="flex items-center gap-2"
                   >
-                    <span className="truncate">{slide.title}</span>
+                    <span className="truncate flex-1">{slide.title}</span>
+                    <ExternalLink className="h-3 w-3 shrink-0 opacity-0 group-hover/item:opacity-50 transition-opacity" />
                   </Link>
                 </SidebarMenuButton>
-                {/* {slide.metrics.length > 0 && (
-                  <SidebarMenuSub>
-                    {slide.metrics.map((metric) => (
-                      <SidebarMenuSubItem key={metric.id}>
-                        <SidebarMenuSubButton>
-                          <BarChart3 className="h-3 w-3" />
-                          <span className="truncate">{metric.name}</span>
-                          <span className="ml-auto text-xs text-muted-foreground">
-                            {metric.submetrics.length}
-                          </span>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))}
-                    <SidebarMenuSubItem>
-                      <SidebarMenuSubButton
-                        onClick={() => onCreateMetric(slide.id)}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <Plus className="h-3 w-3" />
-                        <span>Add Metric</span>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  </SidebarMenuSub>
-                )} */}
               </SidebarMenuItem>
             ))}
           </SidebarMenu>

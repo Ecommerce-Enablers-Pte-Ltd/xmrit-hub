@@ -1,22 +1,31 @@
 // Workspace API client and hooks
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { BaseApiClient } from "./base";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Slide } from "@/types/db/slide";
 import type { Workspace, WorkspaceWithSlides } from "@/types/db/workspace";
+import { BaseApiClient } from "./base";
 
 export class WorkspaceApiClient extends BaseApiClient {
   async getAllWorkspaces(): Promise<Workspace[]> {
     const response = await this.request<{ workspaces: Workspace[] }>(
-      "/workspaces"
+      "/workspaces",
     );
     return response.workspaces;
   }
 
   async getWorkspaceById(workspaceId: string): Promise<WorkspaceWithSlides> {
     const response = await this.request<{ workspace: WorkspaceWithSlides }>(
-      `/workspaces/${workspaceId}`
+      `/workspaces/${workspaceId}`,
     );
     return response.workspace;
+  }
+
+  // Lightweight endpoint for sidebar - only slide metadata
+  async getWorkspaceSlidesList(workspaceId: string): Promise<Slide[]> {
+    const response = await this.request<{ slides: Slide[] }>(
+      `/workspaces/${workspaceId}/slides-list`,
+    );
+    return response.slides;
   }
 
   async createWorkspace(data: Partial<Workspace>): Promise<Workspace> {
@@ -25,27 +34,27 @@ export class WorkspaceApiClient extends BaseApiClient {
       {
         method: "POST",
         body: JSON.stringify(data),
-      }
+      },
     );
     return response.workspace;
   }
 
   async updateWorkspace(
     workspaceId: string,
-    data: Partial<Workspace>
+    data: Partial<Workspace>,
   ): Promise<Workspace> {
     const response = await this.request<{ workspace: Workspace }>(
       `/workspaces/${workspaceId}`,
       {
         method: "PUT",
         body: JSON.stringify(data),
-      }
+      },
     );
     return response.workspace;
   }
 
   async deleteWorkspace(
-    workspaceId: string
+    workspaceId: string,
   ): Promise<{ message: string; workspaceId: string }> {
     return this.request(`/workspaces/${workspaceId}`, {
       method: "DELETE",
@@ -63,6 +72,8 @@ export const workspaceKeys = {
   list: () => [...workspaceKeys.lists()] as const,
   details: () => [...workspaceKeys.all, "detail"] as const,
   detail: (id: string) => [...workspaceKeys.details(), id] as const,
+  slidesList: (id: string) =>
+    [...workspaceKeys.all, "slides-list", id] as const,
 };
 
 // React Query hooks for workspace data fetching with optimizations
@@ -85,7 +96,10 @@ export function useWorkspaces(initialData?: Workspace[]) {
   };
 }
 
-export function useWorkspace(workspaceId: string, initialData?: WorkspaceWithSlides) {
+export function useWorkspace(
+  workspaceId: string,
+  initialData?: WorkspaceWithSlides,
+) {
   const query = useQuery({
     queryKey: workspaceKeys.detail(workspaceId),
     queryFn: () => workspaceApiClient.getWorkspaceById(workspaceId),
@@ -104,6 +118,25 @@ export function useWorkspace(workspaceId: string, initialData?: WorkspaceWithSli
     error: query.error?.message || null,
     refetch: query.refetch,
     isFetching: query.isFetching, // Background refetch indicator
+  };
+}
+
+// Lightweight hook for sidebar - only loads slide metadata
+export function useWorkspaceSlidesList(workspaceId: string) {
+  const query = useQuery({
+    queryKey: workspaceKeys.slidesList(workspaceId),
+    queryFn: () => workspaceApiClient.getWorkspaceSlidesList(workspaceId),
+    enabled: !!workspaceId,
+    staleTime: 10 * 60 * 1000, // 10 minutes - slides list rarely changes
+    gcTime: 30 * 60 * 1000, // 30 minutes cache
+    refetchOnWindowFocus: false, // Don't refetch on focus for better performance
+  });
+
+  return {
+    slides: query.data || [],
+    loading: query.isLoading,
+    error: query.error?.message || null,
+    refetch: query.refetch,
   };
 }
 

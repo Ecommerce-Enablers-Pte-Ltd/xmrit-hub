@@ -247,12 +247,31 @@ Ran once to:
 
 ### Key Derivation Logic
 
-- `metricKey`: Normalize `metric.name` → lowercase slug
-- `submetricKey`: Combine `category` + normalized `label` → lowercase slug
-- Example:
-  - Metric: `"Orders"`, Category: `"Agoda"`, Label: `"% Completion Rate"`
-  - Result: `metricKey="orders"`, `submetricKey="agoda-completion-rate"`
+- `metricKey`: Normalize `metric.name` → lowercase slug with dashes
+  - Example: "% of Total Count" → "of-total-count"
+- `submetricKey`: Combine `category` + normalized `label` → lowercase slug with dashes
+  - Example: Category: `"Region A"`, Label: `"% Completion Rate"`
+  - Result: `submetricKey="region-a-completion-rate"`
+- Full example:
+  - Metric: `"Orders"`, Category: `"Region A"`, Label: `"% Completion Rate"`
+  - Result: `metricKey="orders"`, `submetricKey="region-a-completion-rate"`
 - **Important**: Category field is used to ensure different categories get different definitions and isolated comment threads
+
+### Definition System Integration
+
+The comment system relies on the stable definition system:
+
+**Metric Definitions (`metricDefinitions` table):**
+- Workspace-level documentation for metric families
+- Can be edited through UI without affecting historical data
+- Ingestion preserves definitions when description is omitted
+
+**Submetric Definitions (`submetricDefinitions` table):**
+- Stable identities for logical submetrics
+- Comments attach here for cross-slide persistence
+- Auto-updated during ingestion to match latest data structure
+
+This two-tier system enables comments to persist across slides while allowing independent documentation management.
 
 ## Authorization
 
@@ -293,12 +312,12 @@ Ran once to:
 1. **Week 1**: Ingest slide with:
 
    - `metric.name="Orders"`
-   - `submetric.category="Agoda"`
+   - `submetric.category="Region A"`
    - `submetric.label="Completion Rate"`
-   - System creates `submetric_definition(metricKey="orders", submetricKey="agoda-completion-rate")`
+   - System creates `submetric_definition(metricKey="orders", submetricKey="region-a-completion-rate")`
    - Links `submetric.definitionId`
 
-2. **User adds comment** on Agoda data point "2024-01-08":
+2. **User adds comment** on Region A data point "2024-01-08":
 
    - System auto-detects `bucketType="week"`
    - Normalizes "2024-01-08" → "2024-01-08" (ISO week start is Monday)
@@ -308,17 +327,17 @@ Ran once to:
 3. **Week 2**: Ingest new slide with same metric/category/label
 
    - Links to existing `submetric_definition` via `definitionId` (same as Week 1)
-   - User hovers "2024-01-08" data point for Agoda
+   - User hovers "2024-01-08" data point for Region A
    - **Comment persists**: Shows "Spike due to promo campaign" from Week 1
 
-4. **Different Category (AU)**:
+4. **Different Category (Region B)**:
 
-   - AU submetric has different `definitionId` (metricKey="orders", submetricKey="au-completion-rate")
-   - Comments on Agoda data points do NOT appear on AU data points
+   - Region B submetric has different `definitionId` (metricKey="orders", submetricKey="region-b-completion-rate")
+   - Comments on Region A data points do NOT appear on Region B data points
    - Each category maintains isolated comment threads
 
 5. **Cross-Slide Visibility**:
-   - All slides with same `definitionId` (Agoda Orders Completion Rate) show comments for "2024-01-08"
+   - All slides with same `definitionId` (Region A Orders Completion Rate) show comments for "2024-01-08"
    - Historical context preserved across weekly refreshes
    - Comments properly isolated per category
 

@@ -1,15 +1,20 @@
+import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { ZodError } from "zod";
 import { getAuthSession } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { workspaces, slides } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { slides, workspaces } from "@/lib/db/schema";
+import {
+  updateWorkspaceSchema,
+  workspaceIdSchema,
+} from "@/lib/validations/workspace";
 
 // Cache control headers for workspace data
 const CACHE_REVALIDATE = 300; // 5 minutes
 
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ workspaceId: string }> }
+  _request: Request,
+  { params }: { params: Promise<{ workspaceId: string }> },
 ) {
   try {
     const session = await getAuthSession();
@@ -23,7 +28,7 @@ export async function GET(
       console.error("Session missing user ID:", session);
       return NextResponse.json(
         { error: "Invalid session - user ID missing" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -39,7 +44,7 @@ export async function GET(
     if (!workspace.length) {
       return NextResponse.json(
         { error: "Workspace not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -50,11 +55,12 @@ export async function GET(
       // In a full implementation, you'd check workspace membership here
       return NextResponse.json(
         { error: "Access denied - workspace is private" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
-    // Get slides for this workspace with their metrics (optimized with ordering and limit)
+    // Get slides for this workspace with optimized metrics loading
+    // Exclude heavy dataPoints column for performance
     const workspaceSlides = await db.query.slides.findMany({
       where: eq(slides.workspaceId, workspaceId),
       with: {
@@ -64,14 +70,38 @@ export async function GET(
             asc(metrics.ranking),
           ],
           with: {
+            definition: {
+              columns: {
+                id: true,
+                definition: true,
+              },
+            },
             submetrics: {
               orderBy: (submetrics, { asc }) => [asc(submetrics.createdAt)],
+              // Exclude dataPoints to reduce payload size (can be 1-10MB per slide!)
+              columns: {
+                id: true,
+                label: true,
+                category: true,
+                metricId: true,
+                definitionId: true,
+                xAxis: true,
+                timezone: true,
+                preferredTrend: true,
+                unit: true,
+                aggregationType: true,
+                color: true,
+                metadata: true,
+                createdAt: true,
+                updatedAt: true,
+                // dataPoints: false - explicitly excluded
+              },
             },
           },
         },
       },
       orderBy: [desc(slides.createdAt)],
-      limit: 100, // Limit to most recent 100 slides
+      limit: 50, // Reduced from 100 to 50 for faster load
     });
 
     return NextResponse.json(
@@ -85,20 +115,20 @@ export async function GET(
         headers: {
           "Cache-Control": `private, s-maxage=${CACHE_REVALIDATE}, stale-while-revalidate`,
         },
-      }
+      },
     );
   } catch (error) {
     console.error("Error fetching workspace:", error);
     return NextResponse.json(
       { error: "Failed to fetch workspace" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PUT(
   request: Request,
-  { params }: { params: Promise<{ workspaceId: string }> }
+  { params }: { params: Promise<{ workspaceId: string }> },
 ) {
   try {
     const session = await getAuthSession();
@@ -112,23 +142,26 @@ export async function PUT(
       console.error("Session missing user ID:", session);
       return NextResponse.json(
         { error: "Invalid session - user ID missing" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     const { workspaceId } = await params;
 
+    // Validate workspaceId parameter
+    const validatedParams = workspaceIdSchema.parse({ workspaceId });
+
     // Check if workspace exists and user has access
     const existingWorkspace = await db
       .select()
       .from(workspaces)
-      .where(eq(workspaces.id, workspaceId))
+      .where(eq(workspaces.id, validatedParams.workspaceId))
       .limit(1);
 
     if (!existingWorkspace.length) {
       return NextResponse.json(
         { error: "Workspace not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -137,19 +170,22 @@ export async function PUT(
     if (existingWorkspace[0].isPublic === false) {
       return NextResponse.json(
         { error: "Access denied - cannot modify private workspace" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     const body = await request.json();
 
+    // Validate request body with Zod
+    const validatedData = updateWorkspaceSchema.parse(body);
+
     const updatedWorkspace = await db
       .update(workspaces)
       .set({
-        ...body,
+        ...validatedData,
         updatedAt: new Date(),
       })
-      .where(eq(workspaces.id, workspaceId))
+      .where(eq(workspaces.id, validatedParams.workspaceId))
       .returning();
 
     if (!updatedWorkspace.length) {
@@ -158,17 +194,30 @@ export async function PUT(
 
     return NextResponse.json({ workspace: updatedWorkspace[0] });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          details: error.issues.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        },
+        { status: 400 },
+      );
+    }
+
     console.error("Error updating workspace:", error);
     return NextResponse.json(
       { error: "Failed to update workspace" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ workspaceId: string }> }
+  _request: Request,
+  { params }: { params: Promise<{ workspaceId: string }> },
 ) {
   try {
     const session = await getAuthSession();
@@ -182,23 +231,26 @@ export async function DELETE(
       console.error("Session missing user ID:", session);
       return NextResponse.json(
         { error: "Invalid session - user ID missing" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     const { workspaceId } = await params;
 
+    // Validate workspaceId parameter
+    const validatedParams = workspaceIdSchema.parse({ workspaceId });
+
     // Check if workspace exists and user has access
     const existingWorkspace = await db
       .select()
       .from(workspaces)
-      .where(eq(workspaces.id, workspaceId))
+      .where(eq(workspaces.id, validatedParams.workspaceId))
       .limit(1);
 
     if (!existingWorkspace.length) {
       return NextResponse.json(
         { error: "Workspace not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -207,7 +259,7 @@ export async function DELETE(
     if (existingWorkspace[0].isPublic === false) {
       return NextResponse.json(
         { error: "Access denied - cannot delete private workspace" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -218,17 +270,30 @@ export async function DELETE(
         isArchived: true,
         updatedAt: new Date(),
       })
-      .where(eq(workspaces.id, workspaceId));
+      .where(eq(workspaces.id, validatedParams.workspaceId));
 
     return NextResponse.json({
       message: "Workspace deleted successfully",
-      workspaceId,
+      workspaceId: validatedParams.workspaceId,
     });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          details: error.issues.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        },
+        { status: 400 },
+      );
+    }
+
     console.error("Error deleting workspace:", error);
     return NextResponse.json(
       { error: "Failed to delete workspace" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

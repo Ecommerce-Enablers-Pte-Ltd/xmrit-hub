@@ -1,12 +1,12 @@
-import { Metadata } from "next";
+import { eq } from "drizzle-orm";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getAuthSession } from "@/lib/auth";
-import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { slides, workspaces } from "@/lib/db/schema";
-import { SlideClient } from "./components/slide-client";
 import type { SlideWithMetrics } from "@/types/db/slide";
 import type { Workspace } from "@/types/db/workspace";
+import { SlideClient } from "./components/slide-client";
 
 interface SlidePageProps {
   params: Promise<{
@@ -15,8 +15,12 @@ interface SlidePageProps {
   }>;
 }
 
-// Server-side data fetching - simple fetch, no caching
-// React Query handles all caching on the client side
+// Enable Next.js caching for frequently accessed slides
+export const revalidate = 300; // Revalidate cached data every 5 minutes (ISR)
+// Note: We use ISR instead of full static generation due to auth requirements
+
+// Server-side data fetching with optimized caching
+// This data is cached server-side (ISR) + client-side (React Query)
 async function getSlideData(slideId: string): Promise<SlideWithMetrics | null> {
   const session = await getAuthSession();
   if (!session) return null;
@@ -30,9 +34,35 @@ async function getSlideData(slideId: string): Promise<SlideWithMetrics | null> {
           asc(metrics.ranking),
         ],
         with: {
+          // Only load the definition field we actually use in the UI
+          definition: {
+            columns: {
+              id: true,
+              definition: true,
+            },
+          },
           submetrics: {
             orderBy: (submetrics, { asc }) => [asc(submetrics.createdAt)],
-            // All fields including dataPoints are needed for chart rendering
+            // Limit columns to reduce data transfer (especially important for dataPoints JSONB)
+            columns: {
+              id: true,
+              metricId: true,
+              definitionId: true,
+              label: true,
+              category: true,
+              xAxis: true,
+              yAxis: true,
+              timezone: true,
+              preferredTrend: true,
+              unit: true,
+              aggregationType: true,
+              color: true,
+              trafficLightColor: true,
+              metadata: true,
+              dataPoints: true,
+              createdAt: true,
+              updatedAt: true,
+            },
           },
         },
       },
@@ -43,7 +73,7 @@ async function getSlideData(slideId: string): Promise<SlideWithMetrics | null> {
 }
 
 async function getWorkspaceData(
-  workspaceId: string
+  workspaceId: string,
 ): Promise<Workspace | null> {
   const session = await getAuthSession();
   if (!session) return null;
@@ -106,6 +136,7 @@ export async function generateMetadata({
 export default async function SlidePage({ params }: SlidePageProps) {
   const { workspaceId, slideId } = await params;
 
+  // Parallel data fetching for maximum speed
   const [slide, workspace] = await Promise.all([
     getSlideData(slideId),
     getWorkspaceData(workspaceId),

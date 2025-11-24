@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { ZodError } from "zod";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,11 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUpdateSlide } from "@/lib/api/slides";
-import { toast } from "sonner";
+import { updateSlideTitleSchema } from "@/lib/validations/slide";
 import type { SlideWithMetrics } from "@/types/db/slide";
 
 interface EditSlideNameDialogProps {
@@ -41,24 +43,36 @@ export function EditSlideNameDialog({
 
   // Handle title update
   const handleSaveTitle = async () => {
-    const trimmedTitle = titleValue.trim();
-
-    // If title hasn't changed or is empty, just close dialog
-    if (!trimmedTitle || trimmedTitle === slide.title) {
-      onOpenChange(false);
-      return;
-    }
-
+    // Validate with Zod before sending to backend
     try {
+      const validatedData = updateSlideTitleSchema.parse({
+        title: titleValue,
+      });
+
+      // If title hasn't changed, just close dialog
+      if (validatedData.title === slide.title) {
+        onOpenChange(false);
+        return;
+      }
+
       await updateSlide.mutateAsync({
         slideId: slide.id,
         workspaceId,
-        data: { title: trimmedTitle },
+        data: validatedData,
       });
 
       toast.success("Slide title updated");
       onOpenChange(false);
     } catch (error) {
+      if (error instanceof ZodError) {
+        // Show validation errors to user
+        const firstError = error.issues[0];
+        toast.error("Validation Error", {
+          description: firstError.message,
+        });
+        return;
+      }
+
       toast.error("Failed to update slide title");
     }
   };
@@ -98,10 +112,7 @@ export function EditSlideNameDialog({
           >
             Cancel
           </Button>
-          <Button
-            onClick={handleSaveTitle}
-            disabled={updateSlide.isPending}
-          >
+          <Button onClick={handleSaveTitle} disabled={updateSlide.isPending}>
             {updateSlide.isPending ? "Saving..." : "Save"}
           </Button>
         </DialogFooter>
@@ -109,4 +120,3 @@ export function EditSlideNameDialog({
     </Dialog>
   );
 }
-

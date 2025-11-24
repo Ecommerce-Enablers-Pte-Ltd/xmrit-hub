@@ -1,12 +1,12 @@
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { workspaces, slides } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { slides, workspaces } from "@/lib/db/schema";
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ workspaceId: string }> }
+  { params }: { params: Promise<{ workspaceId: string }> },
 ) {
   try {
     const session = await getAuthSession();
@@ -20,7 +20,7 @@ export async function POST(
       console.error("Session missing user ID:", session);
       return NextResponse.json(
         { error: "Invalid session - user ID missing" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -36,7 +36,7 @@ export async function POST(
     if (!workspace.length) {
       return NextResponse.json(
         { error: "Workspace not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -45,7 +45,7 @@ export async function POST(
       // Private workspace - should check user ownership
       return NextResponse.json(
         { error: "Access denied - cannot create slide in private workspace" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -82,7 +82,7 @@ export async function POST(
     console.error("Error creating slide:", error);
     return NextResponse.json(
       { error: "Failed to create slide" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

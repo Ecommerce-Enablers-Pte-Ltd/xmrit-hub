@@ -14,7 +14,7 @@ export class BaseApiClient {
 
   protected async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<T> {
     const url = `${this.baseUrl}/api${endpoint}`;
 
@@ -44,5 +44,53 @@ export class BaseApiClient {
     }
 
     return response.json();
+  }
+
+  /**
+   * GET request helper
+   */
+  protected async get<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: "GET",
+    });
+  }
+
+  /**
+   * POST request helper
+   */
+  protected async post<T, D = unknown>(endpoint: string, data: D): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * PUT request helper
+   */
+  protected async put<T, D = unknown>(endpoint: string, data: D): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * PATCH request helper
+   */
+  protected async patch<T, D = unknown>(endpoint: string, data: D): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * DELETE request helper
+   */
+  protected async delete<T = void>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: "DELETE",
+    });
   }
 }

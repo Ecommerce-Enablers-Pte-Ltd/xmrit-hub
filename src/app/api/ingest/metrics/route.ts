@@ -1,13 +1,14 @@
-import { db } from "@/lib/db";
-import {
-  metrics,
-  slides,
-  submetrics,
-  submetricDefinitions,
-  workspaces,
-} from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import {
+  metricDefinitions,
+  metrics,
+  slides,
+  submetricDefinitions,
+  submetrics,
+  workspaces,
+} from "@/lib/db/schema";
 
 /**
  * Metric Ingestion API
@@ -33,7 +34,7 @@ import { type NextRequest, NextResponse } from "next/server";
  *       "submetrics": [
  *         {
  *           "label": "Transaction Count",
- *           "category": "Adidas",
+ *           "category": "Region A",
  *           "timezone": "ltz",
  *           "xaxis": "period",
  *           "yaxis": "value",
@@ -97,7 +98,7 @@ interface IngestRequest {
 
 /**
  * Normalize a string to a stable key format
- * Example: "% of MCB Count" -> "of-mcb-count"
+ * Example: "% of Total Count" -> "of-total-count"
  */
 function normalizeKey(str: string): string {
   return str
@@ -110,8 +111,8 @@ function normalizeKey(str: string): string {
 /**
  * Derive submetric key from label
  * Extracts both category prefix and metric name to create a unique key
- * Example: "[Adidas] - % of MCB Count" -> "adidas-of-mcb-count"
- * Example: "[Nike] - % of MCB Count" -> "nike-of-mcb-count"
+ * Example: "[Region A] - % of Total Count" -> "region-a-of-total-count"
+ * Example: "[Region B] - % of Total Count" -> "region-b-of-total-count"
  * Example: "Transaction Count" -> "transaction-count"
  */
 function deriveSubmetricKey(label: string): string {
@@ -310,13 +311,37 @@ export async function POST(request: NextRequest) {
     let totalDataPoints = 0;
 
     for (const metricInput of body.metrics) {
-      // Insert metric
+      // Derive stable key for metric definition lookup/creation
+      const metricKey = normalizeKey(metricInput.metric_name);
+
+      // Upsert metric definition (auto-create/update)
+      const [metricDef] = await db
+        .insert(metricDefinitions)
+        .values({
+          workspaceId,
+          metricKey,
+          definition: metricInput.description || null,
+        })
+        .onConflictDoUpdate({
+          target: [metricDefinitions.workspaceId, metricDefinitions.metricKey],
+          set: {
+            // Only update definition if explicitly provided in the payload
+            // This preserves manual edits made through the UI
+            ...(metricInput.description
+              ? { definition: metricInput.description }
+              : {}),
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+
+      // Insert metric linked to definition
       const [metric] = await db
         .insert(metrics)
         .values({
           name: metricInput.metric_name,
-          description: metricInput.description || null,
           slideId,
+          definitionId: metricDef.id,
           ranking: metricInput.ranking || null,
           chartType: metricInput.chart_type || "line",
           sortOrder: 0,
@@ -486,14 +511,14 @@ export async function GET(request: NextRequest) {
       slide_description: "Optional description",
       metrics: [
         {
-          metric_name: "% of MCB Count to Total Transactions",
+          metric_name: "% of Verified Count to Total Transactions",
           description: "Optional description",
           ranking: 1,
           chart_type: "line",
           submetrics: [
             {
-              label: "[Adidas] - % of MCB Count",
-              category: "Adidas",
+              label: "[Region A] - % of Verified Count",
+              category: "Region A",
               timezone: "ltz",
               xaxis: "period",
               yaxis: "value",

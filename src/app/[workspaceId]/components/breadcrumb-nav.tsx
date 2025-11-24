@@ -12,12 +12,12 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { SlideWithMetrics } from "@/types/db/slide";
+import type { Slide } from "@/types/db/slide";
 import type { Workspace } from "@/types/db/workspace";
 
 interface BreadcrumbNavProps {
   workspace: Workspace;
-  slides: SlideWithMetrics[];
+  slides: Slide[]; // Changed from SlideWithMetrics[] to Slide[] for lightweight loading
 }
 
 export function BreadcrumbNav({ workspace, slides }: BreadcrumbNavProps) {
@@ -41,6 +41,15 @@ export function BreadcrumbNav({ workspace, slides }: BreadcrumbNavProps) {
     },
   ];
 
+  // Add follow-ups breadcrumb if we're on the follow-ups page
+  if (pathSegments.length >= 2 && pathSegments[1] === "follow-ups") {
+    breadcrumbItems.push({
+      label: "Follow-ups",
+      href: `/${workspace.id}/follow-ups`,
+      isClickable: true,
+    });
+  }
+
   // Add slide-specific breadcrumb if we're on a slide page
   if (pathSegments.length >= 3 && pathSegments[1] === "slide") {
     const slideId = pathSegments[2];
@@ -58,7 +67,7 @@ export function BreadcrumbNav({ workspace, slides }: BreadcrumbNavProps) {
   // Filter out "Workspace" item on mobile
   if (isMobile) {
     breadcrumbItems = breadcrumbItems.filter(
-      (item) => item.label !== "Workspace"
+      (item) => item.label !== "Workspace",
     );
   }
 

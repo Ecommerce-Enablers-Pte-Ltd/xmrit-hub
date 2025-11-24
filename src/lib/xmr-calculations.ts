@@ -53,7 +53,7 @@ export function isLnplModified(status: LockedLimitStatus): boolean {
  */
 export function shouldUseQuartile(
   status: LockedLimitStatus,
-  limits: XMRLimits
+  limits: XMRLimits,
 ): { useUpperQuartile: boolean; useLowerQuartile: boolean } {
   // Helper function to check if limits are symmetric around average
   function isSymmetric(avg: number, unpl: number, lnpl: number): boolean {
@@ -177,9 +177,9 @@ export const DECIMAL_PRECISION = 2;
  */
 export function roundToDecimalPrecision(
   n: number,
-  precision: number = DECIMAL_PRECISION
+  precision: number = DECIMAL_PRECISION,
 ): number {
-  const factor = Math.pow(10, precision);
+  const factor = 10 ** precision;
   return Math.round(n * factor) / factor;
 }
 
@@ -222,7 +222,7 @@ function calculateMedian(arr: number[]): number {
  */
 export function calculateXMRLimits(
   data: DataPoint[],
-  useMedian: boolean = false
+  useMedian: boolean = false,
 ): XMRLimits {
   if (data.length < 2) {
     return {
@@ -286,7 +286,7 @@ export function calculateXMRLimits(
 function checkOutsideLimits(
   data: MovingRangePoint[],
   limits: XMRLimits,
-  trendLimits?: TrendLimits
+  trendLimits?: TrendLimits,
 ): number[] {
   const violations: number[] = [];
   data.forEach((point, index) => {
@@ -308,7 +308,7 @@ function checkOutsideLimits(
 function checkRunningPoints(
   data: MovingRangePoint[],
   limits: XMRLimits,
-  trendLimits?: TrendLimits
+  trendLimits?: TrendLimits,
 ): number[] {
   const violations: number[] = [];
   if (data.length < 8) return violations;
@@ -349,7 +349,7 @@ function checkRunningPoints(
 function checkFourNearLimit(
   data: MovingRangePoint[],
   limits: XMRLimits,
-  trendLimits?: TrendLimits
+  trendLimits?: TrendLimits,
 ): number[] {
   const violations: number[] = [];
   if (data.length < 4) return violations;
@@ -396,7 +396,7 @@ function checkFourNearLimit(
 function checkTwoOfThreeBeyondTwoSigma(
   data: MovingRangePoint[],
   limits: XMRLimits,
-  trendLimits?: TrendLimits
+  trendLimits?: TrendLimits,
 ): number[] {
   const violations: number[] = [];
   if (data.length < 3) return violations;
@@ -446,7 +446,7 @@ function checkTwoOfThreeBeyondTwoSigma(
 function checkFifteenWithinOneSigma(
   data: MovingRangePoint[],
   limits: XMRLimits,
-  trendLimits?: TrendLimits
+  trendLimits?: TrendLimits,
 ): number[] {
   const violations: number[] = [];
   if (data.length < 15) return violations;
@@ -489,7 +489,7 @@ function checkFifteenWithinOneSigma(
 export function detectViolations(
   data: MovingRangePoint[],
   limits: XMRLimits,
-  trendLimits?: TrendLimits
+  trendLimits?: TrendLimits,
 ): ViolationDetails {
   if (data.length === 0) {
     return {
@@ -508,12 +508,12 @@ export function detectViolations(
     twoOfThreeBeyondTwoSigma: checkTwoOfThreeBeyondTwoSigma(
       data,
       limits,
-      trendLimits
+      trendLimits,
     ),
     fifteenWithinOneSigma: checkFifteenWithinOneSigma(
       data,
       limits,
-      trendLimits
+      trendLimits,
     ),
   };
 }
@@ -523,7 +523,7 @@ export function detectViolations(
  */
 export function generateXMRData(
   data: DataPoint[],
-  useMedian: boolean = false
+  useMedian: boolean = false,
 ): XMRData {
   const ranges = calculateMovingRanges(data);
   const limits = calculateXMRLimits(data, useMedian);
@@ -568,8 +568,7 @@ export function analyzeDataDistribution(values: number[]): {
 
   const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
   const variance =
-    values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
-    values.length;
+    values.reduce((sum, val) => sum + (val - mean) ** 2, 0) / values.length;
   const stdDev = Math.sqrt(variance);
 
   // Coefficient of Variation (CV) = stdDev / mean (for mean != 0)
@@ -577,7 +576,7 @@ export function analyzeDataDistribution(values: number[]): {
 
   // Calculate skewness
   const skewness =
-    values.reduce((sum, val) => sum + Math.pow((val - mean) / stdDev, 3), 0) /
+    values.reduce((sum, val) => sum + ((val - mean) / stdDev) ** 3, 0) /
     values.length;
 
   // Determine IQR multiplier based on CV
@@ -651,14 +650,13 @@ export function detectOutliersIQR(values: number[]): number[] {
  */
 export function detectOutliersZScore(
   values: number[],
-  threshold: number = OUTLIER_DETECTION.ZSCORE_THRESHOLD
+  threshold: number = OUTLIER_DETECTION.ZSCORE_THRESHOLD,
 ): number[] {
   if (values.length < OUTLIER_DETECTION.MIN_DATA_POINTS) return [];
 
   const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
   const variance =
-    values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
-    values.length;
+    values.reduce((sum, val) => sum + (val - mean) ** 2, 0) / values.length;
   const stdDev = Math.sqrt(variance);
 
   if (stdDev === 0) return [];
@@ -705,10 +703,10 @@ export function detectOutliersPercentile(values: number[]): number[] {
 
   const sorted = [...values].sort((a, b) => a - b);
   const lowerIndex = Math.floor(
-    sorted.length * OUTLIER_DETECTION.PERCENTILE_THRESHOLD
+    sorted.length * OUTLIER_DETECTION.PERCENTILE_THRESHOLD,
   );
   const upperIndex = Math.floor(
-    sorted.length * (1 - OUTLIER_DETECTION.PERCENTILE_THRESHOLD)
+    sorted.length * (1 - OUTLIER_DETECTION.PERCENTILE_THRESHOLD),
   );
 
   const lowerThreshold = sorted[lowerIndex];
@@ -756,14 +754,13 @@ export function removeOutliersFromData(data: DataPoint[]): {
       outlierSet.forEach((index) => {
         candidateOutliers.set(index, (candidateOutliers.get(index) || 0) + 1);
       });
-    }
+    },
   );
 
   // Calculate z-scores to identify extreme outliers
   const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
   const variance =
-    values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
-    values.length;
+    values.reduce((sum, val) => sum + (val - mean) ** 2, 0) / values.length;
   const stdDev = Math.sqrt(variance);
 
   // Filter candidates: require at least 2 methods to agree, OR 1 method with very high z-score
@@ -792,7 +789,7 @@ export function removeOutliersFromData(data: DataPoint[]): {
 
   // Limit to max 25% of data points
   const maxOutliers = Math.floor(
-    data.length * OUTLIER_DETECTION.MAX_OUTLIER_PERCENTAGE
+    data.length * OUTLIER_DETECTION.MAX_OUTLIER_PERCENTAGE,
   );
   const finalOutlierIndices = sortedCandidates
     .slice(0, maxOutliers)
@@ -874,8 +871,7 @@ export function shouldAutoLockLimits(dataPoints: DataPoint[]): boolean {
   const values = dataPoints.map((d) => d.value);
   const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
   const variance =
-    values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
-    values.length;
+    values.reduce((sum, val) => sum + (val - mean) ** 2, 0) / values.length;
   const stdDev = Math.sqrt(variance);
   const coefficientOfVariation = mean !== 0 ? stdDev / Math.abs(mean) : 0;
 
@@ -918,7 +914,7 @@ export interface TrendLimits {
  * Uses date-based normalization for better handling of irregular intervals
  */
 export function calculateLinearRegression(
-  data: DataPoint[]
+  data: DataPoint[],
 ): { m: number; c: number } | null {
   if (data.length < 2) {
     return null;
@@ -960,7 +956,7 @@ export function calculateLinearRegression(
 
   if (denominator === 0) {
     console.error(
-      "Denominator is zero; check the data points for possible vertical alignment."
+      "Denominator is zero; check the data points for possible vertical alignment.",
     );
     return null;
   }
@@ -975,7 +971,7 @@ export function calculateLinearRegression(
  * Calculate regression statistics including moving range
  */
 export function calculateRegressionStats(
-  data: DataPoint[]
+  data: DataPoint[],
 ): RegressionStats | null {
   const regressionResult = calculateLinearRegression(data);
   if (!regressionResult) {
@@ -1004,7 +1000,7 @@ export function calculateRegressionStats(
  */
 export function createTrendLines(
   stats: RegressionStats | null,
-  data: DataPoint[]
+  data: DataPoint[],
 ): TrendLimits {
   const emptyTrendLines: TrendLimits = {
     centreLine: [],
@@ -1141,7 +1137,7 @@ export function sortDividers(dividers: DividerLine[]): DividerLine[] {
 export function calculateSegmentStats(
   data: MovingRangePoint[],
   dividers: DividerLine[],
-  useMedian: boolean = false
+  useMedian: boolean = false,
 ): SegmentStats[] {
   if (data.length === 0) return [];
 
@@ -1153,7 +1149,7 @@ export function calculateSegmentStats(
     // No segmentation - treat all data as one segment
     const limits = calculateXMRLimits(
       data.map((d) => ({ timestamp: d.timestamp, value: d.value })),
-      useMedian
+      useMedian,
     );
     return [
       {
@@ -1184,7 +1180,7 @@ export function calculateSegmentStats(
     // Calculate limits for this segment
     const limits = calculateXMRLimits(
       segmentData.map((d) => ({ timestamp: d.timestamp, value: d.value })),
-      useMedian
+      useMedian,
     );
 
     segments.push({
@@ -1207,7 +1203,7 @@ export function detectViolationsWithSegments(
   segments: SegmentStats[],
   lockedLimits?: XMRLimits | null,
   trendLimits?: TrendLimits | null,
-  lockedLimitStatus?: LockedLimitStatus
+  lockedLimitStatus?: LockedLimitStatus,
 ): ViolationDetails {
   if (data.length === 0 || segments.length === 0) {
     return {
@@ -1231,7 +1227,7 @@ export function detectViolationsWithSegments(
   segments.forEach((segment, segmentIndex) => {
     const segmentData = segment.dataPoints;
     let limitsToUse = segment.limits;
-    let trendLimitsToUse: TrendLimits | undefined = undefined;
+    let trendLimitsToUse: TrendLimits | undefined;
 
     // For first segment, use locked limits or trend limits if available
     if (segmentIndex === 0) {
@@ -1246,7 +1242,7 @@ export function detectViolationsWithSegments(
     const segmentViolations = detectViolations(
       segmentData,
       limitsToUse,
-      trendLimitsToUse
+      trendLimitsToUse,
     );
 
     // Map segment indices to global indices
@@ -1254,7 +1250,7 @@ export function detectViolationsWithSegments(
       const globalIndex = data.findIndex(
         (d) =>
           d.timestamp === point.timestamp &&
-          Math.abs(d.value - point.value) < 0.001
+          Math.abs(d.value - point.value) < 0.001,
       );
 
       if (globalIndex !== -1) {
@@ -1301,7 +1297,7 @@ export function createBoundaryDividers(data: DataPoint[]): DividerLine[] {
  */
 export function addDivider(
   existingDividers: DividerLine[],
-  position?: number
+  position?: number,
 ): DividerLine[] {
   // Get non-shadow dividers
   const realDividers = existingDividers.filter((d) => !isShadowDivider(d));
@@ -1354,7 +1350,7 @@ export function removeDivider(dividers: DividerLine[]): DividerLine[] {
 export function updateDividerPosition(
   dividers: DividerLine[],
   dividerId: string,
-  newX: number
+  newX: number,
 ): DividerLine[] {
   return dividers.map((d) => (d.id === dividerId ? { ...d, x: newX } : d));
 }
@@ -1384,7 +1380,7 @@ export interface SeasonalFactors {
  * Returns the data granularity (how often data points occur)
  */
 export function determinePeriodicity(
-  data: DataPoint[]
+  data: DataPoint[],
 ): SeasonalityPeriod | "day" {
   if (data.length < 2) return "year";
 
@@ -1406,7 +1402,7 @@ export function determinePeriodicity(
 
   // Find most common interval
   const mostCommonDiff = Object.keys(diffCounts).reduce((a, b) =>
-    diffCounts[Number(a)] > diffCounts[Number(b)] ? a : b
+    diffCounts[Number(a)] > diffCounts[Number(b)] ? a : b,
   );
 
   const interval = Number(mostCommonDiff);
@@ -1436,7 +1432,7 @@ export function determinePeriodicity(
  * - daily or finer: enable all
  */
 export function getPeriodDisableMap(
-  data: DataPoint[]
+  data: DataPoint[],
 ): Record<SeasonalityPeriod, boolean> {
   if (data.length < 2) {
     return {
@@ -1465,7 +1461,7 @@ export function getPeriodDisableMap(
 
   // Find most common interval
   const mostCommonDiff = Object.keys(diffCounts).reduce((a, b) =>
-    diffCounts[Number(a)] > diffCounts[Number(b)] ? a : b
+    diffCounts[Number(a)] > diffCounts[Number(b)] ? a : b,
   );
   const interval = Number(mostCommonDiff);
 
@@ -1503,7 +1499,7 @@ export function getPeriodDisableMap(
  */
 export function getPeriodCoverage(
   data: DataPoint[],
-  period: SeasonalityPeriod
+  period: SeasonalityPeriod,
 ): number {
   if (data.length < 2) return 0;
 
@@ -1537,9 +1533,9 @@ export function getPeriodCoverage(
  * Groups data by period key and maintains chronological order within each period
  */
 function periodiseData(
-  initialX: string,
+  _initialX: string,
   data: DataPoint[],
-  period: SeasonalityPeriod = "year"
+  period: SeasonalityPeriod = "year",
 ): (DataPoint | null)[][] {
   if (data.length === 0) return [];
 
@@ -1552,23 +1548,25 @@ function periodiseData(
     let subPeriodIndex: number;
 
     switch (period) {
-      case "year":
+      case "year": {
         periodKey = date.getFullYear().toString();
         // For yearly data, use day of year as sub-period
         const startOfYear = new Date(date.getFullYear(), 0, 1);
         subPeriodIndex = Math.floor(
-          (date.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)
+          (date.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24),
         );
         break;
-      case "quarter":
+      }
+      case "quarter": {
         const quarter = Math.floor(date.getMonth() / 3) + 1;
         periodKey = `${date.getFullYear()}-Q${quarter}`;
         // For quarterly data, use day of quarter
         const quarterStart = new Date(date.getFullYear(), (quarter - 1) * 3, 1);
         subPeriodIndex = Math.floor(
-          (date.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24)
+          (date.getTime() - quarterStart.getTime()) / (1000 * 60 * 60 * 24),
         );
         break;
+      }
       case "month":
         periodKey = `${date.getFullYear()}-${(date.getMonth() + 1)
           .toString()
@@ -1576,15 +1574,14 @@ function periodiseData(
         // For monthly data, use day of month
         subPeriodIndex = date.getDate() - 1;
         break;
-      case "week":
-      default:
+      default: {
         // Calculate week number
         const onejan = new Date(date.getFullYear(), 0, 1);
         const weekNum = Math.ceil(
           ((date.getTime() - onejan.getTime()) / 86400000 +
             onejan.getDay() +
             1) /
-            7
+            7,
         );
         periodKey = `${date.getFullYear()}-W${weekNum
           .toString()
@@ -1592,12 +1589,13 @@ function periodiseData(
         // For weekly data, use day of week (0-6)
         subPeriodIndex = date.getDay();
         break;
+      }
     }
 
     if (!groupedData.has(periodKey)) {
       groupedData.set(periodKey, new Map());
     }
-    groupedData.get(periodKey)!.set(subPeriodIndex, point);
+    groupedData.get(periodKey)?.set(subPeriodIndex, point);
   });
 
   // Convert to array format, maintaining chronological order
@@ -1605,9 +1603,13 @@ function periodiseData(
   const sortedPeriods = Array.from(groupedData.keys()).sort();
 
   sortedPeriods.forEach((periodKey) => {
-    const periodData = groupedData.get(periodKey)!;
+    const periodData = groupedData.get(periodKey);
+    if (!periodData) return;
     const sortedIndices = Array.from(periodData.keys()).sort((a, b) => a - b);
-    const periodArray = sortedIndices.map((idx) => periodData.get(idx)!);
+    const periodArray = sortedIndices.map((idx) => {
+      const point = periodData.get(idx);
+      return point ?? null;
+    });
     periodisedData.push(periodArray);
   });
 
@@ -1623,14 +1625,14 @@ function periodiseDataGrouped(
   initialX: string,
   data: DataPoint[],
   period: SeasonalityPeriod,
-  grouping: SeasonalityGrouping
+  grouping: SeasonalityGrouping,
 ): DataPoint[][] {
   if (data.length === 0) return [];
 
   // Helper to get end of period
   const getEndOf = (
     date: Date,
-    unit: SeasonalityPeriod | SeasonalityGrouping
+    unit: SeasonalityPeriod | SeasonalityGrouping,
   ): Date => {
     const result = new Date(date);
     if (unit === "year") {
@@ -1654,7 +1656,7 @@ function periodiseDataGrouped(
   // Helper to get start of period
   const getStartOf = (
     date: Date,
-    unit: SeasonalityPeriod | SeasonalityGrouping
+    unit: SeasonalityPeriod | SeasonalityGrouping,
   ): Date => {
     const result = new Date(date);
     if (unit === "year") {
@@ -1679,7 +1681,7 @@ function periodiseDataGrouped(
   const addTime = (
     date: Date,
     amount: number,
-    unit: SeasonalityPeriod | SeasonalityGrouping
+    unit: SeasonalityPeriod | SeasonalityGrouping,
   ): Date => {
     const result = new Date(date);
     if (unit === "year") {
@@ -1707,7 +1709,7 @@ function periodiseDataGrouped(
 
   if (subPeriodEnd > periodEnd) {
     throw new Error(
-      "Invalid parameters: sub-period duration must be less than period duration!"
+      "Invalid parameters: sub-period duration must be less than period duration!",
     );
   }
 
@@ -1722,7 +1724,7 @@ function periodiseDataGrouped(
       // Accumulate values and create aggregated data point
       const totalValue = currSubPeriodValues.reduce(
         (acc, x) => acc + x.value,
-        0
+        0,
       );
       periodisedData[0].unshift({
         timestamp: toDateStr(getStartOf(subPeriodEnd, grouping)),
@@ -1773,7 +1775,7 @@ export function calculateSeasonalFactors(
   xData: DataPoint[],
   seasonalData: DataPoint[],
   period: SeasonalityPeriod = "year",
-  grouping: SeasonalityGrouping | "none" = "none"
+  grouping: SeasonalityGrouping | "none" = "none",
 ): { factors: number[]; hasWarning: boolean } {
   if (seasonalData.length === 0) {
     return { factors: [], hasWarning: false };
@@ -1792,7 +1794,7 @@ export function calculateSeasonalFactors(
       initialX,
       seasonalData,
       period,
-      grouping as SeasonalityGrouping
+      grouping as SeasonalityGrouping,
     );
   } else {
     periodisedData = periodiseData(initialX, seasonalData, period);
@@ -1804,14 +1806,14 @@ export function calculateSeasonalFactors(
 
   // Check if all periods have the same length (warns about incomplete periods)
   const hasWarning = !periodisedData.every(
-    (p) => p.length === periodisedData[0].length
+    (p) => p.length === periodisedData[0].length,
   );
 
   // Check for missing sub-periods in grouped data
   let hasMissingSubPeriods = false;
   if (isGrouped) {
     hasMissingSubPeriods = !periodisedData.every(
-      (p) => p.length === periodisedData[0].length
+      (p) => p.length === periodisedData[0].length,
     );
   }
 
@@ -1844,9 +1846,9 @@ export function calculateSeasonalFactors(
   const overallAvg = isGrouped
     ? // Grouped: use subPeriodAggregates only
       subPeriodAggregates
-        .filter((v) => !isNaN(v))
+        .filter((v) => !Number.isNaN(v))
         .reduce((sum, val) => sum + val, 0) /
-      subPeriodAggregates.filter((v) => !isNaN(v)).length
+      subPeriodAggregates.filter((v) => !Number.isNaN(v)).length
     : // Non-grouped: use all original seasonal data values
       seasonalData
         .filter((d) => d.value != null)
@@ -1855,7 +1857,7 @@ export function calculateSeasonalFactors(
 
   // Calculate seasonal factors (matching main3.ts lines 541-543)
   const seasonalFactors = subPeriodAggregates.map((v) =>
-    isNaN(v) ? 1.0 : roundToDecimalPrecision(v / overallAvg, 4)
+    Number.isNaN(v) ? 1.0 : roundToDecimalPrecision(v / overallAvg, 4),
   );
 
   return {
@@ -1871,7 +1873,7 @@ export function calculateSeasonalFactors(
 function applySeasonalFactorsGrouped(
   periodisedData: DataPoint[][],
   seasonalFactors: number[],
-  grouping: SeasonalityGrouping
+  grouping: SeasonalityGrouping,
 ): DataPoint[] {
   if (periodisedData.length === 0) {
     return [];
@@ -1917,7 +1919,7 @@ function applySeasonalFactorsGrouped(
   const addTime = (
     date: Date,
     amount: number,
-    unit: SeasonalityGrouping
+    unit: SeasonalityGrouping,
   ): Date => {
     const result = new Date(date);
     if (unit === "quarter") {
@@ -1939,9 +1941,9 @@ function applySeasonalFactorsGrouped(
 
   let subPeriodEnd = getEndOf(
     new Date(periodisedData[0][0].timestamp),
-    grouping
+    grouping,
   );
-  let newXData: DataPoint[] = [];
+  const newXData: DataPoint[] = [];
   let currSubPeriodSum = 0;
 
   periodisedData.forEach((period) => {
@@ -1981,7 +1983,7 @@ export function applySeasonalFactors(
   xData: DataPoint[],
   seasonalFactors: number[],
   grouping: SeasonalityGrouping | "none",
-  period: SeasonalityPeriod = "year"
+  period: SeasonalityPeriod = "year",
 ): DataPoint[] {
   if (xData.length === 0 || seasonalFactors.length === 0) {
     return xData;
@@ -1994,7 +1996,7 @@ export function applySeasonalFactors(
     return applySeasonalFactorsGrouped(
       periodisedData as DataPoint[][],
       seasonalFactors,
-      grouping as SeasonalityGrouping
+      grouping as SeasonalityGrouping,
     );
   }
 
@@ -2020,7 +2022,7 @@ export function applySeasonalFactors(
     const dateStr = new Date(d.timestamp).toISOString().slice(0, 10);
 
     if (dateSfMap[dateStr]) {
-      const { index, factor } = dateSfMap[dateStr];
+      const { index: _index, factor } = dateSfMap[dateStr];
       const deseasonalizedValue = factor !== 0 ? d.value / factor : d.value;
 
       return {
@@ -2042,14 +2044,14 @@ export function applySeasonalFactors(
  */
 export function prepareSeasonalDataForTable(
   data: DataPoint[],
-  period: SeasonalityPeriod = "year"
+  period: SeasonalityPeriod = "year",
 ): SeasonalData[] {
   if (data.length === 0) return [];
 
   const periodisedData = periodiseData(data[0].timestamp, data, period);
   const seasonalData: SeasonalData[] = [];
 
-  periodisedData.forEach((periodData, periodIdx) => {
+  periodisedData.forEach((periodData, _periodIdx) => {
     periodData.forEach((point, seasonIdx) => {
       if (point !== null) {
         seasonalData.push({

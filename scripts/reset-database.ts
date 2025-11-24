@@ -1,5 +1,5 @@
-import { config } from "dotenv";
 import { neon } from "@neondatabase/serverless";
+import { config } from "dotenv";
 
 // Load environment variables
 config();
@@ -56,7 +56,7 @@ async function resetDatabase() {
     console.log("\n✅ Database reset complete!");
     console.log("\n📝 Next steps:");
     console.log(
-      "   1. Run: npm run db:push or npm run db:migrate to apply the schema"
+      "   1. Run: npm run db:push or npm run db:migrate to apply the schema",
     );
     console.log("   2. Your database is now clean and ready!");
   } catch (error) {

@@ -2,19 +2,19 @@
  * Comment API helper functions
  */
 
+import { and, desc, eq, gt, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { eq, and, desc, sql, gt, or, inArray } from "drizzle-orm";
 import {
-  commentThreads,
   comments,
-  submetricDefinitions,
+  commentThreads,
   slides,
+  submetricDefinitions,
   users,
 } from "@/lib/db/schema";
 import type { TimeBucket } from "@/lib/time-buckets";
 import type {
-  CommentWithUser,
   CommentThreadResponse,
+  CommentWithUser,
   CreateCommentResponse,
 } from "@/types/db/comment";
 
@@ -25,7 +25,7 @@ const MAX_PAGE_LIMIT = 100;
  * Get workspace ID from definition ID
  */
 export async function getWorkspaceIdFromDefinition(
-  definitionId: string
+  definitionId: string,
 ): Promise<string | null> {
   const result = await db
     .select({ workspaceId: submetricDefinitions.workspaceId })
@@ -40,7 +40,7 @@ export async function getWorkspaceIdFromDefinition(
  * Get workspace ID from slide ID
  */
 export async function getWorkspaceIdFromSlide(
-  slideId: string
+  slideId: string,
 ): Promise<string | null> {
   const result = await db
     .select({ workspaceId: slides.workspaceId })
@@ -83,7 +83,7 @@ export async function getOrCreatePointThread(
   definitionId: string,
   bucketType: TimeBucket,
   bucketValue: string,
-  createdBy: string
+  createdBy: string,
 ): Promise<string> {
   // Try to find existing thread
   const existing = await db
@@ -94,8 +94,8 @@ export async function getOrCreatePointThread(
         eq(commentThreads.definitionId, definitionId),
         eq(commentThreads.scope, "point"),
         eq(commentThreads.bucketType, bucketType),
-        eq(commentThreads.bucketValue, bucketValue)
-      )
+        eq(commentThreads.bucketValue, bucketValue),
+      ),
     )
     .limit(1);
 
@@ -124,7 +124,7 @@ export async function getOrCreatePointThread(
  * Get all point-level comments for a definition (across all data points)
  */
 export async function getAllPointComments(
-  definitionId: string
+  definitionId: string,
 ): Promise<{ threads: CommentThreadResponse[] }> {
   // Get all threads for this definition
   const allThreads = await db
@@ -133,8 +133,8 @@ export async function getAllPointComments(
     .where(
       and(
         eq(commentThreads.definitionId, definitionId),
-        eq(commentThreads.scope, "point")
-      )
+        eq(commentThreads.scope, "point"),
+      ),
     )
     .orderBy(desc(commentThreads.updatedAt));
 
@@ -161,10 +161,7 @@ export async function getAllPointComments(
     .from(comments)
     .innerJoin(users, eq(comments.userId, users.id))
     .where(
-      and(
-        inArray(comments.threadId, threadIds),
-        eq(comments.isDeleted, false)
-      )
+      and(inArray(comments.threadId, threadIds), eq(comments.isDeleted, false)),
     )
     .orderBy(comments.createdAt);
 
@@ -174,7 +171,7 @@ export async function getAllPointComments(
     if (!commentsByThread.has(comment.threadId)) {
       commentsByThread.set(comment.threadId, []);
     }
-    commentsByThread.get(comment.threadId)!.push({
+    commentsByThread.get(comment.threadId)?.push({
       id: comment.id,
       threadId: comment.threadId,
       userId: comment.userId,
@@ -211,7 +208,7 @@ export async function getPointThread(
   bucketType: TimeBucket,
   bucketValue: string,
   cursor?: string,
-  limit: number = DEFAULT_PAGE_LIMIT
+  limit: number = DEFAULT_PAGE_LIMIT,
 ): Promise<CommentThreadResponse | null> {
   // Clamp limit
   const effectiveLimit = Math.min(Math.max(1, limit), MAX_PAGE_LIMIT);
@@ -225,8 +222,8 @@ export async function getPointThread(
         eq(commentThreads.definitionId, definitionId),
         eq(commentThreads.scope, "point"),
         eq(commentThreads.bucketType, bucketType),
-        eq(commentThreads.bucketValue, bucketValue)
-      )
+        eq(commentThreads.bucketValue, bucketValue),
+      ),
     )
     .limit(1);
 
@@ -262,11 +259,11 @@ export async function getPointThread(
               gt(comments.createdAt, cursorData.createdAt),
               and(
                 eq(comments.createdAt, cursorData.createdAt),
-                gt(comments.id, cursorData.id)
-              )
+                gt(comments.id, cursorData.id),
+              ),
             )
-          : undefined
-      )
+          : undefined,
+      ),
     )
     .orderBy(comments.createdAt, comments.id)
     .limit(effectiveLimit + 1); // Fetch one extra to check for more
@@ -300,7 +297,7 @@ export async function getPointThread(
     hasMore && commentsToReturn.length > 0
       ? createCursor(
           commentsToReturn[commentsToReturn.length - 1].createdAt,
-          commentsToReturn[commentsToReturn.length - 1].id
+          commentsToReturn[commentsToReturn.length - 1].id,
         )
       : null;
 
@@ -322,7 +319,7 @@ export async function createPointComment(
   bucketValue: string,
   userId: string,
   body: string,
-  parentId?: string
+  parentId?: string,
 ): Promise<CreateCommentResponse> {
   // Get or create thread
   const threadId = await getOrCreatePointThread(
@@ -330,7 +327,7 @@ export async function createPointComment(
     definitionId,
     bucketType,
     bucketValue,
-    userId
+    userId,
   );
 
   // Validate parentId if provided
@@ -379,7 +376,7 @@ export async function createPointComment(
     .limit(1);
 
   const commentWithUser: CommentWithUser = {
-    ...((newComment as any)[0]),
+    ...(newComment as any)[0],
     user: {
       id: user[0].id,
       name: user[0].name,
@@ -400,7 +397,7 @@ export async function createPointComment(
 export async function getPointCommentCounts(
   definitionId: string,
   bucketType: TimeBucket,
-  bucketValues: string[]
+  bucketValues: string[],
 ): Promise<Record<string, number>> {
   if (bucketValues.length === 0) {
     return {};
@@ -419,12 +416,10 @@ export async function getPointCommentCounts(
         eq(commentThreads.definitionId, definitionId),
         eq(commentThreads.scope, "point"),
         eq(commentThreads.bucketType, bucketType),
-        inArray(commentThreads.bucketValue, bucketValues)
-      )
+        inArray(commentThreads.bucketValue, bucketValues),
+      ),
     )
     .groupBy(commentThreads.bucketValue);
-
-  console.log('getPointCommentCounts - Raw results:', results);
 
   // Build response map
   const counts: Record<string, number> = {};
@@ -438,8 +433,6 @@ export async function getPointCommentCounts(
     }
   }
 
-  console.log('getPointCommentCounts - Final counts:', counts);
-
   return counts;
 }
 
@@ -450,7 +443,7 @@ export async function getOrCreateSlideThread(
   workspaceId: string,
   slideId: string,
   definitionId: string,
-  createdBy: string
+  createdBy: string,
 ): Promise<string> {
   // Try to find existing thread
   const existing = await db
@@ -460,8 +453,8 @@ export async function getOrCreateSlideThread(
       and(
         eq(commentThreads.definitionId, definitionId),
         eq(commentThreads.scope, "submetric"),
-        eq(commentThreads.slideId, slideId)
-      )
+        eq(commentThreads.slideId, slideId),
+      ),
     )
     .limit(1);
 
@@ -494,7 +487,7 @@ export async function getSlideThreads(
   slideId: string,
   definitionId: string,
   cursor?: string,
-  limit: number = DEFAULT_PAGE_LIMIT
+  limit: number = DEFAULT_PAGE_LIMIT,
 ): Promise<CommentThreadResponse | null> {
   // Clamp limit
   const effectiveLimit = Math.min(Math.max(1, limit), MAX_PAGE_LIMIT);
@@ -507,8 +500,8 @@ export async function getSlideThreads(
       and(
         eq(commentThreads.definitionId, definitionId),
         eq(commentThreads.scope, "submetric"),
-        eq(commentThreads.slideId, slideId)
-      )
+        eq(commentThreads.slideId, slideId),
+      ),
     )
     .limit(1);
 
@@ -544,11 +537,11 @@ export async function getSlideThreads(
               gt(comments.createdAt, cursorData.createdAt),
               and(
                 eq(comments.createdAt, cursorData.createdAt),
-                gt(comments.id, cursorData.id)
-              )
+                gt(comments.id, cursorData.id),
+              ),
             )
-          : undefined
-      )
+          : undefined,
+      ),
     )
     .orderBy(comments.createdAt, comments.id)
     .limit(effectiveLimit + 1);
@@ -582,7 +575,7 @@ export async function getSlideThreads(
     hasMore && commentsToReturn.length > 0
       ? createCursor(
           commentsToReturn[commentsToReturn.length - 1].createdAt,
-          commentsToReturn[commentsToReturn.length - 1].id
+          commentsToReturn[commentsToReturn.length - 1].id,
         )
       : null;
 
@@ -604,14 +597,14 @@ export async function createSlideComment(
   userId: string,
   body: string,
   parentId?: string,
-  title?: string
+  title?: string,
 ): Promise<CreateCommentResponse> {
   // Get or create thread
   const threadId = await getOrCreateSlideThread(
     workspaceId,
     slideId,
     definitionId,
-    userId
+    userId,
   );
 
   // Update title if provided (first comment can set title)
@@ -668,7 +661,7 @@ export async function createSlideComment(
     .limit(1);
 
   const commentWithUser: CommentWithUser = {
-    ...((newComment as any)[0]),
+    ...(newComment as any)[0],
     user: {
       id: user[0].id,
       name: user[0].name,
@@ -682,4 +675,3 @@ export async function createSlideComment(
     thread: thread[0],
   };
 }
-

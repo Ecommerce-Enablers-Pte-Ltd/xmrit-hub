@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { type NextRequest, NextResponse } from "next/server";
+import { getWorkspaceIdFromSlide } from "@/lib/api/comments";
 import { getAuthSession } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { commentThreads, comments } from "@/lib/db/schema";
-import { eq, and, sql, inArray } from "drizzle-orm";
-import { getWorkspaceIdFromSlide } from "@/lib/api/comments";
+import { comments, commentThreads } from "@/lib/db/schema";
 
 /**
  * POST /api/slides/[slideId]/submetrics/comment-counts
@@ -12,7 +12,7 @@ import { getWorkspaceIdFromSlide } from "@/lib/api/comments";
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ slideId: string }> }
+  { params }: { params: Promise<{ slideId: string }> },
 ) {
   const session = await getAuthSession();
   if (!session?.user?.id) {
@@ -38,10 +38,6 @@ export async function POST(
     // TODO: Add workspace membership check here if needed
     // await verifyWorkspaceAccess(workspaceId, session.user.id);
 
-    console.log(
-      `[CommentCounts] Fetching counts for ${definitionIds.length} definitions`
-    );
-
     // Single optimized query for ALL definitions
     // Groups by definitionId, bucketType, and bucketValue
     // Returns count of non-deleted comments for each bucket
@@ -57,16 +53,14 @@ export async function POST(
       .where(
         and(
           inArray(commentThreads.definitionId, definitionIds),
-          eq(commentThreads.scope, "point")
-        )
+          eq(commentThreads.scope, "point"),
+        ),
       )
       .groupBy(
         commentThreads.definitionId,
         commentThreads.bucketType,
-        commentThreads.bucketValue
+        commentThreads.bucketValue,
       );
-
-    console.log(`[CommentCounts] Found ${results.length} bucket counts`);
 
     // Organize by "definitionId:bucketType" -> { bucketValue: count }
     // This structure allows O(1) lookups on the client
@@ -87,12 +81,22 @@ export async function POST(
       }
     }
 
-    return NextResponse.json({ counts });
+    return NextResponse.json(
+      { counts },
+      {
+        headers: {
+          // Cache comment counts for 30 seconds
+          "Cache-Control": "private, max-age=30, stale-while-revalidate=60",
+          "Content-Type": "application/json; charset=utf-8",
+          Vary: "Accept-Encoding",
+        },
+      },
+    );
   } catch (error) {
     console.error("[CommentCounts] Error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

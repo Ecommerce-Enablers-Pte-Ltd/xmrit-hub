@@ -140,15 +140,16 @@
   }
   body {
     @apply bg-background text-foreground;
-    transition: background-color var(--theme-transition-duration)
-        var(--theme-transition-timing),
+    transition:
+      background-color var(--theme-transition-duration)
+      var(--theme-transition-timing),
       color var(--theme-transition-duration) var(--theme-transition-timing);
   }
 
   /* Performance optimizations for charts */
   .chart-container {
     /* Allow tooltips to overflow */
-    overflow: visible !important;
+    overflow: visible;
     content-visibility: auto;
     /* Hint to browser that colors will change */
     will-change: auto;
@@ -158,8 +159,8 @@
   svg text:not(.recharts-label),
   svg rect,
   svg circle {
-    transition: fill var(--theme-transition-duration)
-        var(--theme-transition-timing),
+    transition:
+      fill var(--theme-transition-duration) var(--theme-transition-timing),
       stroke var(--theme-transition-duration) var(--theme-transition-timing);
     /* Use GPU acceleration for better performance */
     transform: translateZ(0);
@@ -169,8 +170,8 @@
   /* Ensure Recharts labels can use SVG transforms for rotation */
   .recharts-label {
     /* Don't apply CSS transform that would override SVG transform attribute */
-    transition: fill var(--theme-transition-duration)
-        var(--theme-transition-timing),
+    transition:
+      fill var(--theme-transition-duration) var(--theme-transition-timing),
       stroke var(--theme-transition-duration) var(--theme-transition-timing);
   }
 
@@ -183,8 +184,10 @@
 
   /* Optimize theme transitions with View Transitions API support */
   @supports (view-transition-name: none) {
+    /* biome-ignore lint/correctness/noUnknownTypeSelector: View Transitions API pseudo-elements */
     ::view-transition-old(root),
-    ::view-transition-new(root) {
+    /* biome-ignore lint/correctness/noUnknownTypeSelector: View Transitions API pseudo-elements */
+      ::view-transition-new(root) {
       animation-duration: 0.2s;
     }
   }

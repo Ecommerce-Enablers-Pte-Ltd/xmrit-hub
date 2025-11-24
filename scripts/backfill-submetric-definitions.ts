@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
+import { db } from "@/lib/db";
 
 /**
  * Backfill submetric definitions from existing submetrics
@@ -156,7 +156,7 @@ async function backfillDefinitions() {
 
       if (processedCount % 10 === 0) {
         console.log(
-          `Processed ${processedCount}/${submetrics.rows.length} submetrics...`
+          `Processed ${processedCount}/${submetrics.rows.length} submetrics...`,
         );
       }
     }

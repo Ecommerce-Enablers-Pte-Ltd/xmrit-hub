@@ -10,5 +10,21 @@ if (!databaseUrl) {
   );
 }
 
-const sql = neon(databaseUrl);
-export const db = drizzle(sql, { schema });
+// Configure Neon connection with optimizations
+// Neon serverless driver uses HTTP, which is stateless and automatically pooled
+// These options optimize for production performance
+const sql = neon(databaseUrl, {
+  // Enable fetch cache for better performance (default: true)
+  fetchOptions: {
+    // Use high priority for database queries
+    priority: "high",
+  },
+  // Fetch endpoint will use connection pooling automatically
+  // No manual pool configuration needed for Neon serverless
+});
+
+export const db = drizzle(sql, {
+  schema,
+  // Enable logger in development only
+  // logger: process.env.NODE_ENV === "development",
+});

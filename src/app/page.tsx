@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { workspaces } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -10,8 +9,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { workspaces } from "@/lib/db/schema";
+import type { Workspace } from "@/types/db/workspace";
 
 export default async function Home() {
   // Middleware already handles authentication, but we check again for session data
@@ -22,7 +23,7 @@ export default async function Home() {
   }
 
   // Fetch workspaces server-side
-  let allWorkspaces;
+  let allWorkspaces: Workspace[];
   try {
     allWorkspaces = await db
       .select()

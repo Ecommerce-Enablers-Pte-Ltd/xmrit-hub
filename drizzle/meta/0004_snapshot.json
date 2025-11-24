@@ -81,12 +81,8 @@
           "name": "account_userId_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -94,10 +90,7 @@
       "compositePrimaryKeys": {
         "account_provider_providerAccountId_pk": {
           "name": "account_provider_providerAccountId_pk",
-          "columns": [
-            "provider",
-            "providerAccountId"
-          ]
+          "columns": ["provider", "providerAccountId"]
         }
       },
       "uniqueConstraints": {},
@@ -306,12 +299,8 @@
           "name": "comment_thread_workspaceId_workspace_id_fk",
           "tableFrom": "comment_thread",
           "tableTo": "workspace",
-          "columnsFrom": [
-            "workspaceId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspaceId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -319,12 +308,8 @@
           "name": "comment_thread_definitionId_submetric_definition_id_fk",
           "tableFrom": "comment_thread",
           "tableTo": "submetric_definition",
-          "columnsFrom": [
-            "definitionId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["definitionId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -332,12 +317,8 @@
           "name": "comment_thread_slideId_slide_id_fk",
           "tableFrom": "comment_thread",
           "tableTo": "slide",
-          "columnsFrom": [
-            "slideId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["slideId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -345,12 +326,8 @@
           "name": "comment_thread_createdBy_user_id_fk",
           "tableFrom": "comment_thread",
           "tableTo": "user",
-          "columnsFrom": [
-            "createdBy"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["createdBy"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -449,12 +426,8 @@
           "name": "comment_threadId_comment_thread_id_fk",
           "tableFrom": "comment",
           "tableTo": "comment_thread",
-          "columnsFrom": [
-            "threadId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["threadId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -462,12 +435,8 @@
           "name": "comment_userId_user_id_fk",
           "tableFrom": "comment",
           "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -475,12 +444,8 @@
           "name": "comment_parentId_comment_id_fk",
           "tableFrom": "comment",
           "tableTo": "comment",
-          "columnsFrom": [
-            "parentId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["parentId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -610,12 +575,8 @@
           "name": "metric_slideId_slide_id_fk",
           "tableFrom": "metric",
           "tableTo": "slide",
-          "columnsFrom": [
-            "slideId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["slideId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -655,12 +616,8 @@
           "name": "session_userId_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -790,12 +747,8 @@
           "name": "slide_workspaceId_workspace_id_fk",
           "tableFrom": "slide",
           "tableTo": "workspace",
-          "columnsFrom": [
-            "workspaceId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspaceId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -899,12 +852,8 @@
           "name": "submetric_definition_workspaceId_workspace_id_fk",
           "tableFrom": "submetric_definition",
           "tableTo": "workspace",
-          "columnsFrom": [
-            "workspaceId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["workspaceId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1071,12 +1020,8 @@
           "name": "submetric_metricId_metric_id_fk",
           "tableFrom": "submetric",
           "tableTo": "metric",
-          "columnsFrom": [
-            "metricId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["metricId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1084,12 +1029,8 @@
           "name": "submetric_definitionId_submetric_definition_id_fk",
           "tableFrom": "submetric",
           "tableTo": "submetric_definition",
-          "columnsFrom": [
-            "definitionId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["definitionId"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1142,9 +1083,7 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -1235,21 +1174,12 @@
     "public.thread_scope": {
       "name": "thread_scope",
       "schema": "public",
-      "values": [
-        "point",
-        "submetric"
-      ]
+      "values": ["point", "submetric"]
     },
     "public.time_bucket": {
       "name": "time_bucket",
       "schema": "public",
-      "values": [
-        "day",
-        "week",
-        "month",
-        "quarter",
-        "year"
-      ]
+      "values": ["day", "week", "month", "quarter", "year"]
     }
   },
   "schemas": {},

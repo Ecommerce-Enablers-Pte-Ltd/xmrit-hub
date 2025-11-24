@@ -1,12 +1,12 @@
 import "dotenv/config";
-import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
+import { db } from "@/lib/db";
 
 /**
  * Fix submetric definitions to include category in submetricKey
  *
- * Problem: Previous implementation didn't include category/brand in submetricKey,
- * causing different submetrics (e.g., [Adidas] vs [Nike]) to share the same
+ * Problem: Previous implementation didn't include category in submetricKey,
+ * causing different submetrics (e.g., [Region A] vs [Region B]) to share the same
  * definition and thus share comment threads.
  *
  * Solution:
@@ -26,8 +26,8 @@ function normalizeKey(str: string): string {
 
 /**
  * NEW: Derive submetric key from label including category
- * Example: "[Adidas] - % of MCB Count" -> "adidas-of-mcb-count"
- * Example: "[Nike] - % of MCB Count" -> "nike-of-mcb-count"
+ * Example: "[Region A] - % of Total Count" -> "region-a-of-total-count"
+ * Example: "[Region B] - % of Total Count" -> "region-b-of-total-count"
  * Example: "Transaction Count" -> "transaction-count"
  */
 function deriveSubmetricKey(label: string): string {
@@ -104,7 +104,7 @@ async function fixDefinitions() {
       console.log(
         `Processing: ${
           submetric_category ? `[${submetric_category}] ` : ""
-        }${submetric_label}`
+        }${submetric_label}`,
       );
       console.log(`  Workspace: ${workspaceId}`);
       console.log(`  Metric Key: ${metricKey}`);
@@ -172,7 +172,7 @@ async function fixDefinitions() {
         `);
         updatedCount++;
         console.log(
-          `  ✓ Updated submetric definitionId: ${old_definition_id} -> ${newDefinitionId}`
+          `  ✓ Updated submetric definitionId: ${old_definition_id} -> ${newDefinitionId}`,
         );
       }
 
@@ -209,10 +209,10 @@ async function fixDefinitions() {
         console.log(`  - ${id}: ${metricKey}/${submetricKey} (${label})`);
       }
       console.log(
-        "\nNote: These orphaned definitions may have associated comment threads."
+        "\nNote: These orphaned definitions may have associated comment threads.",
       );
       console.log(
-        "You may want to manually review and clean them up if appropriate."
+        "You may want to manually review and clean them up if appropriate.",
       );
     } else {
       console.log("✓ No orphaned definitions found");
@@ -241,7 +241,7 @@ async function fixDefinitions() {
         const { metricKey, submetricKey, label, thread_count, comment_count } =
           stat as any;
         console.log(
-          `  - ${metricKey}/${submetricKey}: ${thread_count} threads, ${comment_count} comments`
+          `  - ${metricKey}/${submetricKey}: ${thread_count} threads, ${comment_count} comments`,
         );
         console.log(`    Label: ${label}`);
       }

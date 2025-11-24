@@ -1,32 +1,21 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ChevronLeft,
+  ChevronRight,
+  CornerDownRight,
+  MessageSquare,
+  MoreVertical,
+  Pencil,
+  Send,
+  Trash2,
+  X,
+} from "lucide-react";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,57 +26,56 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Avatar } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
-  MessageSquare,
-  Send,
-  X,
-  CornerDownRight,
-  MoreVertical,
-  Pencil,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
-import { toast } from "sonner";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { TimeBucket } from "@/lib/time-buckets";
 import { getBucketLabel } from "@/lib/time-buckets";
+import { cn } from "@/lib/utils";
+import { useInvalidateCommentCounts } from "@/providers/comment-counts-provider";
 import type {
   CommentThreadResponse,
   CommentWithUser,
 } from "@/types/db/comment";
-import { cn } from "@/lib/utils";
-import { useInvalidateCommentCounts } from "./comment-counts-provider";
 
 export interface DataPoint {
   timestamp: string;
   bucketValue: string;
 }
 
-interface PointCommentsSheetProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+interface CommentsTabProps {
   definitionId: string;
   bucketType: TimeBucket;
   bucketValue: string;
-  bucketLabel?: string;
   allDataPoints?: DataPoint[];
   onCommentAdded?: (bucketValue: string) => void;
-  slideId: string; // Add slideId to invalidate comment counts on mutations
-  initialFilterToAll?: boolean; // If true, opens with "all comments" filter selected
+  slideId: string;
+  initialFilterToAll?: boolean;
 }
 
-export function PointCommentsSheet({
-  open,
-  onOpenChange,
+export function CommentsTab({
   definitionId,
   bucketType,
   bucketValue: initialBucketValue,
-  bucketLabel: initialBucketLabel,
   allDataPoints,
   onCommentAdded,
   slideId,
   initialFilterToAll = false,
-}: PointCommentsSheetProps) {
+}: CommentsTabProps) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
   const { invalidateCounts } = useInvalidateCommentCounts();
@@ -98,7 +86,7 @@ export function PointCommentsSheet({
   const [editingBody, setEditingBody] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -106,15 +94,8 @@ export function PointCommentsSheet({
 
   // Filter state: "all" means show all comments, otherwise filter to specific date
   const [selectedFilter, setSelectedFilter] = useState<string>(
-    initialFilterToAll ? "all" : initialBucketValue
+    initialFilterToAll ? "all" : initialBucketValue,
   );
-
-  // Update filter when props change (e.g., when opening for a new point)
-  useEffect(() => {
-    if (open) {
-      setSelectedFilter(initialFilterToAll ? "all" : initialBucketValue);
-    }
-  }, [open, initialBucketValue, initialFilterToAll]);
 
   // Determine what to display based on filter
   const isShowingAll = selectedFilter === "all";
@@ -125,11 +106,7 @@ export function PointCommentsSheet({
       getBucketLabel(selectedFilter, bucketType);
 
   // Fetch point-specific comments using React Query
-  const {
-    data: threadData,
-    isLoading: isLoadingPoint,
-    refetch: refetchPointComments,
-  } = useQuery({
+  const { data: threadData, isLoading: isLoadingPoint } = useQuery({
     queryKey: ["comments", "point", definitionId, bucketType, bucketValue],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -138,7 +115,7 @@ export function PointCommentsSheet({
       });
 
       const response = await fetch(
-        `/api/submetrics/definitions/${definitionId}/points?${params}`
+        `/api/submetrics/definitions/${definitionId}/points?${params}`,
       );
 
       if (!response.ok) {
@@ -147,19 +124,18 @@ export function PointCommentsSheet({
 
       return response.json() as Promise<CommentThreadResponse>;
     },
-    enabled: open && !!definitionId,
+    enabled: !!definitionId && !isShowingAll && !!bucketValue,
+    staleTime: 1 * 60 * 1000, // 1 minute - comments update frequently when active
+    gcTime: 5 * 60 * 1000, // 5 minutes cache
+    refetchOnWindowFocus: false, // Don't auto-refetch on focus
   });
 
   // Fetch all comments for the chart using React Query
-  const {
-    data: allCommentsData,
-    isLoading: isLoadingAll,
-    refetch: refetchAllComments,
-  } = useQuery({
+  const { data: allCommentsData, isLoading: isLoadingAll } = useQuery({
     queryKey: ["comments", "all", definitionId],
     queryFn: async () => {
       const response = await fetch(
-        `/api/submetrics/definitions/${definitionId}/points`
+        `/api/submetrics/definitions/${definitionId}/points`,
       );
 
       if (!response.ok) {
@@ -168,7 +144,10 @@ export function PointCommentsSheet({
 
       return response.json() as Promise<{ threads: CommentThreadResponse[] }>;
     },
-    enabled: open && !!definitionId,
+    enabled: !!definitionId,
+    staleTime: 1 * 60 * 1000, // 1 minute - comments update frequently when active
+    gcTime: 5 * 60 * 1000, // 5 minutes cache
+    refetchOnWindowFocus: false, // Don't auto-refetch on focus
   });
 
   const loading = isShowingAll ? isLoadingAll : isLoadingPoint;
@@ -177,7 +156,7 @@ export function PointCommentsSheet({
   const scrollToBottom = useCallback(() => {
     if (scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]"
+        "[data-radix-scroll-area-viewport]",
       );
       if (scrollContainer) {
         setTimeout(() => {
@@ -206,7 +185,7 @@ export function PointCommentsSheet({
             body: data.body,
             parentId: data.parentId,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -215,14 +194,24 @@ export function PointCommentsSheet({
 
       return response.json();
     },
-    onSuccess: () => {
-      // Invalidate and refetch queries
+    onSuccess: (_, variables) => {
+      // Only invalidate the specific point query for the bucket we commented on
       queryClient.invalidateQueries({
-        queryKey: ["comments", "point", definitionId, bucketType, bucketValue],
+        queryKey: [
+          "comments",
+          "point",
+          definitionId,
+          variables.bucketType,
+          variables.bucketValue,
+        ],
       });
-      queryClient.invalidateQueries({
-        queryKey: ["comments", "all", definitionId],
-      });
+
+      // If we're viewing "all comments", also invalidate that
+      if (isShowingAll) {
+        queryClient.invalidateQueries({
+          queryKey: ["comments", "all", definitionId],
+        });
+      }
 
       // Invalidate comment counts to update indicators on charts
       invalidateCounts(slideId);
@@ -282,14 +271,14 @@ export function PointCommentsSheet({
 
   // Auto-focus textarea when sheet opens (but not when replying, that's handled below)
   useEffect(() => {
-    if (open && !isShowingAll && !replyToId && session) {
+    if (!isShowingAll && !replyToId && session) {
       // Delay to ensure the sheet animation and DOM rendering complete
       const timer = setTimeout(() => {
         textareaRef.current?.focus();
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [open, isShowingAll, session]);
+  }, [isShowingAll, session, replyToId]);
 
   // Auto-focus textarea when replying
   useEffect(() => {
@@ -348,7 +337,7 @@ export function PointCommentsSheet({
   }, [editingCommentId]);
 
   const handleEditTextareaChange = (
-    e: React.ChangeEvent<HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLTextAreaElement>,
   ) => {
     setEditingBody(e.target.value);
 
@@ -370,7 +359,7 @@ export function PointCommentsSheet({
           body: JSON.stringify({
             body: data.body,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -380,13 +369,17 @@ export function PointCommentsSheet({
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate and refetch queries
+      // Only invalidate the specific point query for the bucket we're viewing
       queryClient.invalidateQueries({
         queryKey: ["comments", "point", definitionId, bucketType, bucketValue],
       });
-      queryClient.invalidateQueries({
-        queryKey: ["comments", "all", definitionId],
-      });
+
+      // If we're viewing "all comments", also invalidate that
+      if (isShowingAll) {
+        queryClient.invalidateQueries({
+          queryKey: ["comments", "all", definitionId],
+        });
+      }
 
       // Invalidate comment counts (in case edited comment was deleted/restored)
       invalidateCounts(slideId);
@@ -418,7 +411,7 @@ export function PointCommentsSheet({
         `/api/submetrics/definitions/${definitionId}/points/comments/${commentId}`,
         {
           method: "DELETE",
-        }
+        },
       );
 
       if (!response.ok) {
@@ -431,13 +424,17 @@ export function PointCommentsSheet({
       const deletedIds = result.deletedIds || [deleteConfirmId];
       const deletedCount = deletedIds.length;
 
-      // Invalidate and refetch queries
+      // Only invalidate the specific point query for the bucket we're viewing
       queryClient.invalidateQueries({
         queryKey: ["comments", "point", definitionId, bucketType, bucketValue],
       });
-      queryClient.invalidateQueries({
-        queryKey: ["comments", "all", definitionId],
-      });
+
+      // If we're viewing "all comments", also invalidate that
+      if (isShowingAll) {
+        queryClient.invalidateQueries({
+          queryKey: ["comments", "all", definitionId],
+        });
+      }
 
       // Invalidate comment counts to update indicators on charts
       invalidateCounts(slideId);
@@ -450,7 +447,7 @@ export function PointCommentsSheet({
           ? `Comment and ${deletedCount - 1} ${
               deletedCount - 1 === 1 ? "reply" : "replies"
             } deleted`
-          : "Comment deleted"
+          : "Comment deleted",
       );
 
       // Notify parent to invalidate cache
@@ -472,7 +469,7 @@ export function PointCommentsSheet({
 
   // Build comment tree for nested display
   const buildCommentTree = (
-    comments: CommentWithUser[]
+    comments: CommentWithUser[],
   ): Map<string | null, CommentWithUser[]> => {
     const tree = new Map<string | null, CommentWithUser[]>();
 
@@ -481,7 +478,7 @@ export function PointCommentsSheet({
       if (!tree.has(parentId)) {
         tree.set(parentId, []);
       }
-      tree.get(parentId)!.push(comment);
+      tree.get(parentId)?.push(comment);
     }
 
     return tree;
@@ -491,7 +488,7 @@ export function PointCommentsSheet({
     comment: CommentWithUser,
     tree: Map<string | null, CommentWithUser[]>,
     depth: number = 0,
-    threadId?: string
+    threadId?: string,
   ) => {
     const replies = tree.get(comment.id) || [];
     const isReplyingTo = replyToId === comment.id;
@@ -511,10 +508,13 @@ export function PointCommentsSheet({
 
           <Avatar className="h-9 w-9 shrink-0 border-2 border-background shadow-sm">
             {comment.user.image ? (
-              <img
+              <Image
                 src={comment.user.image}
                 alt={comment.user.name || "User"}
+                width={36}
+                height={36}
                 className="h-full w-full object-cover"
+                unoptimized
               />
             ) : (
               <div className="h-full w-full bg-linear-to-br from-primary/20 to-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
@@ -525,7 +525,7 @@ export function PointCommentsSheet({
             )}
           </Avatar>
 
-          <div className="flex-1 min-w-0 rounded-lg bg-muted/30 p-3 transition-colors group-hover:bg-muted/50">
+          <div className="flex-1 min-w-0 rounded-lg bg-muted/30 p-3">
             <div className="flex items-center gap-2 mb-1.5">
               <span className="font-semibold text-sm truncate">
                 {comment.user.name || comment.user.email || "Anonymous"}
@@ -649,7 +649,7 @@ export function PointCommentsSheet({
                     }}
                     className={cn(
                       "mt-2 h-8 text-xs text-primary hover:text-primary hover:bg-primary/10",
-                      "ml-6"
+                      "ml-6",
                     )}
                   >
                     Show more →
@@ -665,7 +665,7 @@ export function PointCommentsSheet({
               return (
                 <>
                   {visibleReplies.map((reply) =>
-                    renderComment(reply, tree, depth + 1, threadId)
+                    renderComment(reply, tree, depth + 1, threadId),
                   )}
                   {!isExpanded && hiddenCount > 0 && (
                     <Button
@@ -680,7 +680,7 @@ export function PointCommentsSheet({
                       }}
                       className={cn(
                         "mt-2 h-8 text-xs text-primary hover:text-primary hover:bg-primary/10",
-                        depth === 0 ? "ml-6" : "ml-12"
+                        depth === 0 ? "ml-6" : "ml-12",
                       )}
                     >
                       Show {hiddenCount} more{" "}
@@ -700,7 +700,7 @@ export function PointCommentsSheet({
                       }}
                       className={cn(
                         "mt-2 h-8 text-xs text-muted-foreground hover:text-foreground hover:bg-muted",
-                        depth === 0 ? "ml-6" : "ml-12"
+                        depth === 0 ? "ml-6" : "ml-12",
                       )}
                     >
                       Show less
@@ -720,7 +720,7 @@ export function PointCommentsSheet({
                       }}
                       className={cn(
                         "mt-2 h-8 text-xs text-muted-foreground hover:text-foreground hover:bg-muted",
-                        "ml-6"
+                        "ml-6",
                       )}
                     >
                       Show less
@@ -739,7 +739,7 @@ export function PointCommentsSheet({
   const formatRelativeTime = (date: Date) => {
     const now = new Date();
     const seconds = Math.floor(
-      (now.getTime() - new Date(date).getTime()) / 1000
+      (now.getTime() - new Date(date).getTime()) / 1000,
     );
 
     if (seconds < 60) return "just now";
@@ -766,7 +766,7 @@ export function PointCommentsSheet({
       if (part.match(urlRegex)) {
         return (
           <a
-            key={index}
+            key={`url-${index}-${part.slice(0, 20)}`}
             href={part}
             target="_blank"
             rel="noopener noreferrer"
@@ -799,7 +799,7 @@ export function PointCommentsSheet({
     ? (() => {
         // First try to find in point-specific comments
         const pointComment = threadData?.comments.find(
-          (c) => c.id === replyToId
+          (c) => c.id === replyToId,
         );
         if (pointComment) return pointComment;
 
@@ -807,7 +807,7 @@ export function PointCommentsSheet({
         if (isShowingAll) {
           for (const threadResponse of allThreads) {
             const comment = threadResponse.comments.find(
-              (c) => c.id === replyToId
+              (c) => c.id === replyToId,
             );
             if (comment) return comment;
           }
@@ -826,7 +826,7 @@ export function PointCommentsSheet({
     allDataPoints &&
     currentPointIndex < allDataPoints.length - 1;
 
-  const navigateToPrevPoint = () => {
+  const navigateToPrevPoint = useCallback(() => {
     if (!canGoPrev || !allDataPoints) return;
     const prevPoint = allDataPoints[currentPointIndex - 1];
     setSelectedFilter(prevPoint.bucketValue);
@@ -834,9 +834,9 @@ export function PointCommentsSheet({
     setReplyToId(null);
     setReplyToThreadId(null);
     setExpandedReplies(new Set());
-  };
+  }, [canGoPrev, allDataPoints, currentPointIndex]);
 
-  const navigateToNextPoint = () => {
+  const navigateToNextPoint = useCallback(() => {
     if (!canGoNext || !allDataPoints) return;
     const nextPoint = allDataPoints[currentPointIndex + 1];
     setSelectedFilter(nextPoint.bucketValue);
@@ -844,7 +844,7 @@ export function PointCommentsSheet({
     setReplyToId(null);
     setReplyToThreadId(null);
     setExpandedReplies(new Set());
-  };
+  }, [canGoNext, allDataPoints, currentPointIndex]);
 
   const handleFilterChange = (value: string) => {
     setSelectedFilter(value);
@@ -856,7 +856,7 @@ export function PointCommentsSheet({
 
   // Keyboard shortcuts for navigation (only when viewing a specific date)
   useEffect(() => {
-    if (!open || isShowingAll || !allDataPoints) return;
+    if (isShowingAll || !allDataPoints) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle if not typing in a textarea or input
@@ -879,26 +879,19 @@ export function PointCommentsSheet({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
-    open,
     isShowingAll,
     allDataPoints,
     canGoPrev,
     canGoNext,
-    currentPointIndex,
+    navigateToNextPoint,
+    navigateToPrevPoint,
   ]);
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[600px] sm:w-[600px] max-w-[90vw] flex flex-col p-0 gap-0">
-        {/* Header */}
-        <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
-          <SheetTitle className="flex items-center gap-2.5 text-xl mb-3">
-            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10">
-              <MessageSquare className="h-5 w-5 text-primary" />
-            </div>
-            <span>Comments</span>
-          </SheetTitle>
-
+    <>
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* Filter Bar */}
+        <div className="px-6 pb-4 border-b shrink-0">
           {/* Unified filter bar with navigation */}
           <div className="flex items-center gap-1.5 w-full h-10 bg-muted rounded-lg p-1">
             {/* Navigation arrows - only visible when not showing all */}
@@ -956,7 +949,7 @@ export function PointCommentsSheet({
               </Button>
             )}
           </div>
-        </SheetHeader>
+        </div>
 
         {/* Comments Area */}
         <div className="flex-1 min-h-0 overflow-hidden">
@@ -964,7 +957,7 @@ export function PointCommentsSheet({
             {loading ? (
               <div className="space-y-6 px-6 py-4">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex gap-3">
+                  <div key={`skeleton-${i}`} className="flex gap-3">
                     <Skeleton className="h-9 w-9 rounded-full shrink-0" />
                     <div className="flex-1 space-y-2">
                       <Skeleton className="h-4 w-40" />
@@ -988,7 +981,7 @@ export function PointCommentsSheet({
             ) : !isShowingAll ? (
               <div className="space-y-4 pb-2 px-6 py-4">
                 {topLevelComments.map((comment) =>
-                  commentTree ? renderComment(comment, commentTree, 0) : null
+                  commentTree ? renderComment(comment, commentTree, 0) : null,
                 )}
               </div>
             ) : (
@@ -998,7 +991,7 @@ export function PointCommentsSheet({
 
                   const thread = threadResponse.thread;
                   const threadCommentTree = buildCommentTree(
-                    threadResponse.comments
+                    threadResponse.comments,
                   );
                   const threadTopLevelComments =
                     threadCommentTree.get(null) || [];
@@ -1029,8 +1022,8 @@ export function PointCommentsSheet({
                             comment,
                             threadCommentTree,
                             0,
-                            thread.id
-                          )
+                            thread.id,
+                          ),
                         )}
                       </div>
                     </div>
@@ -1137,7 +1130,7 @@ export function PointCommentsSheet({
             </div>
           </div>
         )}
-      </SheetContent>
+      </div>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog
@@ -1170,6 +1163,6 @@ export function PointCommentsSheet({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Sheet>
+    </>
   );
 }

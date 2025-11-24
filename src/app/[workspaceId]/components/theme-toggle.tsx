@@ -2,7 +2,7 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useCallback, useState, memo } from "react";
+import { memo, useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,8 +12,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  supportsViewTransitions,
   measureThemeChangePerformance,
+  supportsViewTransitions,
 } from "@/lib/performance";
 
 export const ThemeToggle = memo(function ThemeToggle() {
@@ -36,7 +36,7 @@ export const ThemeToggle = memo(function ThemeToggle() {
       // Close dropdown
       setOpen(false);
     },
-    [setTheme]
+    [setTheme],
   );
 
   // Handle dropdown state changes

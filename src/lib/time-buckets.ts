@@ -35,10 +35,12 @@ export function parseTimestamp(timestamp: string): Date {
  * Get ISO week start date (Monday) for a given date
  */
 function getISOWeekStart(date: Date): Date {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const d = new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+  );
   const dayOfWeek = d.getUTCDay();
   // Calculate days to subtract to get to Monday (1 = Monday, 0 = Sunday)
-  const diff = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+  const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   d.setUTCDate(d.getUTCDate() - diff);
   d.setUTCHours(0, 0, 0, 0);
   return d;
@@ -85,19 +87,26 @@ function formatDateKey(date: Date): string {
  */
 export function normalizeToBucket(
   timestamp: string,
-  bucketType: TimeBucket
+  bucketType: TimeBucket,
 ): string {
   const date = parseTimestamp(timestamp);
 
   switch (bucketType) {
     case "day":
       // For day, just use the date itself (UTC midnight)
-      return formatDateKey(new Date(Date.UTC(
-        date.getFullYear(),
-        date.getMonth(),
-        date.getDate(),
-        0, 0, 0, 0
-      )));
+      return formatDateKey(
+        new Date(
+          Date.UTC(
+            date.getFullYear(),
+            date.getMonth(),
+            date.getDate(),
+            0,
+            0,
+            0,
+            0,
+          ),
+        ),
+      );
 
     case "week":
       // ISO week start (Monday)
@@ -148,7 +157,7 @@ export function detectBucketType(timestamps: string[]): TimeBucket {
 
   // Find most common interval
   const mostCommonDiff = Object.keys(diffCounts).reduce((a, b) =>
-    diffCounts[Number(a)] > diffCounts[Number(b)] ? a : b
+    diffCounts[Number(a)] > diffCounts[Number(b)] ? a : b,
   );
 
   const interval = Number(mostCommonDiff);
@@ -176,7 +185,7 @@ export function detectBucketType(timestamps: string[]): TimeBucket {
  */
 export function getBucketLabel(
   bucketValue: string,
-  bucketType: TimeBucket
+  bucketType: TimeBucket,
 ): string {
   const date = new Date(`${bucketValue}T00:00:00.000Z`);
 
@@ -213,4 +222,3 @@ export function getBucketLabel(
       return bucketValue;
   }
 }
-
