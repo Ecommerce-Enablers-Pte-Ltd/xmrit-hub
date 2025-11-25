@@ -33,7 +33,6 @@ Comprehensive documentation is available in the [`docs/`](./docs) folder:
 
 ### Core Documentation
 
-- **[Documentation Index](./docs/README.md)** - Complete guide to all features
 - **[Database Schema](./docs/SCHEMA.md)** - Complete database schema reference with tables, relationships, and best practices
 
 ### Feature Documentation
