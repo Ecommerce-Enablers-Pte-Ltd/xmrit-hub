@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
   Circle,
@@ -44,6 +44,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useSubmetricFollowUps } from "@/lib/api/follow-ups";
+import { useUsers } from "@/lib/api/users";
+import { useWorkspace } from "@/lib/api/workspaces";
 import {
   getPriorityIcon,
   getPriorityLabel,
@@ -93,38 +95,16 @@ export function FollowUpTab({
     useState<FollowUpWithDetails | null>(null);
   const { data, isLoading } = useSubmetricFollowUps(definitionId, slideId);
 
-  // Fetch users for assignees
-  const { data: usersData, isLoading: isLoadingUsers } = useQuery<User[]>({
-    queryKey: ["users"],
-    queryFn: async () => {
-      const response = await fetch("/api/users");
-      if (!response.ok) throw new Error("Failed to fetch users");
-      return response.json();
-    },
-    staleTime: 10 * 60 * 1000, // 10 minutes - users rarely change
-    gcTime: 30 * 60 * 1000, // 30 minutes cache
-    refetchOnWindowFocus: false, // Don't refetch on focus
-  });
+  // Fetch users for assignees using centralized hook
+  const { data: usersData = [], isLoading: isLoadingUsers } = useUsers();
 
-  // Fetch slides for the workspace with full metrics data
-  const { data: slidesData, isLoading: isLoadingSlides } = useQuery<
-    SlideWithMetrics[]
-  >({
-    queryKey: ["workspace-slides-with-metrics", workspaceId],
-    queryFn: async () => {
-      const response = await fetch(`/api/workspaces/${workspaceId}`);
-      if (!response.ok) throw new Error("Failed to fetch slides");
-      const data = await response.json();
-      return data.workspace?.slides || [];
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes - slides don't change frequently
-    gcTime: 15 * 60 * 1000, // 15 minutes cache
-    refetchOnWindowFocus: false, // Don't refetch on focus
-  });
+  // Fetch workspace with slides using centralized hook
+  const { workspace, loading: isLoadingWorkspace } = useWorkspace(workspaceId);
 
   // Ensure users and slides are always arrays
-  const users = usersData ?? [];
-  const slides = slidesData ?? [];
+  const users = usersData;
+  const slides = workspace?.slides ?? [];
+  const isLoadingSlides = isLoadingWorkspace;
 
   // Get current slide for date comparison
   const currentSlide = slides.find((s) => s.id === slideId);
@@ -148,7 +128,7 @@ export function FollowUpTab({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -389,7 +369,7 @@ export function FollowUpTab({
                   <div
                     className={cn(
                       "flex items-center gap-2 pb-2",
-                      unresolved.length > 0 && "border-t pt-4"
+                      unresolved.length > 0 && "border-t pt-4",
                     )}
                   >
                     <h3 className="font-semibold text-sm text-muted-foreground">
@@ -666,7 +646,7 @@ function FollowUpCard({
   return (
     <div
       className={cn(
-        "rounded-lg border p-4 space-y-3 transition-all bg-card hover:shadow-sm"
+        "rounded-lg border p-4 space-y-3 transition-all bg-card hover:shadow-sm",
       )}
     >
       {/* Header with identifier and status */}
@@ -685,7 +665,7 @@ function FollowUpCard({
                 disabled={isResolved}
                 className={cn(
                   "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded transition-all",
-                  !isResolved && "hover:scale-105"
+                  !isResolved && "hover:scale-105",
                 )}
               >
                 <Badge
@@ -694,7 +674,7 @@ function FollowUpCard({
                     "text-xs gap-1.5",
                     !isResolved && "cursor-pointer",
                     isResolved && "opacity-60 cursor-not-allowed",
-                    getStatusBadgeColor(followUp.status)
+                    getStatusBadgeColor(followUp.status),
                   )}
                 >
                   {getStatusLabel(followUp.status)}
@@ -814,7 +794,7 @@ function FollowUpCard({
                 followUp.slide &&
                 window.open(
                   `/${workspaceId}/slide/${followUp.slide.id}`,
-                  "_blank"
+                  "_blank",
                 )
               }
               className="text-primary hover:underline cursor-pointer"
@@ -833,7 +813,7 @@ function FollowUpCard({
                 followUp.resolvedAtSlide &&
                 window.open(
                   `/${workspaceId}/slide/${followUp.resolvedAtSlide.id}`,
-                  "_blank"
+                  "_blank",
                 )
               }
               className="text-primary hover:underline cursor-pointer"

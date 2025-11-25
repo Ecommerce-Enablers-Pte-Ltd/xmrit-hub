@@ -140,6 +140,9 @@ export const metricDefinitions = pgTable(
 );
 
 // Metrics table - high-level metric containers
+// NOTE: Uses `ranking` field for priority/importance ordering (1=top, 2=second, etc.)
+// Slides have a separate `sortOrder` field for manual ordering within workspace.
+// This distinction prevents confusion between metric ordering (priority-based) and slide ordering (manual).
 export const metrics = pgTable(
   "metric",
   {
@@ -153,7 +156,6 @@ export const metrics = pgTable(
     definitionId: text("definitionId").references(() => metricDefinitions.id, {
       onDelete: "set null",
     }),
-    sortOrder: integer("sortOrder").default(0),
     ranking: integer("ranking"), // Optional ranking: 1 = top, 2 = second, etc.
     chartType: text("chartType").default("line"), // line, bar, area, etc.
     chartConfig: json("chartConfig"), // JSON for chart configuration
@@ -166,7 +168,6 @@ export const metrics = pgTable(
   },
   (table) => ({
     slideIdIdx: index("metric_slide_id_idx").on(table.slideId),
-    sortOrderIdx: index("metric_sort_order_idx").on(table.sortOrder),
     rankingIdx: index("metric_ranking_idx").on(table.ranking),
     definitionIdIdx: index("metric_definition_id_idx").on(table.definitionId),
   }),

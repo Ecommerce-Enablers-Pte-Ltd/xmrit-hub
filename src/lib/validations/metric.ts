@@ -29,7 +29,6 @@ export const updateMetricSchema = z.object({
     .max(5000, "Definition must be less than 5000 characters")
     .nullable()
     .optional(),
-  sortOrder: z.number().int().nonnegative().nullable().optional(),
   ranking: z.number().int().positive().nullable().optional(),
   chartType: z.string().nullable().optional(),
   chartConfig: z.record(z.string(), z.any()).nullable().optional(),

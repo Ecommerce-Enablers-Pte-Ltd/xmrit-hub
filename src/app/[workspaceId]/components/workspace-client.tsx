@@ -61,7 +61,7 @@ export function WorkspaceClient({
   // Edit slide dialog state
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [slideToEdit, setSlideToEdit] = React.useState<SlideWithMetrics | null>(
-    null
+    null,
   );
 
   // Workspace settings dialog state
@@ -82,7 +82,7 @@ export function WorkspaceClient({
 
       router.replace(`/${workspaceId}?${newParams.toString()}`);
     },
-    [searchParams, router, workspaceId]
+    [searchParams, router, workspaceId],
   );
 
   // Calculate pagination
@@ -265,7 +265,7 @@ export function WorkspaceClient({
                           onClick={() => updateSearchParams({ page: pageNum })}
                           className={cn(
                             "h-8 w-8 p-0",
-                            page === pageNum && "pointer-events-none"
+                            page === pageNum && "pointer-events-none",
                           )}
                         >
                           {pageNum}

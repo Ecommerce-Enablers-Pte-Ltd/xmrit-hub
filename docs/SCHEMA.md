@@ -214,7 +214,7 @@ Presentation containers representing a specific time period or reporting cycle. 
 
 - **Metric Key** (`metricKey`): Normalized stable identifier (e.g., "revenue", "transaction-count")
   - Auto-generated from metric name during ingestion
-  - Example: "% of Total Count" → "of-total-count"
+  - Example: "% of MCB Count" → "of-mcb-count"
 - **Definition** (`definition`): Optional documentation text
   - Can be edited through UI
   - Protected during ingestion when omitted from payload
@@ -241,7 +241,6 @@ If description omitted in payload:
 | `name`         | text      | Metric name (required)                |
 | `slideId`      | text      | Foreign key to `slide.id`             |
 | `definitionId` | text      | Foreign key to `metric_definition.id` |
-| `sortOrder`    | integer   | Display order (default: 0)            |
 | `ranking`      | integer   | Optional importance ranking (1=top)   |
 | `chartType`    | text      | Chart type (default: "line")          |
 | `chartConfig`  | json      | Chart configuration options           |
@@ -251,7 +250,6 @@ If description omitted in payload:
 **Indexes:**
 
 - `metric_slide_id_idx` on `slideId`
-- `metric_sort_order_idx` on `sortOrder`
 - `metric_ranking_idx` on `ranking`
 - `metric_definition_id_idx` on `definitionId`
 
@@ -272,6 +270,7 @@ If description omitted in payload:
   - Stored separately from definition
   - **Can change per slide without affecting definition**
   - Example: "Revenue" ranked #1 this week, #3 next week
+  - **Note:** Metrics use `ranking` field only. Slides have a separate `sortOrder` field for ordering slides within a workspace. This distinction prevents confusion between metric ordering (priority-based via ranking) and slide ordering (manual via sortOrder).
 - **Definition Link** (`definitionId`): References workspace-level definition
   - Provides documentation/description
   - Enables cross-slide metric tracking
@@ -331,25 +330,25 @@ Definition: workspace=abc, metricKey="revenue", submetricKey="north_america"
 
 Specific metric implementations with visualization configuration and data points. These are slide-specific instances.
 
-| Column              | Type                | Description                                            |
-| ------------------- | ------------------- | ------------------------------------------------------ |
-| `id`                | text                | Primary key (UUID)                                     |
-| `label`             | text                | Display label (required)                               |
-| `category`          | text                | Optional category/grouping                             |
-| `metricId`          | text                | Foreign key to `metric.id`                             |
-| `definitionId`      | text                | Foreign key to `submetric_definition.id`               |
-| `xAxis`             | text                | X-axis label (default: "date")                         |
-| `yAxis`             | text                | Y-axis label                                           |
-| `timezone`          | text                | Timezone (default: "UTC")                              |
-| `preferredTrend`    | text                | Trend preference (uptrend/downtrend)                   |
-| `unit`              | text                | Unit of measurement                                    |
-| `aggregationType`   | text                | Aggregation type (sum/avg/count)                       |
-| `color`             | text                | Hex color for visualization                            |
-| `trafficLightColor` | traffic_light_color | Manual traffic light indicator (green/yellow/red/none) |
-| `metadata`          | json                | Additional metadata                                    |
-| `dataPoints`        | json                | Array of time-series data points                       |
-| `createdAt`         | timestamp           | Creation timestamp                                     |
-| `updatedAt`         | timestamp           | Last update timestamp                                  |
+| Column              | Type                | Description                                       |
+| ------------------- | ------------------- | ------------------------------------------------- |
+| `id`                | text                | Primary key (UUID)                                |
+| `label`             | text                | Display label (required)                          |
+| `category`          | text                | Optional category/grouping                        |
+| `metricId`          | text                | Foreign key to `metric.id`                        |
+| `definitionId`      | text                | Foreign key to `submetric_definition.id`          |
+| `xAxis`             | text                | X-axis label (default: "date")                    |
+| `yAxis`             | text                | Y-axis label                                      |
+| `timezone`          | text                | Timezone (default: "UTC")                         |
+| `preferredTrend`    | text                | Trend preference (uptrend/downtrend)              |
+| `unit`              | text                | Unit of measurement                               |
+| `aggregationType`   | text                | Aggregation type (sum/avg/count)                  |
+| `color`             | text                | Hex color for visualization                       |
+| `trafficLightColor` | traffic_light_color | Manual traffic light indicator (green/yellow/red) |
+| `metadata`          | json                | Additional metadata                               |
+| `dataPoints`        | json                | Array of time-series data points                  |
+| `createdAt`         | timestamp           | Creation timestamp                                |
+| `updatedAt`         | timestamp           | Last update timestamp                             |
 
 **Data Points Structure:**
 
@@ -384,9 +383,10 @@ Specific metric implementations with visualization configuration and data points
 - **Data Points in JSON**: Time-series data stored as JSON array for flexibility
 - **Optional Definition Link**: Can exist without definition (ad-hoc metrics)
 - **Visualization Config**: All chart settings stored at submetric level
-- **Traffic Light Color**: Manual status indicator (green/yellow/red/none) for quick visual assessment
+- **Traffic Light Color**: Manual status indicator (green/yellow/red) for quick visual assessment
   - Set by users independently from statistical control limits
   - Persists when linked to submetric definitions across slides
+  - Cycles through green → yellow → red → green
 - **Auto-Apply Features**: Labels like "(Trend)" or "(Seasonality)" trigger automatic analysis
 
 ## Enums
@@ -410,7 +410,6 @@ Specific metric implementations with visualization configuration and data points
 
 **`follow_up_status`** - Follow-up task status:
 
-- `backlog` - Not yet prioritized
 - `todo` - Ready to be worked on
 - `in_progress` - Currently being worked on
 - `done` - Completed
@@ -431,7 +430,6 @@ Specific metric implementations with visualization configuration and data points
 - `green` - Process in control (good state)
 - `yellow` - Process needs attention (warning state)
 - `red` - Process out of control (critical state)
-- `none` - No status indicator set
 
 **Key Concepts:**
 
@@ -439,6 +437,7 @@ Specific metric implementations with visualization configuration and data points
 - Persists across slides when attached to submetric definitions
 - Used for quick visual status assessment in dashboards
 - Independent from statistical control limit violations
+- Cycles through green → yellow → red → green when clicked
 
 ## Comment System
 
@@ -576,7 +575,7 @@ Task tracking system integrated with workspace, slides, and submetric definition
 | `submetricDefinitionId` | text               | Foreign key to `submetric_definition.id` (nullable)            |
 | `threadId`              | text               | Foreign key to `comment_thread.id` (nullable)                  |
 | `resolvedAtSlideId`     | text               | Foreign key to `slide.id` - tracks resolution slide (nullable) |
-| `status`                | follow_up_status   | Task status (default: backlog)                                 |
+| `status`                | follow_up_status   | Task status (default: todo)                                    |
 | `priority`              | follow_up_priority | Task priority (default: no_priority)                           |
 | `assigneeId`            | text               | DEPRECATED: Use `followUpAssignees` instead                    |
 | `createdBy`             | text               | Foreign key to `user.id`                                       |
@@ -619,7 +618,7 @@ Task tracking system integrated with workspace, slides, and submetric definition
 - **Unique Identifier**: Auto-generated per workspace (e.g., "FU-1", "FU-2")
 - **Multiple Assignees**: Uses junction table for many-to-many relationship
 - **Flexible Linking**: Can be linked to slides, submetric definitions, or comment threads
-- **Status Workflow**: backlog → todo → in_progress → done/cancelled
+- **Status Workflow**: todo → in_progress → done/cancelled
 - **Priority Levels**: Supports 5 priority levels for task organization
 - **Temporal Resolution Tracking**: `resolvedAtSlideId` enables timeline-aware resolution
   - Follow-ups show as "resolved" only on/after the resolution slide's date

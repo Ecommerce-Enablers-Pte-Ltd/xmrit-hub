@@ -291,7 +291,7 @@ export function FollowUpTable({
                   "cursor-pointer group border-b transition-colors",
                   followUp.status === "resolved"
                     ? "bg-muted/20 hover:bg-muted/30"
-                    : "hover:bg-muted/50"
+                    : "hover:bg-muted/50",
                 )}
                 onClick={() => onEdit(followUp)}
                 title="Click to edit"
@@ -318,7 +318,7 @@ export function FollowUpTable({
                       variant="outline"
                       className={cn(
                         "text-xs font-normal opacity-60 cursor-not-allowed",
-                        getStatusBadgeColor(followUp.status)
+                        getStatusBadgeColor(followUp.status),
                       )}
                       title="Reopen to change status"
                     >
@@ -337,7 +337,7 @@ export function FollowUpTable({
                             variant="outline"
                             className={cn(
                               "text-xs font-normal cursor-pointer",
-                              getStatusBadgeColor(followUp.status)
+                              getStatusBadgeColor(followUp.status),
                             )}
                           >
                             {getStatusLabel(followUp.status)}
@@ -355,7 +355,7 @@ export function FollowUpTable({
                                 onStatusChange(followUp.id, value);
                               }}
                               className={cn(
-                                followUp.status === value && "bg-accent"
+                                followUp.status === value && "bg-accent",
                               )}
                             >
                               <div className="flex items-center gap-2">
@@ -471,7 +471,7 @@ export function FollowUpTable({
                           followUp.status !== "done" &&
                           followUp.status !== "cancelled" &&
                           followUp.status !== "resolved" &&
-                          "text-red-600 dark:text-red-400"
+                          "text-red-600 dark:text-red-400",
                       )}
                     >
                       <Calendar className="h-3.5 w-3.5" />
@@ -481,7 +481,7 @@ export function FollowUpTable({
                           {
                             month: "short",
                             day: "numeric",
-                          }
+                          },
                         )}
                       </span>
                     </div>

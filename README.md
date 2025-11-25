@@ -34,11 +34,13 @@ Comprehensive documentation is available in the [`docs/`](./docs) folder:
 ### Core Documentation
 
 - **[Database Schema](./docs/SCHEMA.md)** - Complete database schema reference with tables, relationships, and best practices
+- **[API Patterns & Best Practices](./docs/API_PATTERNS.md)** - Data fetching patterns, centralized hooks, common pitfalls, and code review guidelines
 
 ### Feature Documentation
 
 - **[Data Ingestion API](./docs/DATA_INGESTION.md)** - REST API for programmatic data ingestion
 - **[Comment System](./docs/COMMENT_SYSTEM.md)** - Persistent comments and discussion threads on data points
+- **[Follow-up System](./docs/FOLLOW_UP.md)** - Task/ticket management with temporal resolution tracking
 - **[Auto Lock Limit](./docs/AUTO_LOCK_LIMIT.md)** - Automatic outlier detection and removal
 - **[Lock Limit](./docs/LOCK_LIMIT.md)** - Manual limit locking and customization
 - **[Trend Lines](./docs/TREND_LINES.md)** - Linear trend analysis with dynamic limits

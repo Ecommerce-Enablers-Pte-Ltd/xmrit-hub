@@ -324,6 +324,7 @@ const ChartTooltip = memo(
     commentsDataRef,
     fetchingRef,
     onFetchComments,
+    isDark,
   }: {
     active: boolean;
     payload: any;
@@ -332,6 +333,7 @@ const ChartTooltip = memo(
     commentsDataRef: React.MutableRefObject<{ [key: string]: any }>;
     fetchingRef: React.MutableRefObject<Set<string>>;
     onFetchComments: (timestamp: string) => void;
+    isDark: boolean;
   }) => {
     // Local state to trigger re-renders when comments load
     const [_refreshKey, setRefreshKey] = useState(0);
@@ -797,9 +799,10 @@ const SubmetricXChartInternal = memo(
             commentsDataRef={commentsDataRef}
             fetchingRef={fetchingRef}
             onFetchComments={fetchCommentsForPoint}
+            isDark={isDark}
           />
         ),
-        [submetric, bucketType, fetchCommentsForPoint],
+        [submetric, bucketType, fetchCommentsForPoint, isDark],
       );
 
       // Memoize dot renderer

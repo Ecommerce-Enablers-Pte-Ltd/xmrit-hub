@@ -4,10 +4,7 @@
       "parameters": {},
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [
-        -480,
-        656
-      ],
+      "position": [-480, 656],
       "id": "b340a0c6-f0e1-4ac9-ac31-7f6d0a0111f7",
       "name": "When clicking ‘Execute workflow’"
     },
@@ -17,10 +14,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        80,
-        656
-      ],
+      "position": [80, 656],
       "id": "4830be96-437c-43bc-ba22-aa168950b945",
       "name": "Extract Card IDs"
     },
@@ -46,10 +40,7 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        -112,
-        656
-      ],
+      "position": [-112, 656],
       "id": "70fb15bb-d7ce-4409-8cab-d272b2b5654b",
       "name": "Get Card IDs",
       "credentials": {
@@ -65,10 +56,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        544,
-        656
-      ],
+      "position": [544, 656],
       "id": "735cc466-7aa4-4320-b604-0ee2aa850005",
       "name": "Format JSON"
     },
@@ -102,10 +90,7 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        272,
-        656
-      ],
+      "position": [272, 656],
       "id": "0b3ffc91-0fab-4e8b-ae18-27537a880b33",
       "name": "Download cards",
       "retryOnFail": true,
@@ -143,10 +128,7 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        912,
-        656
-      ],
+      "position": [912, 656],
       "id": "12cf1920-655d-43f4-b64b-7f6dcef6e571",
       "name": "HTTP Request",
       "credentials": {
@@ -167,10 +149,7 @@
       },
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
-      "position": [
-        720,
-        656
-      ],
+      "position": [720, 656],
       "id": "d97ffbd6-4704-4fc4-ac84-f775b1006017",
       "name": "Aggregate"
     },
@@ -182,10 +161,7 @@
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [
-        -304,
-        656
-      ],
+      "position": [-304, 656],
       "id": "6a9f7290-9dd0-4d1f-8c66-8cc309597af6",
       "name": "Get Collection ID"
     }

@@ -29,10 +29,7 @@ async function getSlideData(slideId: string): Promise<SlideWithMetrics | null> {
     where: eq(slides.id, slideId),
     with: {
       metrics: {
-        orderBy: (metrics, { asc }) => [
-          asc(metrics.sortOrder),
-          asc(metrics.ranking),
-        ],
+        orderBy: (metrics, { asc }) => [asc(metrics.ranking)],
         with: {
           // Only load the definition field we actually use in the UI
           definition: {

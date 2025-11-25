@@ -65,10 +65,7 @@ export async function GET(
       where: eq(slides.workspaceId, workspaceId),
       with: {
         metrics: {
-          orderBy: (metrics, { asc }) => [
-            asc(metrics.sortOrder),
-            asc(metrics.ranking),
-          ],
+          orderBy: (metrics, { asc }) => [asc(metrics.ranking)],
           with: {
             definition: {
               columns: {

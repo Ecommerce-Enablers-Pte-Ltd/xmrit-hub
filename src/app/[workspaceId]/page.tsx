@@ -33,15 +33,11 @@ async function getWorkspaceData(
         limit: 50, // Reduced from 100 to 50 for faster initial load
         with: {
           metrics: {
-            orderBy: (metrics, { asc }) => [
-              asc(metrics.sortOrder),
-              asc(metrics.ranking),
-            ],
+            orderBy: (metrics, { asc }) => [asc(metrics.ranking)],
             // Only load metrics count, not full metric data
             columns: {
               id: true,
               slideId: true,
-              sortOrder: true,
               ranking: true,
             },
             with: {

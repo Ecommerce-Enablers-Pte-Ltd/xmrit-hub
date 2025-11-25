@@ -344,7 +344,6 @@ export async function POST(request: NextRequest) {
           definitionId: metricDef.id,
           ranking: metricInput.ranking || null,
           chartType: metricInput.chart_type || "line",
-          sortOrder: 0,
         })
         .returning();
 

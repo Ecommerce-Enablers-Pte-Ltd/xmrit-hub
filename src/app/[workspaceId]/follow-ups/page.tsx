@@ -128,7 +128,7 @@ export default function FollowUpsPage() {
 
       router.replace(`/${workspaceId}/follow-ups?${newParams.toString()}`);
     },
-    [searchParams, router, workspaceId]
+    [searchParams, router, workspaceId],
   );
 
   // Sync local search state with URL param on mount
@@ -160,7 +160,7 @@ export default function FollowUpsPage() {
   // Fetch data with React Query
   const { data, isLoading: isLoadingFollowUps } = useFollowUps(
     workspaceId,
-    queryParams
+    queryParams,
   );
   const { data: users = [], isLoading: isLoadingUsers } = useUsers();
   const { workspace, loading: isLoadingWorkspace } = useWorkspace(workspaceId);
@@ -226,7 +226,7 @@ export default function FollowUpsPage() {
               router.push(
                 `/${workspaceId}/follow-ups?slideId=${
                   newFollowUp.slideId || ""
-                }`
+                }`,
               );
             },
           },
@@ -239,7 +239,7 @@ export default function FollowUpsPage() {
       toast.error(
         editingFollowUp
           ? "Failed to update follow-up"
-          : "Failed to create follow-up"
+          : "Failed to create follow-up",
       );
     }
   };
@@ -546,7 +546,7 @@ export default function FollowUpsPage() {
                     "h-9 w-[280px] justify-between hover:bg-transparent font-normal shrink-0",
                     selectedUsers.length === 0 &&
                       !unassignedFilter &&
-                      "text-muted-foreground"
+                      "text-muted-foreground",
                   )}
                 >
                   <div className="flex items-center gap-1 overflow-hidden min-w-0">
@@ -814,13 +814,13 @@ export default function FollowUpsPage() {
                             }
                             className={cn(
                               "h-8 w-8 p-0",
-                              page === pageNum && "pointer-events-none"
+                              page === pageNum && "pointer-events-none",
                             )}
                           >
                             {pageNum}
                           </Button>
                         );
-                      }
+                      },
                     )}
                   </div>
 

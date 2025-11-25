@@ -42,10 +42,7 @@ export async function GET(
       with: {
         workspace: true,
         metrics: {
-          orderBy: (metrics, { asc }) => [
-            asc(metrics.sortOrder),
-            asc(metrics.ranking),
-          ],
+          orderBy: (metrics, { asc }) => [asc(metrics.ranking)],
           with: {
             // Only load the definition fields we actually use
             definition: {
