@@ -128,7 +128,7 @@ export default function FollowUpsPage() {
 
       router.replace(`/${workspaceId}/follow-ups?${newParams.toString()}`);
     },
-    [searchParams, router, workspaceId],
+    [searchParams, router, workspaceId]
   );
 
   // Sync local search state with URL param on mount
@@ -160,7 +160,7 @@ export default function FollowUpsPage() {
   // Fetch data with React Query
   const { data, isLoading: isLoadingFollowUps } = useFollowUps(
     workspaceId,
-    queryParams,
+    queryParams
   );
   const { data: users = [], isLoading: isLoadingUsers } = useUsers();
   const { workspace, loading: isLoadingWorkspace } = useWorkspace(workspaceId);
@@ -226,7 +226,7 @@ export default function FollowUpsPage() {
               router.push(
                 `/${workspaceId}/follow-ups?slideId=${
                   newFollowUp.slideId || ""
-                }`,
+                }`
               );
             },
           },
@@ -239,7 +239,7 @@ export default function FollowUpsPage() {
       toast.error(
         editingFollowUp
           ? "Failed to update follow-up"
-          : "Failed to create follow-up",
+          : "Failed to create follow-up"
       );
     }
   };
@@ -546,7 +546,7 @@ export default function FollowUpsPage() {
                     "h-9 w-[280px] justify-between hover:bg-transparent font-normal shrink-0",
                     selectedUsers.length === 0 &&
                       !unassignedFilter &&
-                      "text-muted-foreground",
+                      "text-muted-foreground"
                   )}
                 >
                   <div className="flex items-center gap-1 overflow-hidden min-w-0">
@@ -717,120 +717,126 @@ export default function FollowUpsPage() {
         />
       </div>
 
-      {/* Total Count - Below Table (only show if there are follow-ups or loading) */}
+      {/* Footer with Pagination */}
       {(isLoading || (pagination && pagination.total > 0)) && (
-        <div className="border-t bg-muted/30 px-6 py-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            {isLoading ? (
-              <Skeleton className="h-4 w-32" />
-            ) : (
-              <>
-                {hasActiveFilters && (
+        <div className="border-t bg-background px-6 py-3">
+          <div className="flex items-center justify-between gap-4">
+            {/* Left side - Total count and results info */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {isLoading ? (
+                  <Skeleton className="h-4 w-32" />
+                ) : (
                   <>
-                    <Filter className="h-3 w-3" />
-                    <span>
-                      {pagination?.total || 0} result
-                      {pagination?.total !== 1 ? "s" : ""}
-                    </span>
+                    {hasActiveFilters && (
+                      <>
+                        <Filter className="h-3.5 w-3.5" />
+                        <span>
+                          {pagination?.total || 0} result
+                          {pagination?.total !== 1 ? "s" : ""}
+                        </span>
+                      </>
+                    )}
+                    {!hasActiveFilters && pagination && (
+                      <span>
+                        {pagination.total} total follow-up
+                        {pagination.total !== 1 ? "s" : ""}
+                      </span>
+                    )}
                   </>
-                )}
-                {!hasActiveFilters && pagination && (
-                  <span>
-                    {pagination.total} total follow-up
-                    {pagination.total !== 1 ? "s" : ""}
-                  </span>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Pagination Controls */}
-      {pagination && pagination.totalPages > 1 && (
-        <div className="border-t bg-background px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Select
-                value={String(limit)}
-                onValueChange={(value) =>
-                  updateSearchParams({ limit: Number(value), page: 1 })
-                }
-              >
-                <SelectTrigger className="w-[140px] h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10 per page</SelectItem>
-                  <SelectItem value="20">20 per page</SelectItem>
-                  <SelectItem value="50">50 per page</SelectItem>
-                  <SelectItem value="100">100 per page</SelectItem>
-                </SelectContent>
-              </Select>
-              <span className="text-sm text-muted-foreground">
-                Showing {Math.min((page - 1) * limit + 1, pagination.total)} to{" "}
-                {Math.min(page * limit, pagination.total)} of {pagination.total}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => updateSearchParams({ page: page - 1 })}
-                disabled={page <= 1}
-                className="h-9"
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
-              </Button>
-
-              {/* Page numbers */}
-              <div className="hidden sm:flex items-center gap-1">
-                {Array.from(
-                  { length: Math.min(5, pagination.totalPages) },
-                  (_, i) => {
-                    let pageNum: number;
-
-                    if (pagination.totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (page <= 3) {
-                      pageNum = i + 1;
-                    } else if (page >= pagination.totalPages - 2) {
-                      pageNum = pagination.totalPages - 4 + i;
-                    } else {
-                      pageNum = page - 2 + i;
-                    }
-
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={page === pageNum ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => updateSearchParams({ page: pageNum })}
-                        className={cn(
-                          "h-9 w-9 p-0",
-                          page === pageNum && "pointer-events-none",
-                        )}
-                      >
-                        {pageNum}
-                      </Button>
-                    );
-                  },
                 )}
               </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => updateSearchParams({ page: page + 1 })}
-                disabled={!pagination.hasMore}
-                className="h-9"
-              >
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
+              {/* Items per page selector - only show if we have multiple pages or enough items */}
+              {pagination && pagination.total > 10 && (
+                <Select
+                  value={String(limit)}
+                  onValueChange={(value) =>
+                    updateSearchParams({ limit: Number(value), page: 1 })
+                  }
+                >
+                  <SelectTrigger className="w-[130px] h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10 per page</SelectItem>
+                    <SelectItem value="20">20 per page</SelectItem>
+                    <SelectItem value="50">50 per page</SelectItem>
+                    <SelectItem value="100">100 per page</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
+
+            {/* Right side - Pagination controls */}
+            {pagination && pagination.totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground hidden sm:inline">
+                  Page {page} of {pagination.totalPages}
+                </span>
+
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => updateSearchParams({ page: page - 1 })}
+                    disabled={page <= 1}
+                    className="h-8"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1">Previous</span>
+                  </Button>
+
+                  {/* Page numbers - show on larger screens */}
+                  <div className="hidden md:flex items-center gap-1">
+                    {Array.from(
+                      { length: Math.min(5, pagination.totalPages) },
+                      (_, i) => {
+                        let pageNum: number;
+
+                        if (pagination.totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (page <= 3) {
+                          pageNum = i + 1;
+                        } else if (page >= pagination.totalPages - 2) {
+                          pageNum = pagination.totalPages - 4 + i;
+                        } else {
+                          pageNum = page - 2 + i;
+                        }
+
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={page === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() =>
+                              updateSearchParams({ page: pageNum })
+                            }
+                            className={cn(
+                              "h-8 w-8 p-0",
+                              page === pageNum && "pointer-events-none"
+                            )}
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      }
+                    )}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => updateSearchParams({ page: page + 1 })}
+                    disabled={!pagination.hasMore}
+                    className="h-8"
+                  >
+                    <span className="hidden sm:inline mr-1">Next</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
