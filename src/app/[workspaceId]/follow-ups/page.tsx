@@ -14,6 +14,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import {
   getPriorityIcon,
   getPriorityLabel,
@@ -128,7 +129,7 @@ export default function FollowUpsPage() {
 
       router.replace(`/${workspaceId}/follow-ups?${newParams.toString()}`);
     },
-    [searchParams, router, workspaceId],
+    [searchParams, router, workspaceId]
   );
 
   // Sync local search state with URL param on mount
@@ -160,7 +161,7 @@ export default function FollowUpsPage() {
   // Fetch data with React Query
   const { data, isLoading: isLoadingFollowUps } = useFollowUps(
     workspaceId,
-    queryParams,
+    queryParams
   );
   const { data: users = [], isLoading: isLoadingUsers } = useUsers();
   const {
@@ -227,7 +228,7 @@ export default function FollowUpsPage() {
               router.push(
                 `/${workspaceId}/follow-ups?slideId=${
                   newFollowUp.slideId || ""
-                }`,
+                }`
               );
             },
           },
@@ -238,9 +239,12 @@ export default function FollowUpsPage() {
     } catch (error) {
       console.error("Error saving follow-up:", error);
       toast.error(
-        editingFollowUp
-          ? "Failed to update follow-up"
-          : "Failed to create follow-up",
+        getErrorMessage(
+          error,
+          editingFollowUp
+            ? "Failed to update follow-up"
+            : "Failed to create follow-up"
+        )
       );
     }
   };
@@ -251,7 +255,7 @@ export default function FollowUpsPage() {
       toast.success("Follow-up deleted successfully");
     } catch (error) {
       console.error("Error deleting follow-up:", error);
-      toast.error("Failed to delete follow-up");
+      toast.error(getErrorMessage(error, "Failed to delete follow-up"));
     }
   };
 
@@ -264,7 +268,7 @@ export default function FollowUpsPage() {
       toast.success("Status updated");
     } catch (error) {
       console.error("Error updating status:", error);
-      toast.error("Failed to update status");
+      toast.error(getErrorMessage(error, "Failed to update status"));
     }
   };
 
@@ -547,7 +551,7 @@ export default function FollowUpsPage() {
                     "h-9 w-[280px] justify-between hover:bg-transparent font-normal shrink-0",
                     selectedUsers.length === 0 &&
                       !unassignedFilter &&
-                      "text-muted-foreground",
+                      "text-muted-foreground"
                   )}
                 >
                   <div className="flex items-center gap-1 overflow-hidden min-w-0">
@@ -815,13 +819,13 @@ export default function FollowUpsPage() {
                             }
                             className={cn(
                               "h-8 w-8 p-0",
-                              page === pageNum && "pointer-events-none",
+                              page === pageNum && "pointer-events-none"
                             )}
                           >
                             {pageNum}
                           </Button>
                         );
-                      },
+                      }
                     )}
                   </div>
 

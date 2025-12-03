@@ -44,7 +44,7 @@ import {
  */
 function generateSeasonColors(
   numSeasons: number,
-  isDarkMode: boolean,
+  isDarkMode: boolean
 ): string[] {
   if (numSeasons === 0) return [];
   if (numSeasons === 1) {
@@ -89,7 +89,7 @@ interface SubmetricSeasonalityDialogProps {
   onApplySeasonality: (
     period: SeasonalityPeriod,
     factors: number[],
-    grouping: SeasonalityGrouping,
+    grouping: SeasonalityGrouping
   ) => void;
   initialPeriod?: SeasonalityPeriod;
   initialFactors?: number[];
@@ -117,11 +117,11 @@ export function SubmetricSeasonalityDialog({
   // Compute period disable map and coverage from edited data
   const periodDisableMap = useMemo(
     () => getPeriodDisableMap(editedDataPoints),
-    [editedDataPoints],
+    [editedDataPoints]
   );
   const periodCoverage = useMemo(
     () => getPeriodCoverage(editedDataPoints, period),
-    [editedDataPoints, period],
+    [editedDataPoints, period]
   );
 
   // Sync with parent state when provided initial values change
@@ -161,7 +161,7 @@ export function SubmetricSeasonalityDialog({
           dataPoints, // xData - for initial date reference
           dataToUse, // seasonalData - data to calculate factors from
           period,
-          grouping,
+          grouping
         );
         setSeasonalFactors(factors);
       }
@@ -216,11 +216,11 @@ export function SubmetricSeasonalityDialog({
   // Check period coverage for warnings
   const hasLessThanOnePeriod = useMemo(
     () => periodCoverage < 1,
-    [periodCoverage],
+    [periodCoverage]
   );
   const hasExactlyOnePeriod = useMemo(
     () => periodCoverage >= 1 && periodCoverage < 1.1,
-    [periodCoverage],
+    [periodCoverage]
   );
 
   // Check if seasonal factors calculation has warnings (uneven period lengths)
@@ -229,7 +229,7 @@ export function SubmetricSeasonalityDialog({
       dataPoints, // xData - for initial date reference
       editedDataPoints, // seasonalData - data to calculate factors from
       period,
-      grouping,
+      grouping
     );
     return hasWarning && grouping !== "none";
   }, [dataPoints, editedDataPoints, period, grouping]);
@@ -241,7 +241,7 @@ export function SubmetricSeasonalityDialog({
       dataPoints, // xData - for initial date reference
       dataPoints, // seasonalData - using original data
       period,
-      grouping,
+      grouping
     );
     setSeasonalFactors(factors);
   }, [dataPoints, period, grouping]);
@@ -252,7 +252,7 @@ export function SubmetricSeasonalityDialog({
       dataPoints, // xData - for initial date reference
       editedDataPoints, // seasonalData - data to calculate factors from
       period,
-      grouping,
+      grouping
     );
     setSeasonalFactors(factors);
   }, [dataPoints, editedDataPoints, period, grouping]);
@@ -266,7 +266,7 @@ export function SubmetricSeasonalityDialog({
         setEditedDataPoints((prevPoints) => {
           const newDataPoints = [...prevPoints];
           const originalIndex = prevPoints.findIndex(
-            (p) => p.timestamp === seasonalDataItem.timestamp,
+            (p) => p.timestamp === seasonalDataItem.timestamp
           );
           if (originalIndex !== -1) {
             newDataPoints[originalIndex] = {
@@ -278,7 +278,7 @@ export function SubmetricSeasonalityDialog({
         });
       }
     },
-    [seasonalData],
+    [seasonalData]
   );
 
   // Handle seasonal factor change
@@ -301,20 +301,7 @@ export function SubmetricSeasonalityDialog({
       dataPoints, // xData - for initial date reference
       editedDataPoints, // seasonalData - data to calculate factors from
       newPeriod,
-      grouping,
-    );
-    setSeasonalFactors(factors);
-  };
-
-  // Handle grouping change and recalculate factors
-  const _handleGroupingChange = (newGrouping: SeasonalityGrouping) => {
-    setGrouping(newGrouping);
-    // Recalculate seasonal factors when grouping changes
-    const { factors } = calculateSeasonalFactors(
-      dataPoints, // xData - for initial date reference
-      editedDataPoints, // seasonalData - data to calculate factors from
-      period,
-      newGrouping,
+      grouping
     );
     setSeasonalFactors(factors);
   };
@@ -326,7 +313,7 @@ export function SubmetricSeasonalityDialog({
       dataPoints, // xData - for initial date reference
       editedDataPoints, // seasonalData - data to calculate factors from
       period,
-      grouping,
+      grouping
     );
 
     if (factors.length === 0) {
@@ -336,17 +323,6 @@ export function SubmetricSeasonalityDialog({
 
     onApplySeasonality(period, factors, grouping);
     onOpenChange(false);
-  };
-
-  // Get period label
-  const _getPeriodLabel = (p: SeasonalityPeriod): string => {
-    const labels: Record<SeasonalityPeriod, string> = {
-      year: "Annual",
-      quarter: "Quarterly",
-      month: "Monthly",
-      week: "Weekly",
-    };
-    return labels[p];
   };
 
   return (
@@ -386,10 +362,10 @@ export function SubmetricSeasonalityDialog({
                 {period === "year"
                   ? "year"
                   : period === "quarter"
-                    ? "quarter"
-                    : period === "month"
-                      ? "month"
-                      : "week"}{" "}
+                  ? "quarter"
+                  : period === "month"
+                  ? "month"
+                  : "week"}{" "}
                 ({Math.round(periodCoverage * 100)}% of a period).
                 De-seasonalising will produce values very close to the average
                 with minimal variation, as there isn't enough data to identify
@@ -409,10 +385,10 @@ export function SubmetricSeasonalityDialog({
                 {period === "year"
                   ? "year"
                   : period === "quarter"
-                    ? "quarter"
-                    : period === "month"
-                      ? "month"
-                      : "week"}
+                  ? "quarter"
+                  : period === "month"
+                  ? "month"
+                  : "week"}
                 . The deseasonalized result will be relatively flat because
                 there's only one season to compare against itself. For
                 meaningful seasonal patterns, data spanning multiple periods is

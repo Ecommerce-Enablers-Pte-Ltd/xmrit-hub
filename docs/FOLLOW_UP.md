@@ -70,7 +70,7 @@ CREATE INDEX follow_up_assignee_user_id_idx ON follow_up_assignee(userId);
 Status and priority enums for follow-ups:
 
 ```sql
-CREATE TYPE follow_up_status AS ENUM ('todo', 'in_progress', 'done', 'cancelled');
+CREATE TYPE follow_up_status AS ENUM ('todo', 'in_progress', 'done', 'cancelled', 'resolved');
 CREATE TYPE follow_up_priority AS ENUM ('no_priority', 'urgent', 'high', 'medium', 'low');
 ```
 
@@ -196,10 +196,12 @@ Get all follow-ups for a specific submetric definition with temporal filtering b
 - `slideId`: Optional, valid UUID
 - `submetricDefinitionId`: Optional, valid UUID
 - `threadId`: Optional, valid UUID
-- `status`: Optional, defaults to "todo"
-- `priority`: Optional, defaults to "no_priority"
+- `status`: Optional, **defaults to `"todo"` (set in schema)** - enforced at database level
+- `priority`: Optional, **defaults to `"no_priority"` (set in schema)** - enforced at database level
 - `assigneeIds`: Optional array of user UUIDs
 - `dueDate`: Optional, YYYY-MM-DD format
+
+**Note on Default Values**: Default values for `status` and `priority` are enforced at the database schema level (`src/lib/db/schema.ts`), not in the API route. If you omit these fields, the database will automatically apply the schema defaults.
 
 #### Follow-up Response
 

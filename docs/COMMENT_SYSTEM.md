@@ -55,9 +55,12 @@ CREATE TABLE submetric_definition (
   id TEXT PRIMARY KEY,
   workspaceId TEXT NOT NULL REFERENCES workspace(id),
   metricKey TEXT NOT NULL,        -- normalized metric name
-  submetricKey TEXT NOT NULL,     -- normalized submetric label
-  label TEXT,
-  unit TEXT,
+  submetricKey TEXT NOT NULL,     -- normalized submetric identifier
+  category TEXT,                  -- dimension/segment (e.g., "Brand A", "North America")
+  metricName TEXT,                -- actual metric name (e.g., "% Completion Rate")
+  xaxis TEXT,                     -- x-axis semantic label
+  yaxis TEXT,                     -- y-axis semantic label / unit
+  unit TEXT,                      -- unit of measurement
   preferredTrend TEXT,
   createdAt TIMESTAMP NOT NULL,
   updatedAt TIMESTAMP NOT NULL,
@@ -246,15 +249,16 @@ Ran once to:
 
 ### Key Derivation Logic
 
-- `metricKey`: Normalize `metric.name` → lowercase slug with dashes
+- `metricKey`: Normalize `metric_name` → lowercase slug with dashes
   - Example: "% Completion Rate" → "completion-rate"
-- `submetricKey`: Combine `category` + normalized `label` → lowercase slug with dashes
-  - Example: Category: `"Brand A"`, Label: `"% Completion Rate"`
+- `submetricKey`: Combine `category` + normalized `metricName` → lowercase slug with dashes
+  - Example: Category: `"Brand A"`, MetricName: `"% Completion Rate"`
   - Result: `submetricKey="brand-a-completion-rate"`
+  - If no category: `submetricKey="completion-rate"` (just normalized metricName)
 - Full example:
-  - Metric: `"Transactions"`, Category: `"Brand A"`, Label: `"% Completion Rate"`
+  - Metric: `"Transactions"`, Category: `"Brand A"`, MetricName: `"% Completion Rate"` (from parent metric)
   - Result: `metricKey="transactions"`, `submetricKey="brand-a-completion-rate"`
-- **Important**: Category field is used to ensure different categories get different definitions and isolated comment threads
+- **Important**: Category field is used to ensure different categories get different definitions and isolated comment threads. The `metricName` comes from the parent metric's `metric_name` field.
 
 ### Definition System Integration
 
@@ -312,10 +316,9 @@ This two-tier system enables comments to persist across slides while allowing in
 
 1. **Week 1**: Ingest slide with:
 
-   - `metric.name="Transactions"`
+   - `metric_name="Transactions"`
    - `submetric.category="Brand A"`
-   - `submetric.label="Completion Rate"`
-   - System creates `submetric_definition(metricKey="transactions", submetricKey="brand-a-completion-rate")`
+   - System creates `submetric_definition(metricKey="transactions", submetricKey="brand-a-completion-rate", metricName="Transactions", category="Brand A")`
    - Links `submetric.definitionId`
 
 2. **User adds comment** on Brand A data point "2024-01-08":

@@ -114,16 +114,23 @@ Active user sessions (NextAuth.js adapter).
 
 Top-level organization boundary. All metrics and comments are scoped to a workspace.
 
-| Column        | Type      | Description                        |
-| ------------- | --------- | ---------------------------------- |
-| `id`          | text      | Primary key (UUID)                 |
-| `name`        | text      | Workspace name (required)          |
-| `description` | text      | Optional description               |
-| `settings`    | json      | Workspace-level configuration      |
-| `isArchived`  | boolean   | Soft delete flag (default: false)  |
-| `isPublic`    | boolean   | Public access flag (default: true) |
-| `createdAt`   | timestamp | Creation timestamp                 |
-| `updatedAt`   | timestamp | Last update timestamp              |
+| Column        | Type      | Description                   | Default Value                     |
+| ------------- | --------- | ----------------------------- | --------------------------------- |
+| `id`          | text      | Primary key (UUID)            | Auto-generated UUID               |
+| `name`        | text      | Workspace name (required)     | None (required)                   |
+| `description` | text      | Optional description          | `null`                            |
+| `settings`    | json      | Workspace-level configuration | `null`                            |
+| `isArchived`  | boolean   | Soft delete flag              | `false` (set in schema)           |
+| `isPublic`    | boolean   | Public access flag            | `true` (set in schema)            |
+| `createdAt`   | timestamp | Creation timestamp            | Current timestamp (set in schema) |
+| `updatedAt`   | timestamp | Last update timestamp         | Current timestamp (set in schema) |
+
+**Default Values (Handled by Schema):**
+
+- `isArchived`: Defaults to `false` - new workspaces are active by default
+- `isPublic`: Defaults to `true` - new workspaces are publicly accessible by default
+- `createdAt` and `updatedAt`: Automatically set to current timestamp on creation
+- **Note**: These defaults are enforced at the database schema level, not in application code
 
 **Indexes:**
 
@@ -344,19 +351,27 @@ Slide-specific time-series instances with visualization configuration and data p
 
 **Important:** Semantic fields (`category`, `metricName`, `unit`, `preferredTrend`) are stored in `submetric_definition` and accessed via the `definitionId` relationship.
 
-| Column              | Type                | Description                              |
-| ------------------- | ------------------- | ---------------------------------------- |
-| `id`                | text                | Primary key (UUID)                       |
-| `metricId`          | text                | Foreign key to `metric.id`               |
-| `definitionId`      | text                | Foreign key to `submetric_definition.id` |
-| `timezone`          | text                | Timezone (default: "UTC")                |
-| `aggregationType`   | text                | Aggregation type (sum/avg/count)         |
-| `color`             | text                | Hex color for visualization              |
-| `trafficLightColor` | traffic_light_color | Slide-specific traffic light status      |
-| `metadata`          | json                | Additional metadata                      |
-| `dataPoints`        | json                | Array of time-series data points         |
-| `createdAt`         | timestamp           | Creation timestamp                       |
-| `updatedAt`         | timestamp           | Last update timestamp                    |
+| Column              | Type                | Description                              | Default Value                     |
+| ------------------- | ------------------- | ---------------------------------------- | --------------------------------- |
+| `id`                | text                | Primary key (UUID)                       | Auto-generated UUID               |
+| `metricId`          | text                | Foreign key to `metric.id`               | None (required)                   |
+| `definitionId`      | text                | Foreign key to `submetric_definition.id` | `null`                            |
+| `timezone`          | text                | Timezone                                 | `"utc"` (set in schema)           |
+| `aggregationType`   | text                | Aggregation type (sum/avg/count/none)    | `"none"` (set in schema)          |
+| `color`             | text                | Hex color for visualization              | `null`                            |
+| `trafficLightColor` | traffic_light_color | Slide-specific traffic light status      | `"green"` (set in schema)         |
+| `metadata`          | json                | Additional metadata                      | `null`                            |
+| `dataPoints`        | json                | Array of time-series data points         | `[]` (empty array)                |
+| `createdAt`         | timestamp           | Creation timestamp                       | Current timestamp (set in schema) |
+| `updatedAt`         | timestamp           | Last update timestamp                    | Current timestamp (set in schema) |
+
+**Default Values (Handled by Schema):**
+
+- `timezone`: Defaults to `"utc"` - all submetrics use UTC timezone unless explicitly specified
+- `aggregationType`: Defaults to `"none"` - no aggregation applied unless specified
+- `trafficLightColor`: Defaults to `"green"` - new submetrics start with green status
+- `createdAt` and `updatedAt`: Automatically set to current timestamp on creation
+- **Note**: These defaults are enforced at the database schema level, not in application code. API routes should not set these values unless explicitly overriding defaults.
 
 **Data Points Structure:**
 
@@ -424,6 +439,7 @@ Slide-specific time-series instances with visualization configuration and data p
 - `in_progress` - Currently being worked on
 - `done` - Completed
 - `cancelled` - No longer needed
+- `resolved` - Resolved (can be used independently of `resolvedAtSlideId` for tracking resolution status)
 
 **`follow_up_priority`** - Follow-up task priority:
 
@@ -455,22 +471,28 @@ Slide-specific time-series instances with visualization configuration and data p
 
 Conversation threads attached to either specific data points or entire submetrics.
 
-| Column             | Type         | Description                              |
-| ------------------ | ------------ | ---------------------------------------- |
-| `id`               | text         | Primary key (UUID)                       |
-| `workspaceId`      | text         | Foreign key to `workspace.id`            |
-| `definitionId`     | text         | Foreign key to `submetric_definition.id` |
-| `scope`            | thread_scope | Thread scope (point/submetric)           |
-| `slideId`          | text         | FK to `slide.id` (for submetric scope)   |
-| `bucketType`       | time_bucket  | Time granularity (for point scope)       |
-| `bucketValue`      | text         | Normalized date key (for point scope)    |
-| `title`            | text         | Optional thread title                    |
-| `isResolved`       | boolean      | Resolution status (default: false)       |
-| `createdBy`        | text         | Foreign key to `user.id`                 |
-| `createdAt`        | timestamp    | Creation timestamp                       |
-| `updatedAt`        | timestamp    | Last update timestamp                    |
-| `summary`          | text         | AI-generated summary (reserved)          |
-| `lastSummarizedAt` | timestamp    | Last summary timestamp (reserved)        |
+| Column             | Type         | Description                              | Default Value                     |
+| ------------------ | ------------ | ---------------------------------------- | --------------------------------- |
+| `id`               | text         | Primary key (UUID)                       | Auto-generated UUID               |
+| `workspaceId`      | text         | Foreign key to `workspace.id`            | None (required)                   |
+| `definitionId`     | text         | Foreign key to `submetric_definition.id` | None (required)                   |
+| `scope`            | thread_scope | Thread scope (point/submetric)           | None (required)                   |
+| `slideId`          | text         | FK to `slide.id` (for submetric scope)   | `null`                            |
+| `bucketType`       | time_bucket  | Time granularity (for point scope)       | `null`                            |
+| `bucketValue`      | text         | Normalized date key (for point scope)    | `null`                            |
+| `title`            | text         | Optional thread title                    | `null`                            |
+| `isResolved`       | boolean      | Resolution status                        | `false` (set in schema)           |
+| `createdBy`        | text         | Foreign key to `user.id`                 | None (required)                   |
+| `createdAt`        | timestamp    | Creation timestamp                       | Current timestamp (set in schema) |
+| `updatedAt`        | timestamp    | Last update timestamp                    | Current timestamp (set in schema) |
+| `summary`          | text         | AI-generated summary (reserved)          | `null`                            |
+| `lastSummarizedAt` | timestamp    | Last summary timestamp (reserved)        | `null`                            |
+
+**Default Values (Handled by Schema):**
+
+- `isResolved`: Defaults to `false` - new comment threads start as unresolved
+- `createdAt` and `updatedAt`: Automatically set to current timestamp on creation
+- **Note**: These defaults are enforced at the database schema level, not in application code
 
 **Indexes:**
 
@@ -571,25 +593,32 @@ The follow-up system enables task/ticket management for tracking action items re
 
 Task tracking system integrated with workspace, slides, and submetric definitions.
 
-| Column                  | Type               | Description                                                    |
-| ----------------------- | ------------------ | -------------------------------------------------------------- |
-| `id`                    | text               | Primary key (UUID)                                             |
-| `identifier`            | text               | Human-readable identifier (e.g., "FU-123")                     |
-| `title`                 | text               | Follow-up title (required)                                     |
-| `description`           | text               | Optional detailed description                                  |
-| `workspaceId`           | text               | Foreign key to `workspace.id`                                  |
-| `slideId`               | text               | Foreign key to `slide.id` (nullable)                           |
-| `submetricDefinitionId` | text               | Foreign key to `submetric_definition.id` (nullable)            |
-| `threadId`              | text               | Foreign key to `comment_thread.id` (nullable)                  |
-| `resolvedAtSlideId`     | text               | Foreign key to `slide.id` - tracks resolution slide (nullable) |
-| `status`                | follow_up_status   | Task status (default: todo)                                    |
-| `priority`              | follow_up_priority | Task priority (default: no_priority)                           |
-| `assigneeId`            | text               | DEPRECATED: Use `followUpAssignees` instead                    |
-| `createdBy`             | text               | Foreign key to `user.id`                                       |
-| `dueDate`               | date               | Optional due date                                              |
-| `completedAt`           | timestamp          | Completion timestamp                                           |
-| `createdAt`             | timestamp          | Creation timestamp                                             |
-| `updatedAt`             | timestamp          | Last update timestamp                                          |
+| Column                  | Type               | Description                                                    | Default Value                     |
+| ----------------------- | ------------------ | -------------------------------------------------------------- | --------------------------------- |
+| `id`                    | text               | Primary key (UUID)                                             | Auto-generated UUID               |
+| `identifier`            | text               | Human-readable identifier (e.g., "FU-123")                     | None (required, auto-generated)   |
+| `title`                 | text               | Follow-up title (required)                                     | None (required)                   |
+| `description`           | text               | Optional detailed description                                  | `null`                            |
+| `workspaceId`           | text               | Foreign key to `workspace.id`                                  | None (required)                   |
+| `slideId`               | text               | Foreign key to `slide.id` (nullable)                           | `null`                            |
+| `submetricDefinitionId` | text               | Foreign key to `submetric_definition.id` (nullable)            | `null`                            |
+| `threadId`              | text               | Foreign key to `comment_thread.id` (nullable)                  | `null`                            |
+| `resolvedAtSlideId`     | text               | Foreign key to `slide.id` - tracks resolution slide (nullable) | `null`                            |
+| `status`                | follow_up_status   | Task status                                                    | `"todo"` (set in schema)          |
+| `priority`              | follow_up_priority | Task priority                                                  | `"no_priority"` (set in schema)   |
+| `assigneeId`            | text               | DEPRECATED: Use `followUpAssignees` instead                    | `null`                            |
+| `createdBy`             | text               | Foreign key to `user.id`                                       | None (required)                   |
+| `dueDate`               | date               | Optional due date                                              | `null`                            |
+| `completedAt`           | timestamp          | Completion timestamp                                           | `null`                            |
+| `createdAt`             | timestamp          | Creation timestamp                                             | Current timestamp (set in schema) |
+| `updatedAt`             | timestamp          | Last update timestamp                                          | Current timestamp (set in schema) |
+
+**Default Values (Handled by Schema):**
+
+- `status`: Defaults to `"todo"` - new follow-ups start in todo status
+- `priority`: Defaults to `"no_priority"` - new follow-ups have no priority set
+- `createdAt` and `updatedAt`: Automatically set to current timestamp on creation
+- **Note**: These defaults are enforced at the database schema level, not in application code. API routes should not set these values unless explicitly overriding defaults.
 
 **Indexes:**
 
@@ -827,6 +856,48 @@ npm run db:studio
 
 Opens web UI at `https://local.drizzle.studio` for browsing data, running queries, and testing relationships.
 
+## Default Values and Schema Enforcement
+
+**Important**: Default values are enforced at the database schema level, not in application code. This ensures consistency and reduces the chance of errors.
+
+### Schema-Level Defaults
+
+The following defaults are set in `schema.ts` and automatically applied by the database:
+
+**Workspaces:**
+
+- `isArchived`: `false`
+- `isPublic`: `true`
+- `createdAt`: Current timestamp
+- `updatedAt`: Current timestamp
+
+**Submetrics:**
+
+- `timezone`: `"utc"`
+- `aggregationType`: `"none"`
+- `trafficLightColor`: `"green"`
+- `createdAt`: Current timestamp
+- `updatedAt`: Current timestamp
+
+**Comment Threads:**
+
+- `isResolved`: `false`
+- `createdAt`: Current timestamp
+- `updatedAt`: Current timestamp
+
+**Follow-ups:**
+
+- `status`: `"todo"`
+- `priority`: `"no_priority"`
+- `createdAt`: Current timestamp
+- `updatedAt`: Current timestamp
+
+### Best Practices
+
+- **Do not set defaults in API routes** - Let the schema handle defaults
+- **Only override defaults when necessary** - Explicitly set values only when they differ from defaults
+- **Trust the schema** - The database will apply defaults automatically for nullable fields with defaults
+
 ## Data Ingestion
 
 ### API Payload Structure
@@ -894,6 +965,7 @@ The API ingestion endpoint processes data in this order:
 - Submetric definitions are **always updated** to match latest ingestion data
 - Rankings are **slide-specific** and independent of definitions
 - Definitions enable **cross-slide comment persistence**
+- **Default values** (timezone, aggregationType, trafficLightColor) are applied automatically by the schema if not provided in the payload
 
 ## Best Practices
 

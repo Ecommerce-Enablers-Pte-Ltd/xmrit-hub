@@ -12,7 +12,7 @@ import {
 // GET /api/workspaces/[workspaceId]/follow-ups - List follow-ups with pagination and filtering
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ workspaceId: string }> },
+  { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
     const session = await getAuthSession();
@@ -33,7 +33,7 @@ export async function GET(
     if (!workspace.length) {
       return NextResponse.json(
         { error: "Workspace not found" },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -48,7 +48,7 @@ export async function GET(
           error: "Invalid query parameters",
           details: validationResult.error.issues,
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -88,7 +88,7 @@ export async function GET(
     // Submetric definition filter
     if (submetricDefinitionId) {
       conditions.push(
-        eq(followUps.submetricDefinitionId, submetricDefinitionId),
+        eq(followUps.submetricDefinitionId, submetricDefinitionId)
       );
     }
 
@@ -98,7 +98,7 @@ export async function GET(
       const searchCondition = or(
         like(followUps.title, searchPattern),
         like(followUps.description, searchPattern),
-        like(followUps.identifier, searchPattern),
+        like(followUps.identifier, searchPattern)
       );
       if (searchCondition) {
         conditions.push(searchCondition);
@@ -109,7 +109,7 @@ export async function GET(
     if (overdue) {
       const overdueCondition = and(
         lt(followUps.dueDate, new Date().toISOString().split("T")[0]),
-        sql`${followUps.status} != 'done'`,
+        sql`${followUps.status} != 'done'`
       );
       if (overdueCondition) {
         conditions.push(overdueCondition);
@@ -138,11 +138,11 @@ export async function GET(
     // Client-side filtering for assignee (complex join)
     if (unassigned) {
       allFollowUps = allFollowUps.filter(
-        (followUp) => !followUp.assignees || followUp.assignees.length === 0,
+        (followUp) => !followUp.assignees || followUp.assignees.length === 0
       );
     } else if (assigneeId) {
       allFollowUps = allFollowUps.filter((followUp) =>
-        followUp.assignees?.some((assignee) => assignee.userId === assigneeId),
+        followUp.assignees?.some((assignee) => assignee.userId === assigneeId)
       );
     }
 
@@ -215,13 +215,13 @@ export async function GET(
           hasMore: page < totalPages,
         },
       },
-      { status: 200 },
+      { status: 200 }
     );
   } catch (error) {
     console.error("Error fetching follow-ups:", error);
     return NextResponse.json(
       { error: "Failed to fetch follow-ups" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
@@ -229,7 +229,7 @@ export async function GET(
 // POST /api/workspaces/[workspaceId]/follow-ups - Create new follow-up
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ workspaceId: string }> },
+  { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
     const session = await getAuthSession();
@@ -250,7 +250,7 @@ export async function POST(
     if (!workspace.length) {
       return NextResponse.json(
         { error: "Workspace not found" },
-        { status: 404 },
+        { status: 404 }
       );
     }
 
@@ -264,55 +264,116 @@ export async function POST(
           error: "Invalid request data",
           details: validationResult.error.issues,
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     const validatedData = validationResult.data;
 
     // Generate unique identifier for the follow-up
-    // Get the count of existing follow-ups in the workspace
-    const existingFollowUps = await db
-      .select()
-      .from(followUps)
-      .where(eq(followUps.workspaceId, workspaceId));
+    // Use a retry loop to handle race conditions with identifier generation
+    let newFollowUp: typeof followUps.$inferSelect | undefined;
+    let attempts = 0;
+    const maxAttempts = 5;
 
-    const identifier = `FU-${(existingFollowUps.length + 1)
-      .toString()
-      .padStart(3, "0")}`;
+    while (attempts < maxAttempts) {
+      try {
+        // Get the highest existing identifier number for this workspace
+        const existingFollowUps = await db
+          .select({ identifier: followUps.identifier })
+          .from(followUps)
+          .where(eq(followUps.workspaceId, workspaceId))
+          .orderBy(sql`${followUps.identifier} DESC`)
+          .limit(1);
 
-    // Create the follow-up
-    const [newFollowUp] = await db
-      .insert(followUps)
-      .values({
-        title: validatedData.title,
-        description: validatedData.description ?? null,
-        workspaceId,
-        slideId: validatedData.slideId ?? null,
-        submetricDefinitionId: validatedData.submetricDefinitionId ?? null,
-        threadId: validatedData.threadId ?? null,
-        status: validatedData.status,
-        priority: validatedData.priority,
-        assigneeId: null, // DEPRECATED: no longer used, using assignees junction table
-        createdBy: session.user.id,
-        dueDate: validatedData.dueDate ?? null,
-        identifier,
-      })
-      .returning();
+        // Extract the number from the last identifier (e.g., "FU-123" -> 123)
+        let nextNumber = 1;
+        if (existingFollowUps.length > 0) {
+          const lastIdentifier = existingFollowUps[0].identifier;
+          const match = lastIdentifier.match(/FU-(\d+)/);
+          if (match) {
+            nextNumber = Number.parseInt(match[1], 10) + 1;
+          }
+        }
+
+        const identifier = `FU-${nextNumber.toString().padStart(3, "0")}`;
+
+        // Try to create the follow-up
+        const [createdFollowUp] = await db
+          .insert(followUps)
+          .values({
+            title: validatedData.title,
+            description: validatedData.description ?? null,
+            workspaceId,
+            slideId: validatedData.slideId ?? null,
+            submetricDefinitionId: validatedData.submetricDefinitionId ?? null,
+            threadId: validatedData.threadId ?? null,
+            status: validatedData.status,
+            priority: validatedData.priority,
+            assigneeId: null, // DEPRECATED: no longer used, using assignees junction table
+            createdBy: session.user.id,
+            dueDate: validatedData.dueDate ?? null,
+            identifier,
+          })
+          .returning();
+
+        newFollowUp = createdFollowUp;
+        break; // Success! Exit the loop
+      } catch (err: any) {
+        // Check if it's a duplicate key error
+        if (
+          err.code === "23505" &&
+          err.constraint === "follow_up_identifier_idx"
+        ) {
+          attempts++;
+          if (attempts >= maxAttempts) {
+            console.error(
+              "Failed to generate unique identifier after retries:",
+              err
+            );
+            return NextResponse.json(
+              {
+                error:
+                  "Failed to generate unique identifier. Please try again.",
+              },
+              { status: 500 }
+            );
+          }
+          // Wait a short random time before retrying to reduce collision probability
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.random() * 100)
+          );
+          continue;
+        }
+        // For other errors, throw immediately
+        throw err;
+      }
+    }
+
+    // Safety check - should never happen due to maxAttempts check inside the loop
+    if (!newFollowUp) {
+      return NextResponse.json(
+        { error: "Failed to create follow-up" },
+        { status: 500 }
+      );
+    }
+
+    // Now we can safely use newFollowUp - assign to const for clarity
+    const createdFollowUpId = newFollowUp.id;
 
     // Create assignee relationships if provided
     if (validatedData.assigneeIds && validatedData.assigneeIds.length > 0) {
       await db.insert(followUpAssignees).values(
         validatedData.assigneeIds.map((userId) => ({
-          followUpId: newFollowUp.id,
+          followUpId: createdFollowUpId,
           userId,
-        })),
+        }))
       );
     }
 
     // Fetch the created follow-up with related data
     const followUp = await db.query.followUps.findFirst({
-      where: (followUps, { eq }) => eq(followUps.id, newFollowUp.id),
+      where: (followUps, { eq }) => eq(followUps.id, createdFollowUpId),
       with: {
         assignee: true,
         assignees: {
@@ -332,7 +393,7 @@ export async function POST(
     console.error("Error creating follow-up:", error);
     return NextResponse.json(
       { error: "Failed to create follow-up" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

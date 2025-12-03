@@ -4,6 +4,7 @@ import { Copy, ListTodo, Plus } from "lucide-react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -62,7 +63,7 @@ export function NavbarFollowUpButton({
           label: "View",
           onClick: () => {
             router.push(
-              `/${workspaceId}/follow-ups?slideId=${newFollowUp.slideId || ""}`,
+              `/${workspaceId}/follow-ups?slideId=${newFollowUp.slideId || ""}`
             );
           },
         },
@@ -71,7 +72,7 @@ export function NavbarFollowUpButton({
       setDialogOpen(false);
     } catch (error) {
       console.error("Error creating follow-up:", error);
-      toast.error("Failed to create follow-up");
+      toast.error(getErrorMessage(error, "Failed to create follow-up"));
     }
   };
 

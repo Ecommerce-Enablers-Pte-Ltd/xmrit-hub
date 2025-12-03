@@ -73,15 +73,17 @@ Content-Type: application/json
 | Field              | Type   | Required | Description                                                                                                                        |
 | ------------------ | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `category`         | String | No       | Category/dimension for grouping (e.g., "Brand A", "North America") - stored in definition                                          |
-| `timezone`         | String | No       | Timezone (default: "UTC") - instance-specific config                                                                               |
+| `timezone`         | String | No       | Timezone - instance-specific config. **Default: `"utc"` (set in schema)**                                                          |
 | `xaxis`            | String | No       | X-axis semantic label (stored in definition, e.g., "period", "tracked_week", "transaction_touched_at")                             |
 | `yaxis`            | String | No       | Y-axis semantic label / unit (stored in definition, e.g., "hours", "% completion", "complaints"). Also used as fallback for `unit` |
 | `preferred_trend`  | String | No       | Expected trend: "uptrend", "downtrend", "stable" (stored in definition)                                                            |
 | `unit`             | String | No       | Unit of measurement (stored in definition, e.g., "%", "$", "count"). If omitted, `yaxis` is used as fallback                       |
-| `aggregation_type` | String | No       | Aggregation type: "sum", "avg", "min", "max", "none" (default: "none") - instance-specific config                                  |
-| `color`            | String | No       | Hex color code for chart display (default: "#3b82f6" - blue) - instance-specific config                                            |
+| `aggregation_type` | String | No       | Aggregation type: "sum", "avg", "min", "max", "none". **Default: `"none"` (set in schema)** - instance-specific config             |
+| `color`            | String | No       | Hex color code for chart display - instance-specific config                                                                        |
 | `metadata`         | Object | No       | Additional metadata as JSON                                                                                                        |
 | `data_points`      | Array  | Yes      | Array of data point objects                                                                                                        |
+
+**Note on Default Values**: Default values are enforced at the database schema level (`src/lib/db/schema.ts`), not in the API route. If you omit optional fields like `timezone` or `aggregation_type`, the database will automatically apply the schema defaults. You only need to include these fields if you want to override the defaults.
 
 **Note on `category` field:**
 
@@ -312,8 +314,11 @@ When `workspace_id` is not provided:
 
 - Creates a new public workspace
 - Uses `slide_title` as workspace name (fallback: "API Ingestion Workspace")
-- Sets `isPublic: true` for accessibility
+- **Schema automatically sets `isPublic: true`** (default value in schema)
+- **Schema automatically sets `isArchived: false`** (default value in schema)
 - Returns new workspace ID in response
+
+**Note**: Default values (`isPublic`, `isArchived`, `createdAt`, `updatedAt`) are handled by the database schema, not the API route.
 
 ### Slide Management
 
@@ -327,6 +332,26 @@ When `workspace_id` is not provided:
 
 - Matches by `slide_title` and `slide_date` within workspace
 - Updates existing slide instead of creating duplicate
+
+### Default Values and Schema Enforcement
+
+**Important**: The ingestion API relies on database schema defaults for consistency. The following defaults are automatically applied by the schema if not provided in the payload:
+
+- **Submetrics:**
+
+  - `timezone`: Defaults to `"utc"` if not specified
+  - `aggregationType`: Defaults to `"none"` if not specified
+  - `trafficLightColor`: Defaults to `"green"` for new submetrics
+
+- **Workspaces:**
+
+  - `isPublic`: Defaults to `true` for new workspaces
+  - `isArchived`: Defaults to `false` for new workspaces
+
+- **Timestamps:**
+  - `createdAt` and `updatedAt`: Automatically set to current timestamp
+
+These defaults are defined in `src/lib/db/schema.ts` and enforced at the database level. The API route does not need to (and should not) set these values unless explicitly overriding defaults.
 
 ### Data Point Storage
 
@@ -379,18 +404,18 @@ curl -X POST https://your-domain.com/api/ingest/metrics \
     "slide_title": "Test Slide",
     "slide_date": "2024-10-30",
     "metrics": [
-      {
-        "metric_name": "Test Metric",
-        "submetrics": [
-          {
-            "label": "Test Submetric",
-            "data_points": [
-              {"timestamp": "2024-01-01", "value": 100},
-              {"timestamp": "2024-01-02", "value": 105}
-            ]
-          }
-        ]
-      }
+        {
+          "metric_name": "Test Metric",
+          "submetrics": [
+            {
+              "category": "Test Category",
+              "data_points": [
+                {"timestamp": "2024-01-01", "value": 100},
+                {"timestamp": "2024-01-02", "value": 105}
+              ]
+            }
+          ]
+        }
     ]
   }'
 ```
@@ -415,7 +440,7 @@ payload = {
             "metric_name": "Python Metric",
             "submetrics": [
                 {
-                    "label": "Test Data",
+                    "category": "Test Category",
                     "data_points": [
                         {"timestamp": "2024-01-01", "value": 100},
                         {"timestamp": "2024-01-02", "value": 105}

@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import { FollowUpDialog } from "@/app/[workspaceId]/follow-ups/components/follow-up-dialog";
 import {
   getPriorityIcon,
@@ -125,12 +126,23 @@ export function FollowUpTab({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
-        },
+        }
       );
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to create follow-up");
+        let errorMessage = "Failed to create follow-up";
+        try {
+          const errorData = await response.json();
+          errorMessage =
+            errorData.error ||
+            errorData.message ||
+            errorData.details?.[0]?.message ||
+            errorMessage;
+        } catch {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       return response.json();
@@ -154,7 +166,7 @@ export function FollowUpTab({
     },
     onError: (error: Error) => {
       console.error("Error creating follow-up:", error);
-      toast.error(error.message || "Failed to create follow-up");
+      toast.error(getErrorMessage(error, "Failed to create follow-up"));
     },
   });
 
@@ -184,8 +196,19 @@ export function FollowUpTab({
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to update follow-up");
+        let errorMessage = "Failed to update follow-up";
+        try {
+          const errorData = await response.json();
+          errorMessage =
+            errorData.error ||
+            errorData.message ||
+            errorData.details?.[0]?.message ||
+            errorMessage;
+        } catch {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       return response.json();
@@ -207,7 +230,7 @@ export function FollowUpTab({
     },
     onError: (error: Error) => {
       console.error("Error updating follow-up:", error);
-      toast.error(error.message || "Failed to update follow-up");
+      toast.error(getErrorMessage(error, "Failed to update follow-up"));
     },
   });
 
@@ -219,8 +242,19 @@ export function FollowUpTab({
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to delete follow-up");
+        let errorMessage = "Failed to delete follow-up";
+        try {
+          const errorData = await response.json();
+          errorMessage =
+            errorData.error ||
+            errorData.message ||
+            errorData.details?.[0]?.message ||
+            errorMessage;
+        } catch {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       return response.json();
@@ -242,7 +276,7 @@ export function FollowUpTab({
     },
     onError: (error: Error) => {
       console.error("Error deleting follow-up:", error);
-      toast.error(error.message || "Failed to delete follow-up");
+      toast.error(getErrorMessage(error, "Failed to delete follow-up"));
     },
   });
 
@@ -304,9 +338,8 @@ export function FollowUpTab({
   }
 
   // Split follow-ups based on status
-  const allFollowUps = [...(data?.resolved || []), ...(data?.unresolved || [])];
-  const resolved = allFollowUps.filter((fu) => fu.status === "resolved");
-  const unresolved = allFollowUps.filter((fu) => fu.status !== "resolved");
+  const resolved = data?.resolved || [];
+  const unresolved = data?.unresolved || [];
 
   return (
     <>
@@ -366,7 +399,7 @@ export function FollowUpTab({
                   <div
                     className={cn(
                       "flex items-center gap-2 pb-2",
-                      unresolved.length > 0 && "border-t pt-4",
+                      unresolved.length > 0 && "border-t pt-4"
                     )}
                   >
                     <h3 className="font-semibold text-sm text-muted-foreground">
@@ -524,8 +557,19 @@ function FollowUpCard({
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to update status");
+        let errorMessage = "Failed to update status";
+        try {
+          const errorData = await response.json();
+          errorMessage =
+            errorData.error ||
+            errorData.message ||
+            errorData.details?.[0]?.message ||
+            errorMessage;
+        } catch {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       return response.json();
@@ -552,7 +596,7 @@ function FollowUpCard({
     },
     onError: (error: Error) => {
       console.error("Error updating status:", error);
-      toast.error(error.message || "Failed to update status");
+      toast.error(getErrorMessage(error, "Failed to update status"));
     },
   });
 
@@ -569,8 +613,19 @@ function FollowUpCard({
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to update follow-up");
+        let errorMessage = "Failed to update follow-up";
+        try {
+          const errorData = await response.json();
+          errorMessage =
+            errorData.error ||
+            errorData.message ||
+            errorData.details?.[0]?.message ||
+            errorMessage;
+        } catch {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       return response.json();
@@ -597,7 +652,7 @@ function FollowUpCard({
     },
     onError: (error: Error) => {
       console.error("Error updating follow-up:", error);
-      toast.error(error.message || "Failed to update follow-up");
+      toast.error(getErrorMessage(error, "Failed to update follow-up"));
     },
   });
 
@@ -641,7 +696,7 @@ function FollowUpCard({
   return (
     <div
       className={cn(
-        "rounded-lg border p-4 space-y-3 transition-all bg-card hover:shadow-sm",
+        "rounded-lg border p-4 space-y-3 transition-all bg-card hover:shadow-sm"
       )}
     >
       {/* Header with identifier and status */}
@@ -660,7 +715,7 @@ function FollowUpCard({
                 disabled={isResolved}
                 className={cn(
                   "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded transition-all",
-                  !isResolved && "hover:scale-105",
+                  !isResolved && "hover:scale-105"
                 )}
               >
                 <Badge
@@ -669,7 +724,7 @@ function FollowUpCard({
                     "text-xs gap-1.5",
                     !isResolved && "cursor-pointer",
                     isResolved && "opacity-60 cursor-not-allowed",
-                    getStatusBadgeColor(followUp.status),
+                    getStatusBadgeColor(followUp.status)
                   )}
                 >
                   {getStatusLabel(followUp.status)}
@@ -789,7 +844,7 @@ function FollowUpCard({
                 followUp.slide &&
                 window.open(
                   `/${workspaceId}/slide/${followUp.slide.id}`,
-                  "_blank",
+                  "_blank"
                 )
               }
               className="text-primary hover:underline cursor-pointer"
@@ -808,7 +863,7 @@ function FollowUpCard({
                 followUp.resolvedAtSlide &&
                 window.open(
                   `/${workspaceId}/slide/${followUp.resolvedAtSlide.id}`,
-                  "_blank",
+                  "_blank"
                 )
               }
               className="text-primary hover:underline cursor-pointer"

@@ -1,8 +1,11 @@
 // Base API client configuration and utilities
 
+import { getErrorMessage } from "@/lib/utils";
+
 export interface ApiError {
   error: string;
   message?: string;
+  details?: Array<{ field?: string; message: string }>;
 }
 
 export class BaseApiClient {
@@ -14,7 +17,7 @@ export class BaseApiClient {
 
   protected async request<T>(
     endpoint: string,
-    options: RequestInit = {},
+    options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}/api${endpoint}`;
 
@@ -28,9 +31,15 @@ export class BaseApiClient {
     });
 
     if (!response.ok) {
-      const errorData: ApiError = await response.json().catch(() => ({
-        error: `HTTP ${response.status}: ${response.statusText}`,
-      }));
+      let errorData: ApiError;
+      try {
+        errorData = await response.json();
+      } catch {
+        // If response is not JSON, create a structured error
+        errorData = {
+          error: `HTTP ${response.status}: ${response.statusText}`,
+        };
+      }
 
       // Handle authentication errors
       if (response.status === 401) {
@@ -40,7 +49,13 @@ export class BaseApiClient {
         }
       }
 
-      throw new Error(errorData.error || "API request failed");
+      // Extract error message using utility function
+      const errorMessage = getErrorMessage(
+        errorData,
+        `API request failed (${response.status})`
+      );
+
+      throw new Error(errorMessage);
     }
 
     return response.json();

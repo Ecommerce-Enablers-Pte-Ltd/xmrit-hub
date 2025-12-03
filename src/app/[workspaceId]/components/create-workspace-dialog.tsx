@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import { ZodError } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -77,11 +78,12 @@ export function CreateWorkspaceDialog({
       }
 
       console.error("Error creating workspace:", error);
+      const errorMessage = getErrorMessage(
+        error,
+        "An unexpected error occurred. Please try again."
+      );
       toast.error("Failed to create workspace", {
-        description:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred. Please try again.",
+        description: errorMessage,
       });
     }
   };

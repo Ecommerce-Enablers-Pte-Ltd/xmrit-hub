@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import { ZodError } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -73,7 +74,8 @@ export function EditSlideNameDialog({
         return;
       }
 
-      toast.error("Failed to update slide title");
+      console.error("Error updating slide title:", error);
+      toast.error(getErrorMessage(error, "Failed to update slide title"));
     }
   };
 

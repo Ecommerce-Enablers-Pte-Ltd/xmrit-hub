@@ -4,6 +4,7 @@ import { Settings2, Trash2, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import { ZodError } from "zod";
 import {
   AlertDialog,
@@ -47,7 +48,7 @@ export function WorkspaceSettingsDialog({
   const [activeTab, setActiveTab] = React.useState<SettingsTab>("general");
   const [name, setName] = React.useState(workspace.name);
   const [description, setDescription] = React.useState(
-    workspace.description || "",
+    workspace.description || ""
   );
   const [deleteAlertOpen, setDeleteAlertOpen] = React.useState(false);
   const updateWorkspace = useUpdateWorkspace();
@@ -112,11 +113,12 @@ export function WorkspaceSettingsDialog({
       }
 
       console.error("Error updating workspace:", error);
+      const errorMessage = getErrorMessage(
+        error,
+        "An unexpected error occurred. Please try again."
+      );
       toast.error("Failed to update workspace", {
-        description:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred. Please try again.",
+        description: errorMessage,
       });
     }
   };
@@ -138,11 +140,12 @@ export function WorkspaceSettingsDialog({
       router.push("/");
     } catch (error) {
       console.error("Error deleting workspace:", error);
+      const errorMessage = getErrorMessage(
+        error,
+        "An unexpected error occurred. Please try again."
+      );
       toast.error("Failed to delete workspace", {
-        description:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred. Please try again.",
+        description: errorMessage,
       });
     }
   }, [workspace.id, deleteWorkspace, onOpenChange, router]);
@@ -194,11 +197,11 @@ export function WorkspaceSettingsDialog({
                     item.disabled
                       ? "opacity-50 cursor-not-allowed"
                       : activeTab === item.id
-                        ? ""
-                        : "hover:bg-muted",
+                      ? ""
+                      : "hover:bg-muted",
                     activeTab === item.id
                       ? "bg-background text-foreground font-medium"
-                      : "text-muted-foreground",
+                      : "text-muted-foreground"
                   )}
                 >
                   {item.icon}

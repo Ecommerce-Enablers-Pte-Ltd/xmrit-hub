@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import { ZodError } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +30,7 @@ export function EditMetricDefinitionDialog({
   metric,
 }: EditMetricDefinitionDialogProps) {
   const [definitionValue, setDefinitionValue] = useState(
-    metric.definition?.definition || "",
+    metric.definition?.definition || ""
   );
   const updateMetricDefinition = useUpdateMetricDefinition();
 
@@ -83,7 +84,8 @@ export function EditMetricDefinitionDialog({
         return;
       }
 
-      toast.error("Failed to update metric definition");
+      console.error("Error updating metric definition:", error);
+      toast.error(getErrorMessage(error, "Failed to update metric definition"));
     }
   };
 

@@ -45,10 +45,10 @@ export function SubmetricTrendDialog({
 
   // State for manually entered equation values
   const [gradient, setGradient] = useState<string>(
-    initialStats?.m.toFixed(8) || "0",
+    initialStats?.m.toFixed(8) || "0"
   );
   const [intercept, setIntercept] = useState<string>(
-    initialStats?.c.toFixed(6) || "0",
+    initialStats?.c.toFixed(6) || "0"
   );
 
   // Track if user has manually edited gradient/intercept
@@ -115,10 +115,6 @@ export function SubmetricTrendDialog({
     onApplyTrend(m, c);
     onOpenChange(false);
   };
-
-  // Parse values for display
-  const _parsedGradient = parseFloat(gradient);
-  const _parsedIntercept = parseFloat(intercept);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -218,7 +214,7 @@ export function SubmetricTrendDialog({
                   {editedDataPoints.length < 15 &&
                     Array.from(
                       { length: 15 - editedDataPoints.length },
-                      (_, i) => i,
+                      (_, i) => i
                     ).map((rowNum) => (
                       <TableRow key={`empty-row-${rowNum}`}>
                         <TableCell className="h-10"></TableCell>

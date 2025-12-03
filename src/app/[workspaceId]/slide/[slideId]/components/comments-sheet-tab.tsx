@@ -16,6 +16,7 @@ import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -86,7 +87,7 @@ export function CommentsTab({
   const [editingBody, setEditingBody] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [expandedReplies, setExpandedReplies] = useState<Set<string>>(
-    new Set(),
+    new Set()
   );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -94,7 +95,7 @@ export function CommentsTab({
 
   // Filter state: "all" means show all comments, otherwise filter to specific date
   const [selectedFilter, setSelectedFilter] = useState<string>(
-    initialFilterToAll ? "all" : initialBucketValue,
+    initialFilterToAll ? "all" : initialBucketValue
   );
 
   // Determine what to display based on filter
@@ -115,7 +116,7 @@ export function CommentsTab({
       });
 
       const response = await fetch(
-        `/api/submetrics/definitions/${definitionId}/points?${params}`,
+        `/api/submetrics/definitions/${definitionId}/points?${params}`
       );
 
       if (!response.ok) {
@@ -135,7 +136,7 @@ export function CommentsTab({
     queryKey: ["comments", "all", definitionId],
     queryFn: async () => {
       const response = await fetch(
-        `/api/submetrics/definitions/${definitionId}/points`,
+        `/api/submetrics/definitions/${definitionId}/points`
       );
 
       if (!response.ok) {
@@ -156,7 +157,7 @@ export function CommentsTab({
   const scrollToBottom = useCallback(() => {
     if (scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]",
+        "[data-radix-scroll-area-viewport]"
       );
       if (scrollContainer) {
         setTimeout(() => {
@@ -185,7 +186,7 @@ export function CommentsTab({
             body: data.body,
             parentId: data.parentId,
           }),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -239,7 +240,7 @@ export function CommentsTab({
     },
     onError: (error) => {
       console.error("Error submitting comment:", error);
-      toast.error("Failed to post comment");
+      toast.error(getErrorMessage(error, "Failed to post comment"));
     },
   });
 
@@ -337,7 +338,7 @@ export function CommentsTab({
   }, [editingCommentId]);
 
   const handleEditTextareaChange = (
-    e: React.ChangeEvent<HTMLTextAreaElement>,
+    e: React.ChangeEvent<HTMLTextAreaElement>
   ) => {
     setEditingBody(e.target.value);
 
@@ -359,7 +360,7 @@ export function CommentsTab({
           body: JSON.stringify({
             body: data.body,
           }),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -391,7 +392,7 @@ export function CommentsTab({
     },
     onError: (error) => {
       console.error("Error updating comment:", error);
-      toast.error("Failed to update comment");
+      toast.error(getErrorMessage(error, "Failed to update comment"));
     },
   });
 
@@ -411,7 +412,7 @@ export function CommentsTab({
         `/api/submetrics/definitions/${definitionId}/points/comments/${commentId}`,
         {
           method: "DELETE",
-        },
+        }
       );
 
       if (!response.ok) {
@@ -447,7 +448,7 @@ export function CommentsTab({
           ? `Comment and ${deletedCount - 1} ${
               deletedCount - 1 === 1 ? "reply" : "replies"
             } deleted`
-          : "Comment deleted",
+          : "Comment deleted"
       );
 
       // Notify parent to invalidate cache
@@ -457,7 +458,7 @@ export function CommentsTab({
     },
     onError: (error) => {
       console.error("Error deleting comment:", error);
-      toast.error("Failed to delete comment");
+      toast.error(getErrorMessage(error, "Failed to delete comment"));
     },
   });
 
@@ -469,7 +470,7 @@ export function CommentsTab({
 
   // Build comment tree for nested display
   const buildCommentTree = (
-    comments: CommentWithUser[],
+    comments: CommentWithUser[]
   ): Map<string | null, CommentWithUser[]> => {
     const tree = new Map<string | null, CommentWithUser[]>();
 
@@ -488,7 +489,7 @@ export function CommentsTab({
     comment: CommentWithUser,
     tree: Map<string | null, CommentWithUser[]>,
     depth: number = 0,
-    threadId?: string,
+    threadId?: string
   ) => {
     const replies = tree.get(comment.id) || [];
     const isReplyingTo = replyToId === comment.id;
@@ -649,7 +650,7 @@ export function CommentsTab({
                     }}
                     className={cn(
                       "mt-2 h-8 text-xs text-primary hover:text-primary hover:bg-primary/10",
-                      "ml-6",
+                      "ml-6"
                     )}
                   >
                     Show more →
@@ -665,7 +666,7 @@ export function CommentsTab({
               return (
                 <>
                   {visibleReplies.map((reply) =>
-                    renderComment(reply, tree, depth + 1, threadId),
+                    renderComment(reply, tree, depth + 1, threadId)
                   )}
                   {!isExpanded && hiddenCount > 0 && (
                     <Button
@@ -680,7 +681,7 @@ export function CommentsTab({
                       }}
                       className={cn(
                         "mt-2 h-8 text-xs text-primary hover:text-primary hover:bg-primary/10",
-                        depth === 0 ? "ml-6" : "ml-12",
+                        depth === 0 ? "ml-6" : "ml-12"
                       )}
                     >
                       Show {hiddenCount} more{" "}
@@ -700,7 +701,7 @@ export function CommentsTab({
                       }}
                       className={cn(
                         "mt-2 h-8 text-xs text-muted-foreground hover:text-foreground hover:bg-muted",
-                        depth === 0 ? "ml-6" : "ml-12",
+                        depth === 0 ? "ml-6" : "ml-12"
                       )}
                     >
                       Show less
@@ -720,7 +721,7 @@ export function CommentsTab({
                       }}
                       className={cn(
                         "mt-2 h-8 text-xs text-muted-foreground hover:text-foreground hover:bg-muted",
-                        "ml-6",
+                        "ml-6"
                       )}
                     >
                       Show less
@@ -739,7 +740,7 @@ export function CommentsTab({
   const formatRelativeTime = (date: Date) => {
     const now = new Date();
     const seconds = Math.floor(
-      (now.getTime() - new Date(date).getTime()) / 1000,
+      (now.getTime() - new Date(date).getTime()) / 1000
     );
 
     if (seconds < 60) return "just now";
@@ -799,7 +800,7 @@ export function CommentsTab({
     ? (() => {
         // First try to find in point-specific comments
         const pointComment = threadData?.comments.find(
-          (c) => c.id === replyToId,
+          (c) => c.id === replyToId
         );
         if (pointComment) return pointComment;
 
@@ -807,7 +808,7 @@ export function CommentsTab({
         if (isShowingAll) {
           for (const threadResponse of allThreads) {
             const comment = threadResponse.comments.find(
-              (c) => c.id === replyToId,
+              (c) => c.id === replyToId
             );
             if (comment) return comment;
           }
@@ -981,7 +982,7 @@ export function CommentsTab({
             ) : !isShowingAll ? (
               <div className="space-y-4 pb-2 px-6 py-4">
                 {topLevelComments.map((comment) =>
-                  commentTree ? renderComment(comment, commentTree, 0) : null,
+                  commentTree ? renderComment(comment, commentTree, 0) : null
                 )}
               </div>
             ) : (
@@ -991,7 +992,7 @@ export function CommentsTab({
 
                   const thread = threadResponse.thread;
                   const threadCommentTree = buildCommentTree(
-                    threadResponse.comments,
+                    threadResponse.comments
                   );
                   const threadTopLevelComments =
                     threadCommentTree.get(null) || [];
@@ -1022,8 +1023,8 @@ export function CommentsTab({
                             comment,
                             threadCommentTree,
                             0,
-                            thread.id,
-                          ),
+                            thread.id
+                          )
                         )}
                       </div>
                     </div>

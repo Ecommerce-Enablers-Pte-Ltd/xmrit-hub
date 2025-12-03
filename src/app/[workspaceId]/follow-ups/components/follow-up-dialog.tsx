@@ -254,7 +254,7 @@ export function FollowUpDialog({
       // Only clear if the current submetric definition is not in the available ones for this slide
       if (currentSubmetricId) {
         const isValidForSlide = availableSubmetricDefinitions.some(
-          (def) => def.id === currentSubmetricId,
+          (def) => def.id === currentSubmetricId
         );
 
         // Clear if not valid for the new slide
@@ -366,8 +366,8 @@ export function FollowUpDialog({
             {isResolved
               ? "This follow-up is resolved. You can edit details but cannot change the status. Reopen to change status."
               : followUp
-                ? "Update the follow-up details below."
-                : "Track action items, issues, and tasks."}
+              ? "Update the follow-up details below."
+              : "Track action items, issues, and tasks."}
           </DialogDescription>
         </DialogHeader>
 
@@ -388,7 +388,7 @@ export function FollowUpDialog({
                   placeholder="What needs to be done?"
                   className={cn(
                     errors.title &&
-                      "border-destructive focus-visible:ring-destructive",
+                      "border-destructive focus-visible:ring-destructive"
                   )}
                   autoFocus
                   disabled={isLoading}
@@ -417,7 +417,7 @@ export function FollowUpDialog({
                           className={cn(
                             "w-full",
                             errors.status && "border-destructive",
-                            isResolved && "opacity-60 cursor-not-allowed",
+                            isResolved && "opacity-60 cursor-not-allowed"
                           )}
                         >
                           <SelectValue>
@@ -425,7 +425,7 @@ export function FollowUpDialog({
                               {getStatusIcon(field.value)}
                               <span className="truncate">
                                 {STATUS_OPTIONS_WITH_RESOLVED.find(
-                                  (opt) => opt.value === field.value,
+                                  (opt) => opt.value === field.value
                                 )?.label || field.value}
                               </span>
                             </div>
@@ -462,7 +462,7 @@ export function FollowUpDialog({
                           id="priority"
                           className={cn(
                             "w-full",
-                            errors.priority && "border-destructive",
+                            errors.priority && "border-destructive"
                           )}
                         >
                           <SelectValue>
@@ -470,7 +470,7 @@ export function FollowUpDialog({
                               {getPriorityIcon(field.value, "h-4 w-4")}
                               <span className="truncate">
                                 {PRIORITY_OPTIONS.find(
-                                  (opt) => opt.value === field.value,
+                                  (opt) => opt.value === field.value
                                 )?.label || "No Priority"}
                               </span>
                             </div>
@@ -517,7 +517,7 @@ export function FollowUpDialog({
                             className={cn(
                               "w-full justify-start text-left font-normal min-w-0",
                               !field.value && "text-muted-foreground",
-                              errors.dueDate && "border-destructive",
+                              errors.dueDate && "border-destructive"
                             )}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
@@ -592,7 +592,7 @@ export function FollowUpDialog({
                   className={cn(
                     "resize-none text-sm min-h-[100px]",
                     errors.description &&
-                      "border-destructive focus-visible:ring-destructive",
+                      "border-destructive focus-visible:ring-destructive"
                   )}
                   disabled={isLoading}
                 />
@@ -643,7 +643,7 @@ export function FollowUpDialog({
                   render={({ field }) => {
                     const selectedDefinition =
                       availableSubmetricDefinitions.find(
-                        (def) => def.id === field.value,
+                        (def) => def.id === field.value
                       );
                     const displayText = selectedDefinition
                       ? selectedDefinition.category
@@ -671,7 +671,7 @@ export function FollowUpDialog({
                                 "w-full justify-between font-normal overflow-hidden text-ellipsis whitespace-nowrap",
                                 !field.value && "text-muted-foreground",
                                 errors.submetricDefinitionId &&
-                                  "border-destructive",
+                                  "border-destructive"
                               )}
                             >
                               <span className="truncate overflow-hidden text-ellipsis whitespace-nowrap block flex-1 text-left">
@@ -709,7 +709,7 @@ export function FollowUpDialog({
                                         "mr-2 h-4 w-4 shrink-0",
                                         !field.value
                                           ? "opacity-100"
-                                          : "opacity-0",
+                                          : "opacity-0"
                                       )}
                                     />
                                     <span className="text-muted-foreground truncate block flex-1 min-w-0">
@@ -736,7 +736,7 @@ export function FollowUpDialog({
                                               "mr-2 h-4 w-4 shrink-0",
                                               field.value === definition.id
                                                 ? "opacity-100"
-                                                : "opacity-0",
+                                                : "opacity-0"
                                             )}
                                           />
                                           <span className="truncate block flex-1 min-w-0">
@@ -744,7 +744,7 @@ export function FollowUpDialog({
                                           </span>
                                         </CommandItem>
                                       );
-                                    },
+                                    }
                                   )}
                                 </CommandGroup>
                               </CommandList>
@@ -800,13 +800,13 @@ export function FollowUpDialog({
               </Button>
               <Button
                 type="submit"
-                disabled={isLoading || !isDirty || !isValid}
+                disabled={isLoading || (followUp && !isDirty) || !isValid}
               >
                 {isLoading
                   ? "Saving..."
                   : followUp
-                    ? "Save Changes"
-                    : "Create Follow-up"}
+                  ? "Save Changes"
+                  : "Create Follow-up"}
               </Button>
             </div>
           </DialogFooter>

@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,7 +62,7 @@ export function WorkspaceClient({
   // Edit slide dialog state
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [slideToEdit, setSlideToEdit] = React.useState<SlideWithMetrics | null>(
-    null,
+    null
   );
 
   // Workspace settings dialog state
@@ -82,7 +83,7 @@ export function WorkspaceClient({
 
       router.replace(`/${workspaceId}?${newParams.toString()}`);
     },
-    [searchParams, router, workspaceId],
+    [searchParams, router, workspaceId]
   );
 
   // Calculate pagination
@@ -124,11 +125,12 @@ export function WorkspaceClient({
       });
     } catch (error) {
       console.error("Error deleting slide:", error);
+      const errorMessage = getErrorMessage(
+        error,
+        "An unexpected error occurred. Please try again."
+      );
       toast.error("Failed to delete slide", {
-        description:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred. Please try again.",
+        description: errorMessage,
       });
     } finally {
       setAlertOpen(false);
@@ -265,7 +267,7 @@ export function WorkspaceClient({
                           onClick={() => updateSearchParams({ page: pageNum })}
                           className={cn(
                             "h-8 w-8 p-0",
-                            page === pageNum && "pointer-events-none",
+                            page === pageNum && "pointer-events-none"
                           )}
                         >
                           {pageNum}

@@ -12,7 +12,7 @@ export function cn(...inputs: ClassValue[]) {
 export function setCookie(
   name: string,
   value: string,
-  options?: { path?: string; maxAge?: number },
+  options?: { path?: string; maxAge?: number }
 ): void {
   if (typeof window === "undefined") return;
 
@@ -57,5 +57,76 @@ export function getCookie(name: string): string | null {
 
   const cookies = document.cookie.split("; ");
   const cookie = cookies.find((c) => c.startsWith(`${name}=`));
-  return cookie ? (cookie.split("=")[1] ?? null) : null;
+  return cookie ? cookie.split("=")[1] ?? null : null;
+}
+
+/**
+ * Extracts a user-friendly error message from various error formats.
+ * Handles:
+ * - Error objects with message property
+ * - JSON error responses like {"error": "message"} or {"message": "error"}
+ * - Plain string errors
+ * - Unknown error types
+ */
+export function getErrorMessage(
+  error: unknown,
+  fallback: string = "An unexpected error occurred"
+): string {
+  // Handle Error instances
+  if (error instanceof Error) {
+    const message = error.message;
+
+    // Try to parse JSON error responses (e.g., '{"error": "message"}' or '{"message": "error"}')
+    if (message.startsWith("{") || message.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(message);
+        // Check for common error response formats
+        if (typeof parsed === "object" && parsed !== null) {
+          return (
+            parsed.error ||
+            parsed.message ||
+            parsed.details?.[0]?.message ||
+            fallback
+          );
+        }
+      } catch {
+        // If parsing fails, fall through to return the message as-is
+      }
+    }
+
+    return message || fallback;
+  }
+
+  // Handle string errors
+  if (typeof error === "string") {
+    // Try to parse JSON string
+    if (error.startsWith("{") || error.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(error);
+        if (typeof parsed === "object" && parsed !== null) {
+          return (
+            parsed.error ||
+            parsed.message ||
+            parsed.details?.[0]?.message ||
+            fallback
+          );
+        }
+      } catch {
+        // If parsing fails, return the string as-is
+      }
+    }
+    return error || fallback;
+  }
+
+  // Handle objects with error or message properties
+  if (typeof error === "object" && error !== null) {
+    const errorObj = error as Record<string, unknown>;
+    return (
+      (typeof errorObj.error === "string" ? errorObj.error : undefined) ||
+      (typeof errorObj.message === "string" ? errorObj.message : undefined) ||
+      fallback
+    );
+  }
+
+  return fallback;
 }
