@@ -177,7 +177,7 @@ export function WorkspaceClient({
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 flex flex-col min-h-0">
         <SlideTable
           currentWorkspace={currentWorkspace}
           slides={paginatedSlides}

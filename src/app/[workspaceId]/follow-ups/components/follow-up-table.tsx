@@ -161,10 +161,10 @@ export function FollowUpTable({
 
   if (isLoading) {
     return (
-      <div className="px-6 pb-6">
+      <div className="px-6 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
         <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent border-t">
+          <TableHeader className="sticky top-0 bg-background z-10">
+            <TableRow className="hover:bg-transparent">
               <TableHead className="h-10 w-[100px] font-medium text-xs">
                 ID
               </TableHead>
@@ -230,7 +230,7 @@ export function FollowUpTable({
 
   if (followUps.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+      <div className="flex flex-col items-center justify-center py-16 px-6 text-center border-t">
         <div className="rounded-full bg-muted p-4 mb-4">
           <Circle className="h-8 w-8 text-muted-foreground" />
         </div>
@@ -244,10 +244,10 @@ export function FollowUpTable({
   }
 
   return (
-    <div className="px-6 pb-6">
+    <div className="px-6 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
       <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent border-t">
+        <TableHeader className="sticky top-0 bg-background z-10">
+          <TableRow className="hover:bg-transparent">
             <SortableHeader field="identifier" className="w-[100px]">
               ID
             </SortableHeader>
@@ -281,7 +281,7 @@ export function FollowUpTable({
                   "cursor-pointer group border-b transition-colors",
                   followUp.status === "resolved"
                     ? "bg-muted/20 hover:bg-muted/30"
-                    : "hover:bg-muted/50",
+                    : "hover:bg-muted/50"
                 )}
                 onClick={() => onEdit(followUp)}
                 title="Click to edit"
@@ -308,7 +308,7 @@ export function FollowUpTable({
                       variant="outline"
                       className={cn(
                         "text-xs font-normal opacity-60 cursor-not-allowed",
-                        getStatusBadgeColor(followUp.status),
+                        getStatusBadgeColor(followUp.status)
                       )}
                       title="Reopen to change status"
                     >
@@ -327,7 +327,7 @@ export function FollowUpTable({
                             variant="outline"
                             className={cn(
                               "text-xs font-normal cursor-pointer",
-                              getStatusBadgeColor(followUp.status),
+                              getStatusBadgeColor(followUp.status)
                             )}
                           >
                             {getStatusLabel(followUp.status)}
@@ -345,7 +345,7 @@ export function FollowUpTable({
                                 onStatusChange(followUp.id, value);
                               }}
                               className={cn(
-                                followUp.status === value && "bg-accent",
+                                followUp.status === value && "bg-accent"
                               )}
                             >
                               <div className="flex items-center gap-2">
@@ -461,7 +461,7 @@ export function FollowUpTable({
                           followUp.status !== "done" &&
                           followUp.status !== "cancelled" &&
                           followUp.status !== "resolved" &&
-                          "text-red-600 dark:text-red-400",
+                          "text-red-600 dark:text-red-400"
                       )}
                     >
                       <Calendar className="h-3.5 w-3.5" />
@@ -471,7 +471,7 @@ export function FollowUpTable({
                           {
                             month: "short",
                             day: "numeric",
-                          },
+                          }
                         )}
                       </span>
                     </div>
