@@ -147,24 +147,20 @@ Top-level organization boundary. All metrics and comments are scoped to a worksp
 
 Presentation containers representing a specific time period or reporting cycle. Replaces traditional "folder" concepts with date-aware organization.
 
-| Column        | Type      | Description                         |
-| ------------- | --------- | ----------------------------------- |
-| `id`          | text      | Primary key (UUID)                  |
-| `title`       | text      | Slide title (required)              |
-| `description` | text      | Optional description                |
-| `workspaceId` | text      | Foreign key to `workspace.id`       |
-| `slideDate`   | date      | Date this slide represents          |
-| `sortOrder`   | integer   | Display order (default: 0)          |
-| `layout`      | json      | UI layout configuration             |
-| `isPublished` | boolean   | Publication status (default: false) |
-| `createdAt`   | timestamp | Creation timestamp                  |
-| `updatedAt`   | timestamp | Last update timestamp               |
+| Column        | Type      | Description                   |
+| ------------- | --------- | ----------------------------- |
+| `id`          | text      | Primary key (UUID)            |
+| `title`       | text      | Slide title (required)        |
+| `description` | text      | Optional description          |
+| `workspaceId` | text      | Foreign key to `workspace.id` |
+| `slideDate`   | date      | Date this slide represents    |
+| `createdAt`   | timestamp | Creation timestamp            |
+| `updatedAt`   | timestamp | Last update timestamp         |
 
 **Indexes:**
 
 - `slide_workspace_id_idx` on `workspaceId`
 - `slide_date_idx` on `slideDate`
-- `slide_sort_order_idx` on `sortOrder`
 - `slide_created_at_idx` on `createdAt` (for ordering recent slides)
 
 **Foreign Keys:**
@@ -180,9 +176,7 @@ Presentation containers representing a specific time period or reporting cycle. 
 **Key Concepts:**
 
 - **Slide Date** (`slideDate`): Represents the reporting period (e.g., "2024-10-30" for weekly review)
-- **Sort Order** (`sortOrder`): Controls display order within workspace
-- **Layout** (`layout`): JSON configuration for custom layouts (future enhancement)
-- **Published Status** (`isPublished`): Controls visibility (future enhancement)
+- **Ordering**: Slides are ordered by `slideDate` (primary) and `createdAt` (secondary), no manual sort order
 
 ### Metric Definitions (`metric_definition`)
 
@@ -214,7 +208,7 @@ Presentation containers representing a specific time period or reporting cycle. 
 
 - **Metric Key** (`metricKey`): Normalized stable identifier (e.g., "revenue", "transaction-count")
   - Auto-generated from metric name during ingestion
-  - Example: "% of MCB Count" → "of-mcb-count"
+  - Example: "% Completion Rate" → "completion-rate"
 - **Definition** (`definition`): Optional documentation text
   - Can be edited through UI
   - Protected during ingestion when omitted from payload
@@ -233,7 +227,7 @@ If description omitted in payload:
 
 ### Metrics (`metric`)
 
-**Purpose:** Slide-specific metric instances with rankings and chart configurations. Links to metric definition for documentation.
+**Purpose:** Slide-specific metric grouping containers with rankings. Provides high-level organization for submetrics within a slide.
 
 | Column         | Type      | Description                           |
 | -------------- | --------- | ------------------------------------- |
@@ -242,8 +236,6 @@ If description omitted in payload:
 | `slideId`      | text      | Foreign key to `slide.id`             |
 | `definitionId` | text      | Foreign key to `metric_definition.id` |
 | `ranking`      | integer   | Optional importance ranking (1=top)   |
-| `chartType`    | text      | Chart type (default: "line")          |
-| `chartConfig`  | json      | Chart configuration options           |
 | `createdAt`    | timestamp | Creation timestamp                    |
 | `updatedAt`    | timestamp | Last update timestamp                 |
 
@@ -270,30 +262,31 @@ If description omitted in payload:
   - Stored separately from definition
   - **Can change per slide without affecting definition**
   - Example: "Revenue" ranked #1 this week, #3 next week
-  - **Note:** Metrics use `ranking` field only. Slides have a separate `sortOrder` field for ordering slides within a workspace. This distinction prevents confusion between metric ordering (priority-based via ranking) and slide ordering (manual via sortOrder).
 - **Definition Link** (`definitionId`): References workspace-level definition
   - Provides documentation/description
   - Enables cross-slide metric tracking
-- **Chart Type** (`chartType`): Reserved for future visualization types
-- **Chart Config** (`chartConfig`): Extensible configuration (future enhancement)
+- **Grouping Role**: Metrics serve as containers for organizing related submetrics (the actual time-series data)
 
 **Important:** Editing a metric definition does NOT affect ranking - they are independent concerns stored in separate tables.
 
 ### Submetric Definitions (`submetric_definition`)
 
-**Purpose:** Stable, cross-slide identities for logical metrics. Enables persistent comments and analysis across multiple time periods.
+**Purpose:** Stable, cross-slide identities for logical metrics. Enables persistent comments and analysis across multiple time periods. Explicitly separates category (dimension) from metric name.
 
-| Column           | Type      | Description                             |
-| ---------------- | --------- | --------------------------------------- |
-| `id`             | text      | Primary key (UUID)                      |
-| `workspaceId`    | text      | Foreign key to `workspace.id`           |
-| `metricKey`      | text      | Stable metric family identifier         |
-| `submetricKey`   | text      | Stable submetric identifier             |
-| `label`          | text      | Display label (latest)                  |
-| `unit`           | text      | Unit of measurement (%, $, units)       |
-| `preferredTrend` | text      | Preferred direction (uptrend/downtrend) |
-| `createdAt`      | timestamp | Creation timestamp                      |
-| `updatedAt`      | timestamp | Last update timestamp                   |
+| Column           | Type      | Description                                                                      |
+| ---------------- | --------- | -------------------------------------------------------------------------------- |
+| `id`             | text      | Primary key (UUID)                                                               |
+| `workspaceId`    | text      | Foreign key to `workspace.id`                                                    |
+| `metricKey`      | text      | Stable metric family identifier                                                  |
+| `submetricKey`   | text      | Stable submetric identifier                                                      |
+| `category`       | text      | Dimension/segment (e.g., "Brand A", "North America")                             |
+| `metricName`     | text      | Actual metric name (nullable for ingestion safety)                               |
+| `xaxis`          | text      | X-axis semantic label (e.g., "period", "tracked_week", "transaction_touched_at") |
+| `yaxis`          | text      | Y-axis semantic label / unit (e.g., "hours", "% completion", "complaints")       |
+| `unit`           | text      | Unit of measurement (%, $, count) - often same as yaxis                          |
+| `preferredTrend` | text      | Preferred direction (uptrend/downtrend/stable)                                   |
+| `createdAt`      | timestamp | Creation timestamp                                                               |
+| `updatedAt`      | timestamp | Last update timestamp                                                            |
 
 **Indexes:**
 
@@ -311,44 +304,59 @@ If description omitted in payload:
 
 **Key Concepts:**
 
-- **Metric Key** (`metricKey`): Stable identifier for metric family (e.g., "revenue", "conversion_rate")
-- **Submetric Key** (`submetricKey`): Stable identifier for specific submetric (e.g., "north_america", "mobile_web")
+- **Metric Key** (`metricKey`): Stable identifier for metric family (e.g., "revenue", "conversion-rate")
+- **Submetric Key** (`submetricKey`): Stable identifier combining category + metric (e.g., "brand-a-completion-rate", "brand-b-completion-rate")
+- **Category vs Metric Name Separation**:
+  - `category`: Optional dimension/segment (e.g., "Brand A", "North America")
+  - `metricName`: The actual metric being measured (e.g., "% Completion Rate", "Revenue")
+    - Nullable for ingestion safety (handles edge cases gracefully)
+    - UI falls back to "Untitled Submetric" if null
+  - Display label constructed as `[Category] - Metric Name` or just `Metric Name` if no category
+- **Axis Semantic Labels**:
+  - `xaxis`: Describes what the x-axis represents (e.g., "period", "week", "tracked_week", "transaction_touched_at")
+  - `yaxis`: Describes what the y-axis represents (e.g., "hours", "% completion", "complaints", "count")
+  - Both are stored for semantic documentation and data lineage
+  - Often `yaxis` and `unit` have the same value
+  - If `unit` is not provided during ingestion, `yaxis` is used as fallback
 - **Composite Uniqueness**: One definition per (`workspaceId`, `metricKey`, `submetricKey`) combination
 - **Cross-Slide Identity**: Same definition can be referenced by multiple submetrics across different slides
 - **Comment Persistence**: Comments are attached to definitions, not slide-specific instances
 
-**Example:**
+**Examples:**
 
 ```
-Definition: workspace=abc, metricKey="revenue", submetricKey="north_america"
+Definition 1: workspace=abc, metricKey="completion-metrics", submetricKey="brand-a-completion-rate"
+  ├── category: "Brand A"
+  ├── metricName: "% Completion Rate"
   ├── Submetric in Slide "2024-10-30 Weekly Review"
   ├── Submetric in Slide "2024-11-06 Weekly Review"
   └── Comment Thread (persists across both slides)
+
+Definition 2: workspace=abc, metricKey="revenue", submetricKey="total-revenue"
+  ├── category: null (no category)
+  ├── metricName: "Total Revenue"
+  └── Submetrics across slides
 ```
 
 ### Submetrics (`submetric`)
 
-Specific metric implementations with visualization configuration and data points. These are slide-specific instances.
+Slide-specific time-series instances with visualization configuration and data points. The actual metric data tied to a specific slide.
 
-| Column              | Type                | Description                                       |
-| ------------------- | ------------------- | ------------------------------------------------- |
-| `id`                | text                | Primary key (UUID)                                |
-| `label`             | text                | Display label (required)                          |
-| `category`          | text                | Optional category/grouping                        |
-| `metricId`          | text                | Foreign key to `metric.id`                        |
-| `definitionId`      | text                | Foreign key to `submetric_definition.id`          |
-| `xAxis`             | text                | X-axis label (default: "date")                    |
-| `yAxis`             | text                | Y-axis label                                      |
-| `timezone`          | text                | Timezone (default: "UTC")                         |
-| `preferredTrend`    | text                | Trend preference (uptrend/downtrend)              |
-| `unit`              | text                | Unit of measurement                               |
-| `aggregationType`   | text                | Aggregation type (sum/avg/count)                  |
-| `color`             | text                | Hex color for visualization                       |
-| `trafficLightColor` | traffic_light_color | Manual traffic light indicator (green/yellow/red) |
-| `metadata`          | json                | Additional metadata                               |
-| `dataPoints`        | json                | Array of time-series data points                  |
-| `createdAt`         | timestamp           | Creation timestamp                                |
-| `updatedAt`         | timestamp           | Last update timestamp                             |
+**Important:** Semantic fields (`category`, `metricName`, `unit`, `preferredTrend`) are stored in `submetric_definition` and accessed via the `definitionId` relationship.
+
+| Column              | Type                | Description                              |
+| ------------------- | ------------------- | ---------------------------------------- |
+| `id`                | text                | Primary key (UUID)                       |
+| `metricId`          | text                | Foreign key to `metric.id`               |
+| `definitionId`      | text                | Foreign key to `submetric_definition.id` |
+| `timezone`          | text                | Timezone (default: "UTC")                |
+| `aggregationType`   | text                | Aggregation type (sum/avg/count)         |
+| `color`             | text                | Hex color for visualization              |
+| `trafficLightColor` | traffic_light_color | Slide-specific traffic light status      |
+| `metadata`          | json                | Additional metadata                      |
+| `dataPoints`        | json                | Array of time-series data points         |
+| `createdAt`         | timestamp           | Creation timestamp                       |
+| `updatedAt`         | timestamp           | Last update timestamp                    |
 
 **Data Points Structure:**
 
@@ -365,7 +373,6 @@ Specific metric implementations with visualization configuration and data points
 **Indexes:**
 
 - `submetric_metric_id_idx` on `metricId`
-- `submetric_category_idx` on `category`
 - `submetric_definition_id_idx` on `definitionId`
 
 **Foreign Keys:**
@@ -380,14 +387,17 @@ Specific metric implementations with visualization configuration and data points
 
 **Key Concepts:**
 
+- **Instance-Definition Separation**: Submetric instances store only visualization config and data; semantic fields come from `submetricDefinition`
 - **Data Points in JSON**: Time-series data stored as JSON array for flexibility
 - **Optional Definition Link**: Can exist without definition (ad-hoc metrics)
-- **Visualization Config**: All chart settings stored at submetric level
-- **Traffic Light Color**: Manual status indicator (green/yellow/red) for quick visual assessment
-  - Set by users independently from statistical control limits
-  - Persists when linked to submetric definitions across slides
+- **Visualization Config**: Chart-specific settings (color, timezone, aggregation) stored at instance level
+- **Traffic Light Color**: **Slide-specific** status indicator (green/yellow/red) for quick visual assessment
+  - Set by users per slide instance
+  - Independent from statistical control limits
   - Cycles through green → yellow → red → green
-- **Auto-Apply Features**: Labels like "(Trend)" or "(Seasonality)" trigger automatic analysis
+- **Semantic Fields**: `category`, `metricName`, `unit`, `preferredTrend` are read from `submetricDefinition` via the `definitionId` relationship
+- **Display Label**: Constructed from category and metricName as `[Category] - Metric Name` (or just `Metric Name` if no category)
+- **Auto-Apply Features**: Metric names like "Transaction Count (Trend)" or "Revenue (Seasonality)" trigger automatic analysis
 
 ## Enums
 
@@ -529,14 +539,12 @@ Individual messages within a thread. Supports flat replies (parent-child relatio
 | `userId`    | text      | Foreign key to `user.id`           |
 | `body`      | text      | Comment text content (required)    |
 | `parentId`  | text      | Foreign key to parent `comment.id` |
-| `isDeleted` | boolean   | Soft delete flag (default: false)  |
 | `createdAt` | timestamp | Creation timestamp                 |
 | `updatedAt` | timestamp | Last update timestamp              |
 
 **Indexes:**
 
 - `comment_thread_created_idx` on (`threadId`, `createdAt`, `id`)
-- `comment_thread_deleted_idx` on (`threadId`, `isDeleted`)
 
 **Foreign Keys:**
 
@@ -552,9 +560,8 @@ Individual messages within a thread. Supports flat replies (parent-child relatio
 
 **Key Concepts:**
 
-- **Soft Delete**: `isDeleted: true` hides comment but preserves structure
+- **Hard Delete**: Comments are permanently deleted when removed (child replies cascade delete automatically)
 - **Nested Replies**: One level of nesting supported via `parentId`
-- **Optimized Counts**: Indexes support efficient COUNT queries with isDeleted filter
 
 ## Follow-up System
 
@@ -759,17 +766,29 @@ Follow-ups can be linked to slides, submetric definitions, or comment threads, a
 - Thread lookup by scope & definition: `comment_thread_scope_def_idx`
 - Batch comment count queries: `comment_thread_grouping_idx`
 - Thread filtering: `comment_thread_ws_def_scope_idx`
-- Comment queries: `comment_thread_created_idx`, `comment_thread_deleted_idx`
+- Comment queries: `comment_thread_created_idx`
 
 **Submetric Definitions:**
 
 - Unique constraint ensures one definition per logical metric: `submetric_definition_ws_metric_sub_idx`
 
-## Migrations & Schema Evolution
+## Schema Management & Evolution
 
-### Migration History
+### Schema Change Strategy
 
-The schema has evolved through several migrations (managed by Drizzle Kit):
+**This project uses `db:push` for schema changes** instead of traditional migrations. This approach provides faster iteration and simpler schema management.
+
+```bash
+# Apply schema changes directly to database (primary method)
+npm run db:push
+
+# Reset database (⚠️ destructive - deletes all data)
+npm run db:reset
+```
+
+### Historical Migrations (Frozen)
+
+The `/drizzle/meta` directory contains historical migration files (0000-0006) that document the initial schema evolution:
 
 - **0000**: Initial schema (users, accounts, sessions, workspaces, slides, metrics, submetrics)
 - **0001**: Renamed trend field to preferredTrend in submetric definitions
@@ -779,22 +798,23 @@ The schema has evolved through several migrations (managed by Drizzle Kit):
 - **0005**: Added comment uniqueness constraint for point-level threads
 - **0006**: Removed redundant point lookup index, added optimized batch query indexes
 
-**Note:** Migration tags are auto-generated by Drizzle Kit. The descriptions above reflect the logical changes made in each migration.
+**These migrations are now frozen for historical reference only.** New schema changes should be applied via `db:push`.
 
-### Running Migrations
+### Why db:push?
+
+- **Faster development**: No need to generate and manage migration files
+- **Simpler workflow**: Schema changes go directly from `schema.ts` to database
+- **Good for this stage**: Suitable for projects that can tolerate occasional schema resets
+- **Caveat**: Not recommended for production databases with critical data that cannot be re-ingested
+
+### Rebuild from Scratch
+
+To recreate the database from the current schema:
 
 ```bash
-# Generate migration from schema changes
-npm run db:generate
-
-# Apply migrations to database
-npm run db:migrate
-
-# Push schema directly (dev only - skips migrations)
-npm run db:push
-
-# Reset database (⚠️ destructive - deletes all data)
+# Drop all tables and recreate from schema.ts
 npm run db:reset
+npm run db:push
 ```
 
 ### Schema Management Tools
@@ -823,13 +843,12 @@ The ingestion API (`POST /api/ingest/metrics`) creates/updates the entire hierar
       "metric_name": "API Performance",
       "submetrics": [
         {
-          "label": "[Auth Service] - Response Time",
           "category": "Auth Service",
-          "metric_key": "api_performance",
-          "submetric_key": "auth_service",
           "timezone": "America/Los_Angeles",
           "xaxis": "week",
-          "preferred_trend": "down",
+          "yaxis": "milliseconds",
+          "unit": "ms",
+          "preferred_trend": "downtrend",
           "data_points": [
             { "timestamp": "2024-01-01", "value": 150 },
             { "timestamp": "2024-01-08", "value": 145 }
@@ -857,9 +876,13 @@ The API ingestion endpoint processes data in this order:
    - Link to `metric_definition` via `definitionId`
    - Set `ranking` if provided (slide-specific)
 5. **Submetric Definition Upsert**:
-   - Derive `metricKey` and `submetricKey` from metric/label/category
+   - Extract `category` from explicit field (optional dimension/segment like "Brand A", "North America")
+   - Use parent `metric_name` as the `metricName` for all submetrics under this metric
+   - Derive `metricKey` from parent metric name (normalized to lowercase-with-dashes)
+   - Derive `submetricKey` from category + metricName (normalized, e.g., "brand-a-completion-rate")
    - Find or create `submetric_definition` for `(workspaceId, metricKey, submetricKey)`
-   - Always update `label`, `unit`, `preferredTrend` to match latest data
+   - Always update `category`, `metricName`, `xaxis`, `yaxis`, `unit`, `preferredTrend` to match latest data
+   - If `unit` is omitted, use `yaxis` value as fallback for unit field
 6. **Submetric Creation**:
    - Insert `submetric` record with data points
    - Link to `submetric_definition` via `definitionId`
@@ -956,20 +979,19 @@ SELECT * FROM submetric WHERE "metricId" = 'uuid';
 
 ### Cleanup Operations
 
-**Archive old slides** (soft delete pattern):
+**Archive old slides**:
 
 ```sql
 -- Mark old slides as unpublished
 UPDATE slide SET "isPublished" = false WHERE "slideDate" < '2023-01-01';
 ```
 
-**Remove soft-deleted comments**:
+**Remove old comment threads**:
 
 ```sql
--- Permanently delete comments older than 1 year
-DELETE FROM comment
-WHERE "isDeleted" = true
-  AND "createdAt" < NOW() - INTERVAL '1 year';
+-- Delete comment threads older than 1 year (comments cascade delete automatically)
+DELETE FROM comment_thread
+WHERE "createdAt" < NOW() - INTERVAL '1 year';
 ```
 
 ## Security Considerations

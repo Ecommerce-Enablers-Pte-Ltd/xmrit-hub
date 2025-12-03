@@ -1,7 +1,12 @@
+/**
+ * Follow-up status and priority configuration
+ * Provides consistent styling and display for follow-up items
+ */
+
 import { AlertCircle, ArrowDown, ArrowUp, Circle, Minus } from "lucide-react";
 import React from "react";
 import type { FollowUpPriority, FollowUpStatus } from "@/types/db/follow-up";
-import { cn } from "./utils";
+import { cn } from "../lib/utils";
 
 // Status configuration with filled circles
 export const STATUS_CONFIG: Record<

@@ -22,9 +22,6 @@ export const createSlideSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Slide date must be in YYYY-MM-DD format")
     .nullable()
     .optional(),
-  sortOrder: z.number().int().nonnegative().nullable().optional(),
-  layout: z.record(z.string(), z.any()).nullable().optional(),
-  isPublished: z.boolean().default(false),
 });
 
 /**
@@ -46,9 +43,6 @@ export const updateSlideSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Slide date must be in YYYY-MM-DD format")
     .nullable()
     .optional(),
-  sortOrder: z.number().int().nonnegative().nullable().optional(),
-  layout: z.record(z.string(), z.any()).nullable().optional(),
-  isPublished: z.boolean().optional(),
 });
 
 /**

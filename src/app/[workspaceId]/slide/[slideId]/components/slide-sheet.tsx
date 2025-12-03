@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TimeBucket } from "@/lib/time-buckets";
-import { CommentsTab, type DataPoint } from "./comments-tab";
+import { CommentsTab, type DataPoint } from "./comments-sheet-tab";
 import { FollowUpTab } from "./follow-up-sheet-tab";
 
 export type { DataPoint };

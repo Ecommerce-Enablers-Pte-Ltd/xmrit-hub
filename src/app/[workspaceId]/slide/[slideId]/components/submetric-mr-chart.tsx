@@ -65,9 +65,11 @@ export const SubmetricMRChart = memo(
                     </span>
                     <p className="text-primary font-medium text-lg">
                       {Number(data.range).toFixed(2)}
-                      {submetric.unit && (
+                      {(submetric.definition?.unit ||
+                        submetric.definition?.yaxis) && (
                         <span className="text-sm text-muted-foreground ml-1">
-                          {submetric.unit}
+                          {submetric.definition.unit ||
+                            submetric.definition.yaxis}
                         </span>
                       )}
                     </p>
@@ -102,7 +104,7 @@ export const SubmetricMRChart = memo(
         }
         return null;
       },
-      [submetric.unit],
+      [submetric.definition?.unit, submetric.definition?.yaxis],
     );
 
     // Memoize dot renderer
@@ -237,7 +239,7 @@ export const SubmetricMRChart = memo(
               interval="preserveStartEnd"
             >
               <Label
-                value={`${submetric.xAxis}${
+                value={`date${
                   submetric.timezone ? ` (${submetric.timezone})` : ""
                 } - MR Plot`}
                 offset={-10}

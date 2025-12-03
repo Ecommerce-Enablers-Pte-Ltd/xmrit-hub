@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, ChevronDown, ChevronUp } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronUp, Search } from "lucide-react";
 import {
   lazy,
   memo,
@@ -13,6 +13,14 @@ import {
 } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { MetricWithSubmetrics } from "@/types/db/metric";
 import { EditMetricDefinitionDialog } from "./edit-metric-definition-dialog";
@@ -21,18 +29,39 @@ import { EditMetricDefinitionDialog } from "./edit-metric-definition-dialog";
 const SubmetricLineChart = lazy(() =>
   import("./submetric-card").then((mod) => ({
     default: mod.SubmetricLineChart,
-  })),
+  }))
 );
 
-// Skeleton loader for charts
-function ChartSkeleton() {
+// Skeleton loader for charts - shows chart info even when lazy loaded
+function ChartSkeleton({
+  category,
+  metricName,
+}: {
+  category?: string;
+  metricName?: string;
+}) {
   return (
     <Card className="p-6">
       <div className="space-y-4">
         <div className="flex items-start justify-between">
           <div className="space-y-2 flex-1">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-96" />
+            {category || metricName ? (
+              <>
+                {category && (
+                  <span className="px-4 py-2 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-md text-sm font-bold uppercase tracking-wide inline-block">
+                    {category}
+                  </span>
+                )}
+                <h2 className="text-2xl font-semibold tracking-tight">
+                  {metricName || "Untitled"}
+                </h2>
+              </>
+            ) : (
+              <>
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-96" />
+              </>
+            )}
           </div>
           <Skeleton className="h-8 w-8 rounded" />
         </div>
@@ -56,7 +85,7 @@ interface SlideContainerProps {
 // Custom comparison function for memo to prevent unnecessary re-renders
 function arePropsEqual(
   prevProps: SlideContainerProps,
-  nextProps: SlideContainerProps,
+  nextProps: SlideContainerProps
 ): boolean {
   // Only re-render if slideId, workspaceId or metrics data actually changes
   if (prevProps.slideId !== nextProps.slideId) return false;
@@ -84,7 +113,8 @@ function arePropsEqual(
 
       if (
         prevSub.id !== nextSub.id ||
-        prevSub.label !== nextSub.label ||
+        prevSub.definition?.metricName !== nextSub.definition?.metricName ||
+        prevSub.definition?.category !== nextSub.definition?.category ||
         prevSub.trafficLightColor !== nextSub.trafficLightColor ||
         (prevSub.dataPoints?.length ?? 0) !== (nextSub.dataPoints?.length ?? 0)
       ) {
@@ -112,8 +142,13 @@ export const SlideContainer = memo(function SlideContainer({
 
   // Track which charts should be rendered (visible + nearby)
   const [visibleCharts, setVisibleCharts] = useState<Set<number>>(
-    () => new Set([0, 1, 2]), // Initially render first 3 charts
+    () => new Set([0, 1, 2]) // Initially render first 3 charts
   );
+
+  // Search dialog state
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const commandListRef = useRef<HTMLDivElement>(null);
 
   // Flatten all submetrics into a single array for easier navigation
   const allCharts = useMemo(() => {
@@ -122,51 +157,78 @@ export const SlideContainer = memo(function SlideContainer({
         metricId: metric.id,
         metricName: metric.name,
         submetric,
-      })),
+      }))
     );
   }, [metrics]);
 
   const totalCharts = allCharts.length;
 
-  // Smooth scroll to the focused chart - INSTANT, no delay, no re-renders
+  // Scroll to chart with robust handling for lazy-loaded charts
   const scrollToChart = useCallback(
     (index: number) => {
-      // Ensure the chart is visible before scrolling
+      // Add more charts to visibleCharts for smoother experience
       setVisibleCharts((prev) => {
         const next = new Set(prev);
-        // Add the target chart and adjacent ones
-        next.add(index);
-        if (index > 0) next.add(index - 1);
-        if (index < totalCharts - 1) next.add(index + 1);
+        // Add target chart and a wider range of adjacent ones
+        for (
+          let i = Math.max(0, index - 2);
+          i <= Math.min(totalCharts - 1, index + 2);
+          i++
+        ) {
+          next.add(i);
+        }
         return next;
       });
 
-      const chartElement = chartRefs.current[index];
-      if (chartElement) {
-        // Immediate scroll - no callbacks, no async, no delays
-        chartElement.scrollIntoView({
-          behavior: "smooth",
+      // Helper to perform scroll with highlight effect
+      const performScroll = (element: HTMLDivElement) => {
+        // Use instant scroll first to get close, then smooth scroll for polish
+        element.scrollIntoView({
+          behavior: "instant",
           block: "center",
         });
 
-        // Add a subtle gray animation effect
-        chartElement.classList.add(
-          "ring-2",
-          "ring-muted-foreground/30",
-          "ring-offset-2",
-          "ring-offset-background",
-        );
+        // Small delay then smooth scroll for final positioning
         setTimeout(() => {
-          chartElement.classList.remove(
+          element.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+
+          // Add highlight effect
+          element.classList.add(
             "ring-2",
-            "ring-muted-foreground/30",
+            "ring-primary/40",
             "ring-offset-2",
-            "ring-offset-background",
+            "ring-offset-background"
           );
-        }, 1000);
-      }
+          setTimeout(() => {
+            element.classList.remove(
+              "ring-2",
+              "ring-primary/40",
+              "ring-offset-2",
+              "ring-offset-background"
+            );
+          }, 1500);
+        }, 50);
+      };
+
+      // Try to scroll with longer delays for far-away charts
+      const tryScroll = (attempts = 0) => {
+        const chartElement = chartRefs.current[index];
+        if (chartElement) {
+          performScroll(chartElement);
+        } else if (attempts < 20) {
+          // Use setTimeout with increasing delays for more reliability
+          const delay = attempts < 5 ? 16 : attempts < 10 ? 50 : 100;
+          setTimeout(() => tryScroll(attempts + 1), delay);
+        }
+      };
+
+      // Start trying after a brief delay for React to process state update
+      setTimeout(() => tryScroll(), 10);
     },
-    [totalCharts],
+    [totalCharts]
   );
 
   // Navigate to previous chart - INSTANT, NO RE-RENDERS
@@ -221,7 +283,7 @@ export const SlideContainer = memo(function SlideContainer({
         root: null,
         rootMargin: "-40% 0px -40% 0px", // Middle 20% of viewport
         threshold: 0,
-      },
+      }
     );
 
     // Observer for managing which charts should render (virtualization)
@@ -241,7 +303,7 @@ export const SlideContainer = memo(function SlideContainer({
               } else {
                 // Keep charts in memory if they're adjacent to visible ones
                 const isAdjacent = Array.from(next).some(
-                  (visibleIndex) => Math.abs(visibleIndex - index) <= 1,
+                  (visibleIndex) => Math.abs(visibleIndex - index) <= 1
                 );
                 if (!isAdjacent) {
                   next.delete(index);
@@ -256,7 +318,7 @@ export const SlideContainer = memo(function SlideContainer({
         root: null,
         rootMargin: "400px", // Load charts 400px before they enter viewport
         threshold: 0,
-      },
+      }
     );
 
     // Observe all chart elements
@@ -272,6 +334,55 @@ export const SlideContainer = memo(function SlideContainer({
       virtualizationObserver.disconnect();
     };
   }, [totalCharts]); // Re-run when number of charts changes
+
+  // Handle chart selection from search
+  const handleChartSelect = useCallback(
+    (chartIndex: number) => {
+      setIsSearchOpen(false);
+      setSearchQuery("");
+      currentIndexRef.current = chartIndex;
+      scrollToChart(chartIndex);
+    },
+    [scrollToChart]
+  );
+
+  // Handle search dialog open/close
+  const handleSearchOpenChange = useCallback((open: boolean) => {
+    setIsSearchOpen(open);
+    if (open) {
+      setSearchQuery("");
+      // Reset scroll position when opening
+      requestAnimationFrame(() => {
+        if (commandListRef.current) {
+          commandListRef.current.scrollTop = 0;
+        }
+      });
+    }
+  }, []);
+
+  // Handle search query change - reset scroll to top
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value);
+    // Reset scroll to top when filtering
+    requestAnimationFrame(() => {
+      if (commandListRef.current) {
+        commandListRef.current.scrollTop = 0;
+      }
+    });
+  }, []);
+
+  // Search dialog keyboard shortcut (Cmd+F or Ctrl+F) - replaces browser find
+  useEffect(() => {
+    const handleSearchShortcut = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "f") {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleSearchShortcut);
+    return () => window.removeEventListener("keydown", handleSearchShortcut);
+  }, []);
 
   // Keyboard navigation
   useEffect(() => {
@@ -337,12 +448,81 @@ export const SlideContainer = memo(function SlideContainer({
 
   return (
     <>
+      {/* Search Dialog */}
+      <CommandDialog
+        open={isSearchOpen}
+        onOpenChange={handleSearchOpenChange}
+        title="Search Charts"
+        description="Search and jump to any chart by category or metric name"
+        className="sm:max-w-2xl"
+      >
+        <CommandInput
+          placeholder="Type chart # or search by category/metric name..."
+          value={searchQuery}
+          onValueChange={handleSearchChange}
+        />
+        <CommandList ref={commandListRef} className="max-h-[60vh]">
+          <CommandEmpty>No charts found.</CommandEmpty>
+          <CommandGroup heading="Charts">
+            {allCharts.map((chart, index) => {
+              const category = chart.submetric.definition?.category || "";
+              const metricName =
+                chart.submetric.definition?.metricName || "Untitled";
+              const parentMetric = chart.metricName || "";
+              // Combine all searchable text for better matching
+              const searchValue = `${
+                index + 1
+              } ${category} ${metricName} ${parentMetric}`;
+
+              return (
+                <CommandItem
+                  key={chart.submetric.id}
+                  value={searchValue}
+                  keywords={[
+                    category,
+                    metricName,
+                    parentMetric,
+                    String(index + 1),
+                  ].filter(Boolean)}
+                  onSelect={() => handleChartSelect(index)}
+                  className="flex items-center gap-3 py-3 cursor-pointer"
+                >
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
+                    {index + 1}
+                  </span>
+                  <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                    {category && (
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        {category}
+                      </span>
+                    )}
+                    <span className="text-sm font-medium truncate">
+                      {metricName}
+                    </span>
+                  </div>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
+
       {/* Floating Navigation Controls */}
       {totalCharts > 1 && (
         <div
           ref={navigationRef}
           className="fixed right-18 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 opacity-40 hover:opacity-100 transition-opacity duration-300"
         >
+          <Button
+            onClick={() => setIsSearchOpen(true)}
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 hover:border-border hover:bg-background/90 transition-all shadow-2xl"
+            title="Search charts (⌘F)"
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+
           <Button
             onClick={navigatePrevious}
             size="icon"
@@ -420,7 +600,7 @@ export const SlideContainer = memo(function SlideContainer({
                 {metric.submetrics.map((submetric) => {
                   // Find the global index for this chart
                   const chartIndex = allCharts.findIndex(
-                    (c) => c.submetric.id === submetric.id,
+                    (c) => c.submetric.id === submetric.id
                   );
 
                   const shouldRender = visibleCharts.has(chartIndex);
@@ -438,7 +618,18 @@ export const SlideContainer = memo(function SlideContainer({
                       }}
                     >
                       {shouldRender ? (
-                        <Suspense fallback={<ChartSkeleton />}>
+                        <Suspense
+                          fallback={
+                            <ChartSkeleton
+                              category={
+                                submetric.definition?.category ?? undefined
+                              }
+                              metricName={
+                                submetric.definition?.metricName ?? undefined
+                              }
+                            />
+                          }
+                        >
                           <SubmetricLineChart
                             submetric={submetric}
                             slideId={slideId}
@@ -446,7 +637,12 @@ export const SlideContainer = memo(function SlideContainer({
                           />
                         </Suspense>
                       ) : (
-                        <ChartSkeleton />
+                        <ChartSkeleton
+                          category={submetric.definition?.category ?? undefined}
+                          metricName={
+                            submetric.definition?.metricName ?? undefined
+                          }
+                        />
                       )}
                       {totalCharts > 1 && (
                         <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm border border-border/50 rounded-full px-3 py-1.5 text-xs font-semibold opacity-60">
@@ -484,4 +680,5 @@ export const SlideContainer = memo(function SlideContainer({
       )}
     </>
   );
-}, arePropsEqual);
+},
+arePropsEqual);

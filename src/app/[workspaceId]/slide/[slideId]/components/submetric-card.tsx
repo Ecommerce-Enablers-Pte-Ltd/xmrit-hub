@@ -91,14 +91,19 @@ export const SubmetricLineChart = memo(
       };
     }, [sidebarState]);
 
+    // Get category, metricName, unit, preferredTrend from definition (new schema)
+    const category = submetric.definition?.category || null;
+    const metricName = submetric.definition?.metricName || "Untitled Submetric";
+    const preferredTrend = submetric.definition?.preferredTrend || null;
+
     // Check if label indicates trend or seasonality
     const labelHasTrend = useMemo(
-      () => /\(Trend\)/i.test(submetric.label),
-      [submetric.label],
+      () => /\(Trend\)/i.test(submetric.definition?.metricName || ""),
+      [submetric.definition?.metricName],
     );
     const labelHasSeasonality = useMemo(
-      () => /\(Seasonality\)/i.test(submetric.label),
-      [submetric.label],
+      () => /\(Seasonality\)/i.test(submetric.definition?.metricName || ""),
+      [submetric.definition?.metricName],
     );
 
     // Lock limits state
@@ -647,11 +652,9 @@ export const SubmetricLineChart = memo(
           {/* Chart Toolbar */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {submetric.preferredTrend && (
+              {preferredTrend && (
                 <span className="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                  <span>
-                    {submetric.preferredTrend.toUpperCase()} PREFERRED
-                  </span>
+                  <span>{preferredTrend.toUpperCase()} PREFERRED</span>
                 </span>
               )}
             </div>
@@ -813,16 +816,16 @@ export const SubmetricLineChart = memo(
                 className="flex items-center gap-3"
                 style={{ maxWidth: titleMaxWidth }}
               >
-                {submetric.category && (
+                {category && (
                   <span
                     className="px-4 py-2 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-md text-sm font-bold uppercase tracking-wide whitespace-nowrap overflow-hidden text-ellipsis shrink-0"
                     style={{ maxWidth: categoryMaxWidth }}
                   >
-                    {submetric.category}
+                    {category}
                   </span>
                 )}
                 <h2 className="text-2xl font-semibold tracking-tight overflow-hidden text-ellipsis whitespace-nowrap min-w-0 flex-1">
-                  {submetric.label}
+                  {metricName}
                 </h2>
               </div>
             </div>
@@ -890,11 +893,7 @@ export const SubmetricLineChart = memo(
           dataPoints={rawDataPoints}
           currentLimits={autoSuggestedLimits || xmrData.limits}
           onLockLimits={handleLockLimits}
-          submetricName={
-            submetric.label.includes("-")
-              ? submetric.label.split("-")[1]?.trim() || submetric.label
-              : submetric.label
-          }
+          submetricName={`${submetric.definition?.category} - ${submetric.definition?.metricName}`}
           outlierIndices={
             hasEverBeenManuallyModified
               ? manuallyExcludedIndices
@@ -965,9 +964,13 @@ export const SubmetricLineChart = memo(
       prevProps.slideId === nextProps.slideId &&
       prevProps.workspaceId === nextProps.workspaceId &&
       prevProps.submetric.id === nextProps.submetric.id &&
-      prevProps.submetric.label === nextProps.submetric.label &&
+      prevProps.submetric.definition?.category ===
+        nextProps.submetric.definition?.category &&
+      prevProps.submetric.definition?.metricName ===
+        nextProps.submetric.definition?.metricName &&
       prevProps.submetric.dataPoints === nextProps.submetric.dataPoints &&
-      prevProps.submetric.preferredTrend === nextProps.submetric.preferredTrend
+      prevProps.submetric.definition?.preferredTrend ===
+        nextProps.submetric.definition?.preferredTrend
       // Note: trafficLightColor is no longer checked here because it's handled
       // by the isolated TrafficLightIndicator component
     );

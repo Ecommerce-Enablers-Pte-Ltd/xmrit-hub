@@ -94,9 +94,6 @@ export const slides = pgTable(
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
     slideDate: date("slideDate"), // Date when the slide represents data for
-    sortOrder: integer("sortOrder").default(0),
-    layout: json("layout"), // JSON for slide layout configuration
-    isPublished: boolean("isPublished").default(false),
     createdAt: timestamp("createdAt", { mode: "date" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -107,7 +104,6 @@ export const slides = pgTable(
   (table) => ({
     workspaceIdIdx: index("slide_workspace_id_idx").on(table.workspaceId),
     dateIdx: index("slide_date_idx").on(table.slideDate),
-    sortOrderIdx: index("slide_sort_order_idx").on(table.sortOrder),
     createdAtIdx: index("slide_created_at_idx").on(table.createdAt), // For ordering recent slides
   }),
 );
@@ -139,10 +135,8 @@ export const metricDefinitions = pgTable(
   }),
 );
 
-// Metrics table - high-level metric containers
-// NOTE: Uses `ranking` field for priority/importance ordering (1=top, 2=second, etc.)
-// Slides have a separate `sortOrder` field for manual ordering within workspace.
-// This distinction prevents confusion between metric ordering (priority-based) and slide ordering (manual).
+// Metrics table - high-level metric grouping containers
+// Provides slide-specific grouping and ranking for submetrics
 export const metrics = pgTable(
   "metric",
   {
@@ -157,8 +151,6 @@ export const metrics = pgTable(
       onDelete: "set null",
     }),
     ranking: integer("ranking"), // Optional ranking: 1 = top, 2 = second, etc.
-    chartType: text("chartType").default("line"), // line, bar, area, etc.
-    chartConfig: json("chartConfig"), // JSON for chart configuration
     createdAt: timestamp("createdAt", { mode: "date" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -208,6 +200,7 @@ export const trafficLightColorEnum = pgEnum("traffic_light_color", [
 ]);
 
 // Submetric definitions - stable identities across slides
+// Separates category (dimension) from metric name for clarity
 export const submetricDefinitions = pgTable(
   "submetric_definition",
   {
@@ -219,8 +212,11 @@ export const submetricDefinitions = pgTable(
       .references(() => workspaces.id, { onDelete: "cascade" }),
     metricKey: text("metricKey").notNull(), // stable key for metric family
     submetricKey: text("submetricKey").notNull(), // stable key for logical submetric
-    label: text("label"), // display label (latest)
-    unit: text("unit"),
+    category: text("category"), // dimension/segment (e.g., "Brand A", "North America")
+    metricName: text("metricName"), // the actual metric name (e.g., "% Completion Rate"), nullable for safety during ingestion
+    xaxis: text("xaxis"), // x-axis semantic label (e.g., "period", "tracked_week", "transaction_touched_at")
+    yaxis: text("yaxis"), // y-axis semantic label / unit (e.g., "hours", "% completion", "complaints")
+    unit: text("unit"), // unit of measurement (e.g., "%", "$", "count") - often same as yaxis
     preferredTrend: text("preferredTrend"),
     createdAt: timestamp("createdAt", { mode: "date" })
       .notNull()
@@ -236,15 +232,16 @@ export const submetricDefinitions = pgTable(
   }),
 );
 
-// Submetrics table - specific metric implementations with visualization config
+// Submetrics table - slide-specific time-series instances with visualization config
+// This is the actual metric data tied to a specific slide
+// Semantic fields (label, unit, preferredTrend) should be read from submetricDefinitions
 export const submetrics = pgTable(
   "submetric",
   {
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    label: text("label").notNull(),
-    category: text("category"),
+    // Instance-level fields (slide-specific)
     metricId: text("metricId")
       .notNull()
       .references(() => metrics.id, { onDelete: "cascade" }),
@@ -252,15 +249,12 @@ export const submetrics = pgTable(
       () => submetricDefinitions.id,
       { onDelete: "set null" },
     ),
-    // Visualization configuration
-    xAxis: text("xAxis").notNull().default("date"),
-    yAxis: text("yAxis"),
-    timezone: text("timezone").default("UTC"),
-    preferredTrend: text("preferredTrend"), // uptrend, downtrend, stable, etc.
-    unit: text("unit"), // %, $, units, etc.
+    // Visualization configuration (instance-specific)
+    timezone: text("timezone").default("utc"),
     aggregationType: text("aggregationType").default("none"), // sum, avg, count, etc.
     color: text("color"), // hex color for visualization
-    trafficLightColor: trafficLightColorEnum("trafficLightColor"), // Manual traffic light indicator (per submetric, not auto-calculated)
+    trafficLightColor:
+      trafficLightColorEnum("trafficLightColor").default("green"), // Slide-specific traffic light status
     metadata: json("metadata"), // JSON for additional submetric metadata
     // Data points stored as JSON array
     dataPoints:
@@ -282,7 +276,6 @@ export const submetrics = pgTable(
   },
   (table) => ({
     metricIdIdx: index("submetric_metric_id_idx").on(table.metricId),
-    categoryIdx: index("submetric_category_idx").on(table.category),
     definitionIdIdx: index("submetric_definition_id_idx").on(
       table.definitionId,
     ),
@@ -368,7 +361,6 @@ export const comments = pgTable(
     parentId: text("parentId").references((): any => comments.id, {
       onDelete: "cascade",
     }),
-    isDeleted: boolean("isDeleted").notNull().default(false),
     createdAt: timestamp("createdAt", { mode: "date" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -382,11 +374,6 @@ export const comments = pgTable(
       table.createdAt,
       table.id,
     ),
-    // Optimized for batch count queries with LEFT JOIN and isDeleted filter
-    threadDeletedIdx: index("comment_thread_deleted_idx").on(
-      table.threadId,
-      table.isDeleted,
-    ),
   }),
 );
 
@@ -397,7 +384,8 @@ export const comments = pgTable(
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
   sessions: many(sessions),
-  workspaces: many(workspaces),
+  // Note: workspaces are public and don't have a direct user relationship
+  // Users access workspaces through authentication, not foreign keys
 }));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({

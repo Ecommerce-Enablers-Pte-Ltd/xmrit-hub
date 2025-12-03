@@ -8,7 +8,7 @@ config();
 
 /**
  * Normalize a string to a stable key format
- * Example: "% of MCB Count" -> "of-mcb-count"
+ * Example: "Number of Transactions" -> "number-of-transactions"
  */
 function normalizeKey(str: string): string {
   return str
@@ -21,8 +21,8 @@ function normalizeKey(str: string): string {
 /**
  * Derive submetric key from label
  * Extracts both category prefix and metric name to create a unique key
- * Example: "[Adidas] - % of MCB Count" -> "adidas-of-mcb-count"
- * Example: "[Nike] - % of MCB Count" -> "nike-of-mcb-count"
+ * Example: "[Brand A] - Number of Transactions" -> "brand-a-number-of-transactions"
+ * Example: "[Brand B] - Number of Transactions" -> "brand-b-number-of-transactions"
  * Example: "Transaction Count" -> "transaction-count"
  */
 function deriveSubmetricKey(label: string): string {
@@ -57,7 +57,7 @@ function generateSampleDataPoints(
   count: number,
   baseValue: number,
   variance: number,
-  source: string = "sample_data",
+  source: string = "sample_data"
 ): Array<{
   timestamp: string;
   value: number;
@@ -157,15 +157,13 @@ async function createDefaultWorkspace() {
 
       // Create Sample Slide 1: Sales Performance
       const slide1 = await sql`
-        INSERT INTO "slide" (id, title, description, "workspaceId", "slideDate", "sortOrder", "isPublished", "createdAt", "updatedAt")
+        INSERT INTO "slide" (id, title, description, "workspaceId", "slideDate", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           'Sales Performance Dashboard',
           'Key sales metrics and performance indicators',
           ${workspaceId},
           CURRENT_DATE,
-          1,
-          true,
           NOW(),
           NOW()
         )
@@ -195,15 +193,13 @@ async function createDefaultWorkspace() {
 
       // Create metric instance (slide-specific)
       const metric1 = await sql`
-        INSERT INTO "metric" (id, name, "slideId", "definitionId", "sortOrder", ranking, "chartType", "createdAt", "updatedAt")
+        INSERT INTO "metric" (id, name, "slideId", "definitionId", ranking, "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           'Revenue',
           ${slide1Id},
           ${revenueDef[0].id},
           1,
-          1,
-          'line',
           NOW(),
           NOW()
         )
@@ -216,23 +212,26 @@ async function createDefaultWorkspace() {
         30,
         50000,
         10000,
-        "sales_database",
+        "sales_database"
       );
       const revenueLabel = "All Regions - Total Revenue";
       const revenueCategory = "sales";
       const revenueSubmetricKey = buildSubmetricKey(
         revenueCategory,
-        revenueLabel,
+        revenueLabel
       );
 
       const revenueSubmetricDef = await sql`
-        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", label, unit, "preferredTrend", "createdAt", "updatedAt")
+        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", category, "metricName", xaxis, yaxis, unit, "preferredTrend", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           ${workspaceId},
           ${revenueMetricKey},
           ${revenueSubmetricKey},
+          ${revenueCategory},
           ${revenueLabel},
+          'date',
+          'revenue',
           '$',
           'uptrend',
           NOW(),
@@ -242,19 +241,15 @@ async function createDefaultWorkspace() {
       `;
 
       await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "definitionId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        INSERT INTO "submetric" (id, "metricId", "definitionId", timezone, "aggregationType", color, "trafficLightColor", "dataPoints", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
-          ${revenueLabel},
-          'sales',
           ${metric1Id},
           ${revenueSubmetricDef[0].id},
-          'date',
           'UTC',
-          'uptrend',
-          '$',
           'sum',
           '#3b82f6',
+          'green',
           ${JSON.stringify(revenueData)},
           NOW(),
           NOW()
@@ -266,23 +261,26 @@ async function createDefaultWorkspace() {
         30,
         30000,
         6000,
-        "ecommerce_platform",
+        "ecommerce_platform"
       );
       const onlineRevenueLabel = "Online - Revenue";
       const onlineRevenueCategory = "sales";
       const onlineRevenueSubmetricKey = buildSubmetricKey(
         onlineRevenueCategory,
-        onlineRevenueLabel,
+        onlineRevenueLabel
       );
 
       const onlineRevenueDef = await sql`
-        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", label, unit, "preferredTrend", "createdAt", "updatedAt")
+        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", category, "metricName", xaxis, yaxis, unit, "preferredTrend", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           ${workspaceId},
           ${revenueMetricKey},
           ${onlineRevenueSubmetricKey},
+          ${onlineRevenueCategory},
           ${onlineRevenueLabel},
+          'date',
+          'revenue',
           '$',
           'uptrend',
           NOW(),
@@ -292,19 +290,15 @@ async function createDefaultWorkspace() {
       `;
 
       await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "definitionId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        INSERT INTO "submetric" (id, "metricId", "definitionId", timezone, "aggregationType", color, "trafficLightColor", "dataPoints", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
-          ${onlineRevenueLabel},
-          'sales',
           ${metric1Id},
           ${onlineRevenueDef[0].id},
-          'date',
           'UTC',
-          'uptrend',
-          '$',
           'sum',
-          '#3b82f6',
+          '#10b981',
+          'green',
           ${JSON.stringify(onlineRevenueData)},
           NOW(),
           NOW()
@@ -334,15 +328,13 @@ async function createDefaultWorkspace() {
 
       // Create metric instance (slide-specific)
       const metric2 = await sql`
-        INSERT INTO "metric" (id, name, "slideId", "definitionId", "sortOrder", ranking, "chartType", "createdAt", "updatedAt")
+        INSERT INTO "metric" (id, name, "slideId", "definitionId", ranking, "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           'Customer Acquisition',
           ${slide1Id},
           ${customerDef[0].id},
           2,
-          2,
-          'line',
           NOW(),
           NOW()
         )
@@ -357,17 +349,20 @@ async function createDefaultWorkspace() {
       const customersMetricKey = normalizeKey("Customer Acquisition");
       const customersSubmetricKey = buildSubmetricKey(
         customersCategory,
-        customersLabel,
+        customersLabel
       );
 
       const customersDef = await sql`
-        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", label, unit, "preferredTrend", "createdAt", "updatedAt")
+        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", category, "metricName", xaxis, yaxis, unit, "preferredTrend", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           ${workspaceId},
           ${customersMetricKey},
           ${customersSubmetricKey},
+          ${customersCategory},
           ${customersLabel},
+          'date',
+          'customers',
           'customers',
           'stable',
           NOW(),
@@ -377,19 +372,15 @@ async function createDefaultWorkspace() {
       `;
 
       await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "definitionId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        INSERT INTO "submetric" (id, "metricId", "definitionId", timezone, "aggregationType", color, "trafficLightColor", "dataPoints", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
-          ${customersLabel},
-          'acquisition',
           ${metric2Id},
           ${customersDef[0].id},
-          'date',
           'UTC',
-          'stable',
-          'customers',
           'count',
-          '#3b82f6',
+          '#8b5cf6',
+          'green',
           ${JSON.stringify(customersData)},
           NOW(),
           NOW()
@@ -401,20 +392,23 @@ async function createDefaultWorkspace() {
         30,
         200,
         40,
-        "marketing_automation",
+        "marketing_automation"
       );
       const trialsLabel = "Free Trial - Sign-ups";
       const trialsCategory = "acquisition";
       const trialsSubmetricKey = buildSubmetricKey(trialsCategory, trialsLabel);
 
       const trialsDef = await sql`
-        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", label, unit, "preferredTrend", "createdAt", "updatedAt")
+        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", category, "metricName", xaxis, yaxis, unit, "preferredTrend", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           ${workspaceId},
           ${customersMetricKey},
           ${trialsSubmetricKey},
+          ${trialsCategory},
           ${trialsLabel},
+          'date',
+          'sign-ups',
           'sign-ups',
           'uptrend',
           NOW(),
@@ -424,19 +418,15 @@ async function createDefaultWorkspace() {
       `;
 
       await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "definitionId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        INSERT INTO "submetric" (id, "metricId", "definitionId", timezone, "aggregationType", color, "trafficLightColor", "dataPoints", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
-          ${trialsLabel},
-          'acquisition',
           ${metric2Id},
           ${trialsDef[0].id},
-          'date',
           'UTC',
-          'uptrend',
-          'sign-ups',
           'count',
-          '#3b82f6',
+          '#ec4899',
+          'yellow',
           ${JSON.stringify(trialsData)},
           NOW(),
           NOW()
@@ -444,20 +434,18 @@ async function createDefaultWorkspace() {
       `;
 
       console.log(
-        "    ✓ Added metric: Customer Acquisition (with 2 submetrics)",
+        "    ✓ Added metric: Customer Acquisition (with 2 submetrics)"
       );
 
       // Create Sample Slide 2: Product Metrics
       const slide2 = await sql`
-        INSERT INTO "slide" (id, title, description, "workspaceId", "slideDate", "sortOrder", "isPublished", "createdAt", "updatedAt")
+        INSERT INTO "slide" (id, title, description, "workspaceId", "slideDate", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           'Product Engagement Metrics',
           'User engagement and product usage statistics',
           ${workspaceId},
           CURRENT_DATE,
-          2,
-          true,
           NOW(),
           NOW()
         )
@@ -487,15 +475,13 @@ async function createDefaultWorkspace() {
 
       // Create metric instance (slide-specific)
       const metric3 = await sql`
-        INSERT INTO "metric" (id, name, "slideId", "definitionId", "sortOrder", ranking, "chartType", "createdAt", "updatedAt")
+        INSERT INTO "metric" (id, name, "slideId", "definitionId", ranking, "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           'Active Users',
           ${slide2Id},
           ${activeUsersDef[0].id},
           1,
-          1,
-          'line',
           NOW(),
           NOW()
         )
@@ -508,7 +494,7 @@ async function createDefaultWorkspace() {
         30,
         5000,
         500,
-        "analytics_platform",
+        "analytics_platform"
       );
       const dauLabel = "Mobile + Web - Daily Active Users";
       const dauCategory = "engagement";
@@ -516,13 +502,16 @@ async function createDefaultWorkspace() {
       const dauSubmetricKey = buildSubmetricKey(dauCategory, dauLabel);
 
       const dauDef = await sql`
-        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", label, unit, "preferredTrend", "createdAt", "updatedAt")
+        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", category, "metricName", xaxis, yaxis, unit, "preferredTrend", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           ${workspaceId},
           ${dauMetricKey},
           ${dauSubmetricKey},
+          ${dauCategory},
           ${dauLabel},
+          'date',
+          'users',
           'users',
           'uptrend',
           NOW(),
@@ -532,19 +521,15 @@ async function createDefaultWorkspace() {
       `;
 
       await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "definitionId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        INSERT INTO "submetric" (id, "metricId", "definitionId", timezone, "aggregationType", color, "trafficLightColor", "dataPoints", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
-          ${dauLabel},
-          'engagement',
           ${metric3Id},
           ${dauDef[0].id},
-          'date',
           'UTC',
-          'uptrend',
-          'users',
           'avg',
-          '#3b82f6',
+          '#f59e0b',
+          'green',
           ${JSON.stringify(dauData)},
           NOW(),
           NOW()
@@ -556,23 +541,26 @@ async function createDefaultWorkspace() {
         30,
         12,
         2,
-        "analytics_platform",
+        "analytics_platform"
       );
       const sessionLabel = "Average - Session Duration";
       const sessionCategory = "engagement";
       const sessionSubmetricKey = buildSubmetricKey(
         sessionCategory,
-        sessionLabel,
+        sessionLabel
       );
 
       const sessionDef = await sql`
-        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", label, unit, "preferredTrend", "createdAt", "updatedAt")
+        INSERT INTO "submetric_definition" (id, "workspaceId", "metricKey", "submetricKey", category, "metricName", xaxis, yaxis, unit, "preferredTrend", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           ${workspaceId},
           ${dauMetricKey},
           ${sessionSubmetricKey},
+          ${sessionCategory},
           ${sessionLabel},
+          'date',
+          'minutes',
           'minutes',
           'stable',
           NOW(),
@@ -582,19 +570,15 @@ async function createDefaultWorkspace() {
       `;
 
       await sql`
-        INSERT INTO "submetric" (id, label, category, "metricId", "definitionId", "xAxis", timezone, "preferredTrend", unit, "aggregationType", color, "dataPoints", "createdAt", "updatedAt")
+        INSERT INTO "submetric" (id, "metricId", "definitionId", timezone, "aggregationType", color, "trafficLightColor", "dataPoints", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
-          ${sessionLabel},
-          'engagement',
           ${metric3Id},
           ${sessionDef[0].id},
-          'date',
           'UTC',
-          'stable',
-          'minutes',
           'avg',
-          '#3b82f6',
+          '#06b6d4',
+          'red',
           ${JSON.stringify(sessionData)},
           NOW(),
           NOW()
@@ -616,7 +600,7 @@ async function createDefaultWorkspace() {
 
       if (existingUsers.length > 0) {
         console.log(
-          `  Found ${existingUsers.length} existing user(s) for follow-up assignments`,
+          `  Found ${existingUsers.length} existing user(s) for follow-up assignments`
         );
 
         // Create Follow-up 1: Linked to Revenue submetric definition
@@ -653,7 +637,7 @@ async function createDefaultWorkspace() {
               (gen_random_uuid()::text, ${followUp1[0].id}, ${existingUsers[1].id}, NOW())
           `;
           console.log(
-            "  ✅ Created follow-up: Investigate revenue spike (2 assignees)",
+            "  ✅ Created follow-up: Investigate revenue spike (2 assignees)"
           );
         } else {
           await sql`
@@ -661,7 +645,7 @@ async function createDefaultWorkspace() {
             VALUES (gen_random_uuid()::text, ${followUp1[0].id}, ${existingUsers[0].id}, NOW())
           `;
           console.log(
-            "  ✅ Created follow-up: Investigate revenue spike (1 assignee)",
+            "  ✅ Created follow-up: Investigate revenue spike (1 assignee)"
           );
         }
 
@@ -695,7 +679,7 @@ async function createDefaultWorkspace() {
           VALUES (gen_random_uuid()::text, ${followUp2[0].id}, ${existingUsers[0].id}, NOW())
         `;
         console.log(
-          "  ✅ Created follow-up: Optimize trial conversion (1 assignee)",
+          "  ✅ Created follow-up: Optimize trial conversion (1 assignee)"
         );
 
         // Create Follow-up 3: General slide-level task (no submetric definition)
@@ -761,14 +745,14 @@ async function createDefaultWorkspace() {
           )
         `;
         console.log(
-          "  ✅ Created follow-up: Document methodology (unassigned)",
+          "  ✅ Created follow-up: Document methodology (unassigned)"
         );
 
         console.log("\n✅ Sample follow-ups created successfully!\n");
       } else {
         console.log("  ⚠️  No users found - skipping follow-up creation");
         console.log(
-          "     Sign in to the app first, then re-run this script to create sample follow-ups\n",
+          "     Sign in to the app first, then re-run this script to create sample follow-ups\n"
         );
       }
 
@@ -793,7 +777,7 @@ async function createDefaultWorkspace() {
           if (bodyParam?.includes("workspace_id")) {
             node.parameters.body = bodyParam.replace(
               /workspace_id:\s*"[^"]*"/,
-              `workspace_id: "${workspaceId}"`,
+              `workspace_id: "${workspaceId}"`
             );
             updated = true;
             console.log("✅ Updated n8n.json with workspace ID");
@@ -819,7 +803,7 @@ async function createDefaultWorkspace() {
     console.log("   • 2 Slides with 3 metrics and 6 submetrics");
     console.log("   • 3 Metric definitions (workspace-level documentation)");
     console.log(
-      "   • 6 Submetric definitions (stable identities for comments)",
+      "   • 6 Submetric definitions (stable identities for comments)"
     );
     console.log("   • 180+ data points across all metrics");
     console.log("   • 4 Follow-up tasks (if users exist)");

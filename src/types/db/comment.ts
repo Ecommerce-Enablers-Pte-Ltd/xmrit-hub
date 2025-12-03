@@ -29,7 +29,6 @@ export interface Comment {
   userId: string;
   body: string;
   parentId: string | null;
-  isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

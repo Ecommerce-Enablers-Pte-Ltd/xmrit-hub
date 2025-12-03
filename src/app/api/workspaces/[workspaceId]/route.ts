@@ -61,12 +61,15 @@ export async function GET(
 
     // Get slides for this workspace with optimized metrics loading
     // Exclude heavy dataPoints column for performance
+    // IMPORTANT: This query structure must match the slide page query exactly
+    // to ensure submetric definitions are properly loaded for the follow-up dialog
     const workspaceSlides = await db.query.slides.findMany({
       where: eq(slides.workspaceId, workspaceId),
       with: {
         metrics: {
           orderBy: (metrics, { asc }) => [asc(metrics.ranking)],
           with: {
+            // Only load the definition field we actually use in the UI
             definition: {
               columns: {
                 id: true,
@@ -75,23 +78,34 @@ export async function GET(
             },
             submetrics: {
               orderBy: (submetrics, { asc }) => [asc(submetrics.createdAt)],
-              // Exclude dataPoints to reduce payload size (can be 1-10MB per slide!)
+              // Fetch definition for category, metricName, xaxis, yaxis, unit, preferredTrend
+              // This is critical for the follow-up dialog to work correctly
+              with: {
+                definition: {
+                  columns: {
+                    id: true,
+                    category: true,
+                    metricName: true,
+                    xaxis: true,
+                    yaxis: true,
+                    unit: true,
+                    preferredTrend: true,
+                  },
+                },
+              },
+              // Limit columns to reduce data transfer (especially important for dataPoints JSONB)
               columns: {
                 id: true,
-                label: true,
-                category: true,
                 metricId: true,
                 definitionId: true,
-                xAxis: true,
                 timezone: true,
-                preferredTrend: true,
-                unit: true,
                 aggregationType: true,
                 color: true,
+                trafficLightColor: true,
                 metadata: true,
                 createdAt: true,
                 updatedAt: true,
-                // dataPoints: false - explicitly excluded
+                // dataPoints: false - explicitly excluded to reduce payload size
               },
             },
           },

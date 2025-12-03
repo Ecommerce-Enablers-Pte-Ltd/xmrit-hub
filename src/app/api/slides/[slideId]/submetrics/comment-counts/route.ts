@@ -40,13 +40,13 @@ export async function POST(
 
     // Single optimized query for ALL definitions
     // Groups by definitionId, bucketType, and bucketValue
-    // Returns count of non-deleted comments for each bucket
+    // Returns count of comments for each bucket
     const results = await db
       .select({
         definitionId: commentThreads.definitionId,
         bucketType: commentThreads.bucketType,
         bucketValue: commentThreads.bucketValue,
-        count: sql<number>`cast(count(CASE WHEN ${comments.isDeleted} = false THEN ${comments.id} END) as integer)`,
+        count: sql<number>`cast(count(${comments.id}) as integer)`,
       })
       .from(commentThreads)
       .leftJoin(comments, eq(comments.threadId, commentThreads.id))

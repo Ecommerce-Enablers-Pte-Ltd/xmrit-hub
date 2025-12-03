@@ -13,6 +13,14 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import {
+  getPriorityIcon,
+  getStatusBadgeColor,
+  getStatusIcon,
+  getStatusLabel,
+  PRIORITY_LABELS,
+  STATUS_LABELS,
+} from "@/components/config";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -47,15 +55,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  getPriorityIcon,
-  getStatusBadgeColor,
-  getStatusIcon,
-  getStatusLabel,
-  PRIORITY_LABELS,
-  STATUS_COLORS,
-  STATUS_LABELS,
-} from "@/lib/follow-up-utils";
+import { getInitials } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import type { FollowUpWithDetails } from "@/types/db/follow-up";
 
@@ -78,16 +78,6 @@ interface FollowUpTableProps {
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   onSort?: (field: SortField) => void;
-}
-
-function getInitials(name: string | null | undefined): string {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 }
 
 function isOverdue(dueDate: string | null): boolean {

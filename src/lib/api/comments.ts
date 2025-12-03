@@ -151,7 +151,6 @@ export async function getAllPointComments(
       userId: comments.userId,
       body: comments.body,
       parentId: comments.parentId,
-      isDeleted: comments.isDeleted,
       createdAt: comments.createdAt,
       updatedAt: comments.updatedAt,
       userName: users.name,
@@ -160,9 +159,7 @@ export async function getAllPointComments(
     })
     .from(comments)
     .innerJoin(users, eq(comments.userId, users.id))
-    .where(
-      and(inArray(comments.threadId, threadIds), eq(comments.isDeleted, false)),
-    )
+    .where(inArray(comments.threadId, threadIds))
     .orderBy(comments.createdAt);
 
   // Group comments by thread
@@ -177,7 +174,6 @@ export async function getAllPointComments(
       userId: comment.userId,
       body: comment.body,
       parentId: comment.parentId,
-      isDeleted: comment.isDeleted,
       createdAt: comment.createdAt,
       updatedAt: comment.updatedAt,
       user: {
@@ -241,7 +237,6 @@ export async function getPointThread(
       userId: comments.userId,
       body: comments.body,
       parentId: comments.parentId,
-      isDeleted: comments.isDeleted,
       createdAt: comments.createdAt,
       updatedAt: comments.updatedAt,
       userName: users.name,
@@ -253,7 +248,6 @@ export async function getPointThread(
     .where(
       and(
         eq(comments.threadId, thread[0].id),
-        eq(comments.isDeleted, false),
         cursorData
           ? or(
               gt(comments.createdAt, cursorData.createdAt),
@@ -281,7 +275,6 @@ export async function getPointThread(
     userId: row.userId,
     body: row.body,
     parentId: row.parentId,
-    isDeleted: row.isDeleted,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     user: {
@@ -351,7 +344,6 @@ export async function createPointComment(
       userId,
       body,
       parentId: parentId || null,
-      isDeleted: false,
     })
     .returning();
 
@@ -407,7 +399,7 @@ export async function getPointCommentCounts(
   const results = await db
     .select({
       bucketValue: commentThreads.bucketValue,
-      count: sql<number>`cast(count(CASE WHEN ${comments.isDeleted} = false THEN ${comments.id} END) as integer)`,
+      count: sql<number>`cast(count(${comments.id}) as integer)`,
     })
     .from(commentThreads)
     .leftJoin(comments, eq(comments.threadId, commentThreads.id))
@@ -519,7 +511,6 @@ export async function getSlideThreads(
       userId: comments.userId,
       body: comments.body,
       parentId: comments.parentId,
-      isDeleted: comments.isDeleted,
       createdAt: comments.createdAt,
       updatedAt: comments.updatedAt,
       userName: users.name,
@@ -531,7 +522,6 @@ export async function getSlideThreads(
     .where(
       and(
         eq(comments.threadId, thread[0].id),
-        eq(comments.isDeleted, false),
         cursorData
           ? or(
               gt(comments.createdAt, cursorData.createdAt),
@@ -559,7 +549,6 @@ export async function getSlideThreads(
     userId: row.userId,
     body: row.body,
     parentId: row.parentId,
-    isDeleted: row.isDeleted,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     user: {
@@ -636,7 +625,6 @@ export async function createSlideComment(
       userId,
       body,
       parentId: parentId || null,
-      isDeleted: false,
     })
     .returning();
 

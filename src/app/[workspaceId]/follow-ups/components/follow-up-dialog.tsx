@@ -12,6 +12,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
+import { getPriorityIcon, getStatusIcon } from "@/components/config";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -45,7 +46,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { getPriorityIcon, getStatusIcon } from "@/lib/follow-up-utils";
+import { handleCloseAutoFocus } from "@/lib/ui/focus";
 import { cn } from "@/lib/utils";
 import type {
   FollowUpPriority,
@@ -189,10 +190,15 @@ export function FollowUpDialog({
   >(() => {
     if (!selectedSlideId) return [];
     const slide = slides.find((s) => s.id === selectedSlideId);
-    if (!slide) return [];
+    if (!slide) {
+      console.warn("FollowUpDialog: Slide not found for ID:", selectedSlideId);
+      return [];
+    }
 
     // Check if slide has metrics array
-    if (!slide.metrics || !Array.isArray(slide.metrics)) return [];
+    if (!slide.metrics || !Array.isArray(slide.metrics)) {
+      return [];
+    }
 
     // Extract unique submetric definitions from all metrics in the slide
     const definitions: SubmetricDefinitionWithCategory[] = [];
@@ -200,26 +206,36 @@ export function FollowUpDialog({
 
     for (const metric of slide.metrics) {
       // Safety check for submetrics array
-      if (!metric.submetrics || !Array.isArray(metric.submetrics)) continue;
+      if (!metric.submetrics || !Array.isArray(metric.submetrics)) {
+        continue;
+      }
 
       for (const submetric of metric.submetrics) {
-        if (submetric.definitionId && !seenIds.has(submetric.definitionId)) {
+        if (
+          submetric.definitionId &&
+          submetric.definition &&
+          !seenIds.has(submetric.definitionId)
+        ) {
           seenIds.add(submetric.definitionId);
-          // Create a SubmetricDefinition object from submetric data
+          // Create a SubmetricDefinition object from submetric definition
           // submetricKey should include category if available
-          const submetricKey = submetric.category
-            ? `${submetric.category}_${submetric.label}`
-            : submetric.label;
+          const category = submetric.definition.category;
+          const metricName = submetric.definition.metricName || "Untitled";
+          const submetricKey = category
+            ? `${category}_${metricName}`
+            : metricName;
 
           definitions.push({
             id: submetric.definitionId,
             workspaceId: slide.workspaceId,
             metricKey: metric.name,
             submetricKey: submetricKey,
-            label: submetric.label,
-            category: submetric.category,
-            unit: submetric.unit,
-            preferredTrend: submetric.preferredTrend,
+            category: category,
+            metricName: metricName,
+            xaxis: submetric.definition.xaxis,
+            yaxis: submetric.definition.yaxis,
+            unit: submetric.definition.unit,
+            preferredTrend: submetric.definition.preferredTrend,
             createdAt: submetric.createdAt,
             updatedAt: submetric.updatedAt,
           });
@@ -334,15 +350,6 @@ export function FollowUpDialog({
       resolvedAtSlideId: resolvedAtSlideId ?? undefined,
       dueDate: data.dueDate ? format(data.dueDate, "yyyy-MM-dd") : undefined,
     });
-  };
-
-  // Prevent Radix from returning focus to trigger when dialog closes
-  const handleCloseAutoFocus = (e: Event) => {
-    e.preventDefault();
-    // Completely remove focus by blurring any active element
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
   };
 
   return (
@@ -522,7 +529,6 @@ export function FollowUpDialog({
                             {field.value && (
                               <span
                                 role="button"
-                                tabIndex={0}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   e.preventDefault();
@@ -640,10 +646,9 @@ export function FollowUpDialog({
                         (def) => def.id === field.value,
                       );
                     const displayText = selectedDefinition
-                      ? `[${
-                          selectedDefinition.category ||
-                          selectedDefinition.label
-                        }] - ${selectedDefinition.metricKey}`
+                      ? selectedDefinition.category
+                        ? `${selectedDefinition.category} - ${selectedDefinition.metricName}`
+                        : selectedDefinition.metricName || "Untitled"
                       : "None";
 
                     return (
@@ -713,9 +718,9 @@ export function FollowUpDialog({
                                   </CommandItem>
                                   {availableSubmetricDefinitions.map(
                                     (definition) => {
-                                      const label = `[${
-                                        definition.category || definition.label
-                                      }] - ${definition.metricKey}`;
+                                      const label = definition.category
+                                        ? `${definition.category} - ${definition.metricName}`
+                                        : definition.metricName || "Untitled";
                                       return (
                                         <CommandItem
                                           key={definition.id}

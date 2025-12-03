@@ -24,13 +24,14 @@ import {
   YAxis,
 } from "recharts";
 import { useChartTheme } from "@/hooks/use-chart-theme";
+import { formatNumber } from "@/lib/formatting";
 import {
   detectBucketType,
   normalizeToBucket,
   type TimeBucket,
 } from "@/lib/time-buckets";
 import type { TrendLimits, XMRLimits } from "@/lib/xmr-calculations";
-import { useCommentCounts } from "@/providers/comment-counts-provider";
+import { useDefinitionCommentCounts } from "@/providers/comment-counts-provider";
 import type { Submetric } from "@/types/db/submetric";
 import { type DataPoint, SlideSheet } from "./slide-sheet";
 
@@ -145,21 +146,6 @@ const CustomLabel = memo((props: any) => {
 });
 
 CustomLabel.displayName = "CustomLabel";
-
-// Smart number formatter - removes .00 for integers, keeps necessary decimals
-const formatNumber = (value: number | null | undefined): string => {
-  if (value == null) return "N/A";
-
-  // Check if it's a whole number
-  if (Number.isInteger(value)) {
-    return value.toString();
-  }
-
-  // For decimals, use toFixed(2) but remove trailing zeros
-  const formatted = value.toFixed(2);
-  // Remove trailing zeros and decimal point if not needed
-  return formatted.replace(/\.?0+$/, "");
-};
 
 // Custom Y-axis label component that properly rotates text
 const YAxisLabel = memo((props: any) => {
@@ -469,9 +455,9 @@ const ChartTooltip = memo(
           <div className="space-y-1">
             <p className="text-primary font-medium text-lg">
               {formatNumber(displayValue)}
-              {submetric.unit && (
+              {(submetric.definition?.unit || submetric.definition?.yaxis) && (
                 <span className="text-sm text-muted-foreground ml-1">
-                  {submetric.unit}
+                  {submetric.definition.unit || submetric.definition.yaxis}
                 </span>
               )}
             </p>
@@ -615,9 +601,6 @@ const SubmetricXChartInternal = memo(
       const commentsDataRef = useRef<{ [key: string]: any }>({});
       const fetchingRef = useRef<Set<string>>(new Set());
 
-      // Use the shared comment counts provider (batch-fetched)
-      const { getCounts } = useCommentCounts();
-
       // Simple batch size - render many charts immediately for instant display
       const calculatedBatchSize = useMemo(() => {
         if (batchSize) return batchSize;
@@ -708,12 +691,14 @@ const SubmetricXChartInternal = memo(
       }, [batchIndex, calculatedBatchSize]);
 
       // Get comment counts from the shared provider (already batch-fetched)
-      // This replaces the individual useEffect that was making N API calls
-      // React Query automatically triggers re-render when data arrives
-      const bucketsWithComments = useMemo(() => {
-        if (!submetric.definitionId || !isVisible) return {};
-        return getCounts(submetric.definitionId, bucketType);
-      }, [submetric.definitionId, bucketType, getCounts, isVisible]);
+      // Uses useDefinitionCommentCounts which only triggers re-renders when
+      // this specific chart's comment counts change (not all charts)
+      // Returns { counts, isReady } - we wait for isReady before showing chart to avoid double render
+      const { counts: bucketsWithComments, isReady: commentCountsReady } =
+        useDefinitionCommentCounts(
+          isVisible ? (submetric.definitionId ?? undefined) : undefined,
+          bucketType,
+        );
 
       // Merge trend line data with chart data if trend is active
       const mergedChartData = useMemo(() => {
@@ -1029,13 +1014,17 @@ const SubmetricXChartInternal = memo(
         [xmrLimits.LNPL],
       );
 
+      // Only render chart when both visible AND comment counts are ready
+      // This prevents double render: first with empty counts, then with loaded counts
+      const shouldRenderChart = isVisible && commentCountsReady;
+
       return (
         <div
           ref={chartContainerRef}
           className="chart-container h-[500px] w-full overflow-visible [&_.recharts-cartesian-grid-horizontal>line]:stroke-muted-foreground/20 [&_.recharts-cartesian-grid-vertical>line]:stroke-muted-foreground/20 [&_.recharts-tooltip-wrapper]:z-50 [&_.recharts-label-list]:z-50 [&_.recharts-wrapper]:overflow-visible [&_.recharts-surface]:overflow-visible"
           style={{ contentVisibility: "auto" }}
         >
-          {isVisible ? (
+          {shouldRenderChart ? (
             <ResponsiveContainer width="100%" height="100%" debounce={350}>
               <LineChart
                 data={mergedChartData}
@@ -1055,7 +1044,7 @@ const SubmetricXChartInternal = memo(
                   height={60}
                 >
                   <Label
-                    value={`${submetric.xAxis}${
+                    value={`date${
                       submetric.timezone ? ` (${submetric.timezone})` : ""
                     } - X Plot`}
                     offset={-10}
@@ -1072,12 +1061,12 @@ const SubmetricXChartInternal = memo(
                   domain={yAxisDomain}
                   width={60}
                 >
-                  {(submetric.yAxis || submetric.unit) && (
+                  {submetric.definition?.yaxis && (
                     <Label
                       content={(props: any) => (
                         <YAxisLabel
                           {...props}
-                          value={submetric.yAxis || submetric.unit || ""}
+                          value={submetric.definition?.yaxis || ""}
                         />
                       )}
                       position="left"

@@ -18,6 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { getInitials } from "@/lib/formatting";
 import { cn } from "@/lib/utils";
 import type { User } from "@/types/db/user";
 
@@ -28,16 +29,6 @@ interface UserAssigneeMultiSelectorProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
-}
-
-function getInitials(name: string | null | undefined): string {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 }
 
 export function UserAssigneeMultiSelector({

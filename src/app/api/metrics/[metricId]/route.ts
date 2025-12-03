@@ -128,7 +128,21 @@ export async function GET(
             workspace: true,
           },
         },
-        submetrics: true,
+        submetrics: {
+          with: {
+            definition: {
+              columns: {
+                id: true,
+                category: true,
+                metricName: true,
+                xaxis: true,
+                yaxis: true,
+                unit: true,
+                preferredTrend: true,
+              },
+            },
+          },
+        },
       },
     });
 

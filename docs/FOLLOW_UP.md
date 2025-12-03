@@ -134,31 +134,37 @@ You can verify the migration was successful by:
 ### Base Endpoints
 
 **List Follow-ups**
+
 ```
 GET /api/workspaces/{workspaceId}/follow-ups
 ```
 
 **Create Follow-up**
+
 ```
 POST /api/workspaces/{workspaceId}/follow-ups
 ```
 
 **Get Single Follow-up**
+
 ```
 GET /api/follow-ups/{followUpId}
 ```
 
 **Update Follow-up**
+
 ```
 PATCH /api/follow-ups/{followUpId}
 ```
 
 **Delete Follow-up**
+
 ```
 DELETE /api/follow-ups/{followUpId}
 ```
 
 **Get Submetric Follow-ups** (NEW)
+
 ```
 GET /api/submetrics/definitions/{definitionId}/follow-ups?slideId={slideId}
 ```
@@ -184,6 +190,7 @@ Get all follow-ups for a specific submetric definition with temporal filtering b
 ```
 
 **Validation Rules:**
+
 - `title`: Required, 1-200 characters
 - `description`: Optional, max 2000 characters
 - `slideId`: Optional, valid UUID
@@ -268,6 +275,7 @@ GET /api/workspaces/{workspaceId}/follow-ups?page=1&limit=20&status=todo&priorit
 ```
 
 **Available Parameters:**
+
 - `page`: Page number (default: 1)
 - `limit`: Items per page (max: 100, default: 20)
 - `sortBy`: createdAt | updatedAt | title | status | priority | dueDate | identifier
@@ -284,7 +292,9 @@ GET /api/workspaces/{workspaceId}/follow-ups?page=1&limit=20&status=todo&priorit
 
 ```json
 {
-  "followUps": [/* array of follow-ups */],
+  "followUps": [
+    /* array of follow-ups */
+  ],
   "pagination": {
     "page": 1,
     "limit": 20,
@@ -302,13 +312,16 @@ GET /api/submetrics/definitions/{definitionId}/follow-ups?slideId={slideId}
 ```
 
 **Query Parameters:**
+
 - `slideId` (optional): When provided, filters and categorizes follow-ups based on the slide's date
 
 **Response without slideId:**
 
 ```json
 {
-  "followUps": [/* all follow-ups for this definition */],
+  "followUps": [
+    /* all follow-ups for this definition */
+  ],
   "count": 10
 }
 ```
@@ -317,7 +330,9 @@ GET /api/submetrics/definitions/{definitionId}/follow-ups?slideId={slideId}
 
 ```json
 {
-  "followUps": [/* all follow-ups for this definition */],
+  "followUps": [
+    /* all follow-ups for this definition */
+  ],
   "count": 10,
   "resolved": [
     /* Follow-ups that are:
@@ -339,6 +354,7 @@ GET /api/submetrics/definitions/{definitionId}/follow-ups?slideId={slideId}
 ```
 
 **Key Concepts:**
+
 - **Temporal Filtering**: Only shows follow-ups created on or before the current slide's date
 - **Resolution Context**: A follow-up is only "resolved" if it was resolved on or before the current slide
 - **Time Travel**: View past slide states to see what follow-ups were unresolved at that time
@@ -369,6 +385,7 @@ Interactive form for creating and editing follow-ups with the following features
 Comprehensive table view with the following features:
 
 1. **Columns**:
+
    - **Identifier**: Human-readable ID (e.g., "FU-15")
    - **Title**: Click to edit, shows description on hover
    - **Status**: Badge with color coding (gray/blue/yellow/green/red)
@@ -378,6 +395,7 @@ Comprehensive table view with the following features:
    - **Actions**: Edit, delete, and status quick-update
 
 2. **Interactions**:
+
    - Click row to open edit dialog
    - Click assignee avatars to filter by that user
    - Click status/priority badges to filter
@@ -402,6 +420,7 @@ Reusable component for selecting multiple users:
 ```
 
 **Features:**
+
 - Command palette-style interface with search
 - Fetches users from `/api/users?workspaceId=...`
 - Checkbox selection with "Select All" support
@@ -415,11 +434,14 @@ Slide-specific view of follow-ups for a submetric definition with temporal filte
 **Location:** `src/app/[workspaceId]/slide/[slideId]/components/follow-up-tab.tsx`
 
 **Features:**
+
 1. **Temporal Context**: Shows follow-ups as they appeared on the slide's date
+
    - Only displays follow-ups created on or before the slide date
    - Categorizes resolved/unresolved based on resolution timeline
 
 2. **Two-Section Layout**:
+
    - **Unresolved Section**: Active follow-ups for this slide
      - Status is not "done" or "cancelled", OR
      - Status is "done"/"cancelled" but not yet resolved, OR
@@ -430,12 +452,14 @@ Slide-specific view of follow-ups for a submetric definition with temporal filte
      - Resolution slide date is on or before current slide date
 
 3. **Resolution Controls**:
+
    - **Circle Button**: Mark as resolved (sets resolvedAtSlideId to current slide)
    - **Check Circle Button**: Mark as unresolved (clears resolvedAtSlideId)
    - Only shown when status is "done" or "cancelled"
    - Disabled if current slide is before follow-up creation date
 
 4. **Navigation**:
+
    - Click "Created on {slide}" → navigates to creation slide using `router.push()`
    - Click "Resolved on {slide}" → navigates to resolution slide using `router.push()`
    - Click identifier (e.g., "FU-123") → navigates to workspace follow-ups page
@@ -458,6 +482,7 @@ Slide-specific view of follow-ups for a submetric definition with temporal filte
 ```
 
 **Key Implementation Details:**
+
 - Uses `useSubmetricFollowUps()` hook to fetch filtered follow-ups
 - Fetches workspace slides for date comparison
 - Prevents resolution on slides before follow-up creation
@@ -476,26 +501,31 @@ Slide-specific view of follow-ups for a submetric definition with temporal filte
 ### Workflow Recommendations
 
 **Todo → In Progress:**
+
 - Move to "in_progress" when actively working on the task
 
 **Todo → In Progress:**
+
 - Assign to specific team members
 - Set due dates
 - Link to relevant slides/definitions
 
 **In Progress → Done:**
+
 - Update status to "done" when work is completed
 - Optionally set resolvedAtSlideId to mark when it should show as "resolved"
 - Leave description comments about resolution
 - Consider linking to follow-up slides/metrics
 
 **Resolution Workflow (NEW):**
+
 1. Complete the work and set status to "done" or "cancelled"
 2. Navigate to the slide where you want to mark it as resolved
 3. Click the circle button to set resolvedAtSlideId
 4. The follow-up will now show as "resolved" on that slide and all future slides
 
 **Important Resolution Notes:**
+
 - Status change (to "done"/"cancelled") can happen independently from resolution
 - Marking as "resolved" is a UI/reporting action that sets the resolution timeline
 - Once resolved, the follow-up moves to the "Resolved" section for that slide and future slides
@@ -503,6 +533,7 @@ Slide-specific view of follow-ups for a submetric definition with temporal filte
 - Cannot resolve on a slide dated before the follow-up was created
 
 **Cancellation:**
+
 - Use "cancelled" status instead of deleting
 - Preserves history and context
 - Add reason in description
@@ -511,11 +542,13 @@ Slide-specific view of follow-ups for a submetric definition with temporal filte
 ### Naming Conventions
 
 **Good Titles:**
+
 - "Investigate API spike on 2024-10-30"
 - "Fix data quality issue in Revenue metric"
 - "Update seasonality model for Q4"
 
 **Bad Titles:**
+
 - "Fix this" (too vague)
 - "API" (not actionable)
 - "..." (meaningless)
@@ -543,6 +576,7 @@ npm run db:push
 ```
 
 This creates:
+
 - `follow_up` table with all columns
 - `follow_up_assignee` junction table
 - Necessary indexes and foreign keys
@@ -558,18 +592,21 @@ npm run db:migrate-follow-up-assignees
 ```
 
 **What the script does:**
+
 1. Finds all follow-ups with `assigneeId` set
 2. Creates corresponding entries in `follow_up_assignee` table
 3. Skips entries that already exist (idempotent)
 4. Leaves `assigneeId` unchanged for backward compatibility
 
 **Verification:**
+
 ```bash
 # Open Drizzle Studio to verify migration
 npm run db:studio
 ```
 
 Check:
+
 - All follow-ups with assignees have entries in `follow_up_assignee`
 - User relationships are correct
 - Counts match between old and new system
@@ -593,18 +630,22 @@ Check:
 ### Common Issues
 
 **"Unique constraint violation on follow_up_assignee"**
+
 - Cause: Attempting to assign same user twice to one follow-up
 - Solution: Check existing assignments before adding
 
 **"Follow-up identifier already exists"**
+
 - Cause: Identifier collision within workspace
 - Solution: System auto-generates next available identifier
 
 **"Cannot delete user with follow-up assignments"**
+
 - Cause: Foreign key constraint in `follow_up_assignee`
 - Solution: Reassign or remove user from follow-ups first (or use CASCADE DELETE)
 
 **"Follow-ups not showing in list"**
+
 - Check: Pagination parameters
 - Check: Filter settings (status, assignee, etc.)
 - Check: Workspace ID matches
@@ -612,11 +653,13 @@ Check:
 ### Performance Considerations
 
 **Large Result Sets:**
+
 - Use pagination (limit: 20-50 items per page)
 - Apply filters to reduce dataset
 - Index on frequently queried columns (status, assigneeId)
 
 **Multi-Assignee Queries:**
+
 - Junction table adds JOINs, slight performance impact
 - Indexes on `followUpId` and `userId` optimize lookups
 - Batch queries when fetching multiple follow-ups

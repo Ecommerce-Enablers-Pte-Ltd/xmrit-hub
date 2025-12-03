@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCreateFollowUp, useUsers, useWorkspace } from "@/lib/api";
+import { handleCloseAutoFocus } from "@/lib/ui/focus";
 import type { FollowUpPriority, FollowUpStatus } from "@/types/db/follow-up";
 import { FollowUpDialog } from "../follow-ups/components/follow-up-dialog";
 
@@ -76,15 +77,6 @@ export function NavbarFollowUpButton({
 
   const handleViewFollowUps = () => {
     window.open(`/${workspaceId}/follow-ups?slideId=${slideId}`, "_blank");
-  };
-
-  // Prevent Radix from returning focus to trigger when dropdown closes
-  const handleCloseAutoFocus = (e: Event) => {
-    e.preventDefault();
-    // Completely remove focus by blurring any active element
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
   };
 
   return (

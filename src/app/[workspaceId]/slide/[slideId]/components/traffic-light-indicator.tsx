@@ -86,9 +86,6 @@ export const TrafficLightIndicator = memo(
           trafficLightColor: nextColor,
         },
         {
-          onSuccess: () => {
-            console.log("Traffic light updated successfully to:", nextColor);
-          },
           onError: (error) => {
             console.error("Failed to update traffic light:", error);
           },

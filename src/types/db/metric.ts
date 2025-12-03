@@ -11,8 +11,6 @@ export interface Metric {
   slideId: string;
   definitionId: string | null;
   ranking: number | null; // Optional ranking: 1 = top, 2 = second, etc.
-  chartType: string | null;
-  chartConfig: any; // JSON object for chart configuration
   createdAt: Date;
   updatedAt: Date;
 }

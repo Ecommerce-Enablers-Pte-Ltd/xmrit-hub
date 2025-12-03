@@ -59,9 +59,6 @@ export async function POST(
         description: body.description,
         workspaceId,
         slideDate: body.slideDate,
-        sortOrder: body.sortOrder ?? 0,
-        layout: body.layout,
-        isPublished: body.isPublished ?? false,
       })
       .returning();
 
@@ -71,7 +68,27 @@ export async function POST(
       with: {
         metrics: {
           with: {
-            submetrics: true,
+            definition: {
+              columns: {
+                id: true,
+                definition: true,
+              },
+            },
+            submetrics: {
+              with: {
+                definition: {
+                  columns: {
+                    id: true,
+                    category: true,
+                    metricName: true,
+                    xaxis: true,
+                    yaxis: true,
+                    unit: true,
+                    preferredTrend: true,
+                  },
+                },
+              },
+            },
           },
         },
       },

@@ -33,21 +33,20 @@ import {
  *       "chart_type": "line", // optional, default: "line"
  *       "submetrics": [
  *         {
- *           "label": "Transaction Count",
- *           "category": "Adidas",
- *           "timezone": "ltz",
- *           "xaxis": "period",
- *           "yaxis": "value",
- *           "preferred_trend": "downtrend",
- *           "unit": "%",              // optional
- *           "aggregation_type": "avg", // optional
- *           "color": "#3b82f6",       // optional
+ *           "category": "Brand A",            // optional - dimension/segment (e.g., "Brand A", "North America")
+ *           "timezone": "ltz",               // optional - default: "UTC"
+ *           "xaxis": "period",               // optional - x-axis semantic label (stored in definition)
+ *           "yaxis": "% of transactions",    // optional - y-axis semantic label (stored in definition, fallback for unit)
+ *           "preferred_trend": "downtrend",  // optional - uptrend/downtrend/stable
+ *           "unit": "%",                     // optional - if omitted, uses yaxis value
+ *           "aggregation_type": "avg",       // optional - default: "none"
+ *           "color": "#3b82f6",              // optional - hex color
  *           "data_points": [
  *             {
  *               "timestamp": "2025-08-04",
  *               "value": 6.963562753036437,
- *               "confidence": 0.95,  // optional
- *               "source": "api"      // optional
+ *               "confidence": 0.95,          // optional
+ *               "source": "api"              // optional
  *             }
  *           ]
  *         }
@@ -66,13 +65,12 @@ interface DataPointInput {
 }
 
 interface SubmetricInput {
-  label: string;
-  category?: string;
+  category?: string; // Dimension/segment (e.g., "Brand A", "North America")
   timezone?: string;
-  xaxis?: string;
-  yaxis?: string;
+  xaxis?: string; // X-axis semantic label (stored in definition, e.g., "period", "tracked_week")
+  yaxis?: string; // Y-axis semantic label (stored in definition, e.g., "hours", "% completion")
   preferred_trend?: "uptrend" | "downtrend" | "stable" | null;
-  unit?: string;
+  unit?: string; // Unit of measurement (stored in definition, takes precedence over yaxis if both provided)
   aggregation_type?: string;
   color?: string;
   metadata?: Record<string, unknown>;
@@ -98,7 +96,7 @@ interface IngestRequest {
 
 /**
  * Normalize a string to a stable key format
- * Example: "% of MCB Count" -> "of-mcb-count"
+ * Example: "% Completion Rate" -> "completion-rate"
  */
 function normalizeKey(str: string): string {
   return str
@@ -109,27 +107,18 @@ function normalizeKey(str: string): string {
 }
 
 /**
- * Derive submetric key from label
- * Extracts both category prefix and metric name to create a unique key
- * Example: "[Adidas] - % of MCB Count" -> "adidas-of-mcb-count"
- * Example: "[Nike] - % of MCB Count" -> "nike-of-mcb-count"
- * Example: "Transaction Count" -> "transaction-count"
+ * Derive stable submetric key from category and metric name
+ * Example: category="Brand A", metricName="% Completion Rate" -> "brand-a-completion-rate"
+ * Example: category=null, metricName="Transaction Count" -> "transaction-count"
  */
-function deriveSubmetricKey(label: string): string {
-  // Check if label has the pattern "[Category] - MetricName"
-  const categoryMatch = label.match(/^\[([^\]]+)\]\s*-\s*(.+)$/);
-
-  if (categoryMatch) {
-    // Extract category and metric name
-    const category = categoryMatch[1].trim();
-    const metricName = categoryMatch[2].trim();
-
-    // Combine category and metric name for unique key
+function deriveSubmetricKey(
+  category: string | null,
+  metricName: string,
+): string {
+  if (category) {
     return normalizeKey(`${category}-${metricName}`);
   }
-
-  // Otherwise use entire label
-  return normalizeKey(label);
+  return normalizeKey(metricName);
 }
 
 // Validate API key from environment variable
@@ -343,7 +332,6 @@ export async function POST(request: NextRequest) {
           slideId,
           definitionId: metricDef.id,
           ranking: metricInput.ranking || null,
-          chartType: metricInput.chart_type || "line",
         })
         .returning();
 
@@ -351,16 +339,20 @@ export async function POST(request: NextRequest) {
 
       // Insert submetrics with data points
       for (const submetricInput of metricInput.submetrics) {
+        // Category and metricName come from explicit fields
+        // All submetrics under this metric share the same metricName (from parent metric_name)
+        const category = submetricInput.category || null;
+        const metricName = metricInput.metric_name;
+
         // Derive stable keys for definition lookup/creation
         const metricKey = normalizeKey(metricInput.metric_name);
-        // Include category in the submetric key to ensure uniqueness
-        const categoryPrefix = submetricInput.category
-          ? normalizeKey(submetricInput.category)
-          : null;
-        const labelKey = deriveSubmetricKey(submetricInput.label);
-        const submetricKey = categoryPrefix
-          ? `${categoryPrefix}-${labelKey}`
-          : labelKey;
+        const submetricKey = deriveSubmetricKey(category, metricName);
+
+        // Extract axis and unit fields
+        // unit takes precedence, but yaxis is also stored as semantic axis label
+        const unit = submetricInput.unit || submetricInput.yaxis || null;
+        const xaxis = submetricInput.xaxis || null;
+        const yaxis = submetricInput.yaxis || null;
 
         // Upsert submetric definition (auto-create/update)
         const [definition] = await db
@@ -369,8 +361,11 @@ export async function POST(request: NextRequest) {
             workspaceId,
             metricKey,
             submetricKey,
-            label: submetricInput.label,
-            unit: submetricInput.unit || null,
+            category,
+            metricName,
+            xaxis,
+            yaxis,
+            unit,
             preferredTrend: submetricInput.preferred_trend || null,
           })
           .onConflictDoUpdate({
@@ -380,8 +375,11 @@ export async function POST(request: NextRequest) {
               submetricDefinitions.submetricKey,
             ],
             set: {
-              label: submetricInput.label,
-              unit: submetricInput.unit || null,
+              category,
+              metricName,
+              xaxis,
+              yaxis,
+              unit,
               preferredTrend: submetricInput.preferred_trend || null,
               updatedAt: new Date(),
             },
@@ -401,16 +399,11 @@ export async function POST(request: NextRequest) {
             : [];
 
         // Insert submetric with definitionId
+        // Note: label, unit, preferredTrend now stored in submetricDefinitions only
         await db.insert(submetrics).values({
-          label: submetricInput.label,
-          category: submetricInput.category || null,
           metricId: metric.id,
           definitionId: definition.id,
-          xAxis: submetricInput.xaxis || "date",
-          yAxis: submetricInput.yaxis || null,
           timezone: submetricInput.timezone || "UTC",
-          preferredTrend: submetricInput.preferred_trend || null,
-          unit: submetricInput.unit || null,
           aggregationType: submetricInput.aggregation_type || "none",
           color: submetricInput.color || null,
           metadata: submetricInput.metadata || null,
@@ -510,19 +503,18 @@ export async function GET(request: NextRequest) {
       slide_description: "Optional description",
       metrics: [
         {
-          metric_name: "% of MCB Count to Total Transactions",
+          metric_name: "% Completion Rate",
           description: "Optional description",
           ranking: 1,
           chart_type: "line",
           submetrics: [
             {
-              label: "[Adidas] - % of MCB Count",
-              category: "Adidas",
+              category: "Brand A",
               timezone: "ltz",
               xaxis: "period",
-              yaxis: "value",
-              preferred_trend: "downtrend",
+              yaxis: "% completion",
               unit: "%",
+              preferred_trend: "downtrend",
               aggregation_type: "avg",
               color: "#3b82f6",
               data_points: [

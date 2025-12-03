@@ -70,18 +70,33 @@ Content-Type: application/json
 
 ### Submetric Object Structure
 
-| Field              | Type   | Required | Description                                                    |
-| ------------------ | ------ | -------- | -------------------------------------------------------------- |
-| `label`            | String | Yes      | Display label for the submetric                                |
-| `category`         | String | No       | Category for grouping                                          |
-| `timezone`         | String | No       | Timezone (default: "UTC")                                      |
-| `xaxis`            | String | No       | X-axis type: "date", "week", "month", etc. (default: "date")   |
-| `preferred_trend`  | String | No       | Expected trend: "up", "down", "uptrend", "downtrend"           |
-| `unit`             | String | No       | Unit of measurement (e.g., "%", "$", "count")                  |
-| `aggregation_type` | String | No       | Aggregation type: "sum", "avg", "min", "max" (default: "none") |
-| `color`            | String | No       | Hex color code for chart display (default: "#3b82f6" - blue)   |
-| `metadata`         | Object | No       | Additional metadata as JSON                                    |
-| `data_points`      | Array  | Yes      | Array of data point objects                                    |
+| Field              | Type   | Required | Description                                                                                                                        |
+| ------------------ | ------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `category`         | String | No       | Category/dimension for grouping (e.g., "Brand A", "North America") - stored in definition                                          |
+| `timezone`         | String | No       | Timezone (default: "UTC") - instance-specific config                                                                               |
+| `xaxis`            | String | No       | X-axis semantic label (stored in definition, e.g., "period", "tracked_week", "transaction_touched_at")                             |
+| `yaxis`            | String | No       | Y-axis semantic label / unit (stored in definition, e.g., "hours", "% completion", "complaints"). Also used as fallback for `unit` |
+| `preferred_trend`  | String | No       | Expected trend: "uptrend", "downtrend", "stable" (stored in definition)                                                            |
+| `unit`             | String | No       | Unit of measurement (stored in definition, e.g., "%", "$", "count"). If omitted, `yaxis` is used as fallback                       |
+| `aggregation_type` | String | No       | Aggregation type: "sum", "avg", "min", "max", "none" (default: "none") - instance-specific config                                  |
+| `color`            | String | No       | Hex color code for chart display (default: "#3b82f6" - blue) - instance-specific config                                            |
+| `metadata`         | Object | No       | Additional metadata as JSON                                                                                                        |
+| `data_points`      | Array  | Yes      | Array of data point objects                                                                                                        |
+
+**Note on `category` field:**
+
+- Optional dimension/segment identifier (e.g., "Brand A", "North America", "Region A")
+- Stored in `submetricDefinitions` along with the parent `metric_name`
+- Display label is constructed as `[Category] - Metric Name` in the UI
+- If omitted, display shows just the metric name without category prefix
+
+**Note on `xaxis` and `yaxis` fields:**
+
+- Both are stored in `submetricDefinitions` for semantic documentation
+- `xaxis` describes what the x-axis represents (e.g., "period", "week", "tracked_week")
+- `yaxis` describes what the y-axis represents (e.g., "hours", "% completion", "complaints")
+- If `unit` is omitted, `yaxis` is used as the unit value
+- Often `yaxis` and `unit` have the same value (e.g., both "hours")
 
 ### Data Point Object Structure
 
@@ -108,11 +123,11 @@ Content-Type: application/json
       "chart_type": "line",
       "submetrics": [
         {
-          "label": "[North America] - Revenue",
           "category": "North America",
           "timezone": "America/Los_Angeles",
           "xaxis": "week",
-          "preferred_trend": "up",
+          "yaxis": "$",
+          "preferred_trend": "uptrend",
           "unit": "$",
           "aggregation_type": "sum",
           "color": "#3b82f6",
@@ -132,14 +147,14 @@ Content-Type: application/json
           ]
         },
         {
-          "label": "[Europe] - Revenue",
           "category": "Europe",
           "timezone": "Europe/London",
           "xaxis": "week",
-          "preferred_trend": "up",
+          "yaxis": "$",
+          "preferred_trend": "uptrend",
           "unit": "$",
           "aggregation_type": "sum",
-          "color": "#3b82f6",
+          "color": "#10b981",
           "data_points": [
             {
               "timestamp": "2024-01-01",
@@ -156,12 +171,13 @@ Content-Type: application/json
     {
       "metric_name": "Conversion Rate",
       "description": "Customer conversion percentage",
+      "ranking": 2,
       "submetrics": [
         {
-          "label": "Overall Conversion Rate",
-          "category": "Performance",
-          "unit": "%",
-          "preferred_trend": "up",
+          "category": "Overall",
+          "xaxis": "week",
+          "yaxis": "%",
+          "preferred_trend": "uptrend",
           "data_points": [
             {
               "timestamp": "2024-01-01",
@@ -264,13 +280,14 @@ The ingestion API uses a **two-tier definition system** for stable metric identi
 
 - **Purpose**: Stable identities for logical submetrics, enables persistent comments across slides
 - **Key**: `(workspaceId, metricKey, submetricKey)` - unique per workspace
-- **Fields**: `label`, `unit`, `preferredTrend`
-- **Auto-generated**: `submetricKey` includes category for uniqueness (e.g., "region-a-of-total-count")
+- **Fields**: `category`, `metricName`, `xaxis`, `yaxis`, `unit`, `preferredTrend`
+- **Auto-generated**: `submetricKey` includes category for uniqueness (e.g., "brand-a-completion-rate")
 
 **Upsert Behavior:**
 
-- Always updates `label`, `unit`, and `preferredTrend` to match latest ingestion
+- Always updates `category`, `metricName`, `xaxis`, `yaxis`, `unit`, and `preferredTrend` to match latest ingestion
 - Preserves `definitionId` for comment thread persistence
+- Semantic fields (`xaxis`, `yaxis`) describe what the axes represent (e.g., "period", "hours")
 
 ### Ranking vs Definition Separation
 

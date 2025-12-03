@@ -11,10 +11,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { handleCloseAutoFocus } from "@/lib/ui/focus";
 import {
   measureThemeChangePerformance,
   supportsViewTransitions,
-} from "@/lib/performance";
+} from "@/lib/ui/theme";
 
 export const ThemeToggle = memo(function ThemeToggle() {
   const { setTheme } = useTheme();
@@ -42,15 +43,6 @@ export const ThemeToggle = memo(function ThemeToggle() {
   // Handle dropdown state changes
   const handleOpenChange = useCallback((newOpen: boolean) => {
     setOpen(newOpen);
-  }, []);
-
-  // Prevent Radix from returning focus to trigger when dropdown closes
-  const handleCloseAutoFocus = useCallback((e: Event) => {
-    e.preventDefault();
-    // Completely remove focus by blurring any active element
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
   }, []);
 
   return (

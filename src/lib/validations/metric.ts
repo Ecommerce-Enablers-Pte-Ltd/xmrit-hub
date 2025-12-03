@@ -30,8 +30,6 @@ export const updateMetricSchema = z.object({
     .nullable()
     .optional(),
   ranking: z.number().int().positive().nullable().optional(),
-  chartType: z.string().nullable().optional(),
-  chartConfig: z.record(z.string(), z.any()).nullable().optional(),
 });
 
 /**

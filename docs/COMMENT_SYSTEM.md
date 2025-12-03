@@ -17,7 +17,7 @@ The comment system enables persistent, cross-slide discussion threads tied to su
 #### Point-Level Comments (Cross-Slide)
 
 - Comments tied to `(definitionId, bucketType, bucketValue)`
-- Example: Comments on "Week of 2024-01-01" for "Orders/Completion Rate"
+- Example: Comments on "Week of 2024-01-01" for "Transactions/Completion Rate"
 - Persist across all slides containing that time bucket
 - **UI**: Click any data point on X-chart to open comment dialog
 
@@ -89,8 +89,7 @@ CREATE TABLE comment (
   threadId TEXT NOT NULL REFERENCES comment_thread(id),
   userId TEXT NOT NULL REFERENCES "user"(id),
   body TEXT NOT NULL,
-  parentId TEXT REFERENCES comment(id),      -- for nested replies
-  isDeleted BOOLEAN NOT NULL DEFAULT FALSE,
+  parentId TEXT REFERENCES comment(id),      -- for nested replies (cascade delete)
   createdAt TIMESTAMP NOT NULL,
   updatedAt TIMESTAMP NOT NULL
 );
@@ -241,20 +240,20 @@ Ran once to:
 
 **Results:**
 
-- 83 submetrics processed
-- 22 unique definitions created
+- All existing submetrics processed
+- Unique definitions created for each metric/category combination
 - All `submetric.definitionId` populated
 
 ### Key Derivation Logic
 
 - `metricKey`: Normalize `metric.name` → lowercase slug with dashes
-  - Example: "% of Total Count" → "of-total-count"
+  - Example: "% Completion Rate" → "completion-rate"
 - `submetricKey`: Combine `category` + normalized `label` → lowercase slug with dashes
-  - Example: Category: `"Region A"`, Label: `"% Completion Rate"`
-  - Result: `submetricKey="region-a-completion-rate"`
+  - Example: Category: `"Brand A"`, Label: `"% Completion Rate"`
+  - Result: `submetricKey="brand-a-completion-rate"`
 - Full example:
-  - Metric: `"Orders"`, Category: `"Region A"`, Label: `"% Completion Rate"`
-  - Result: `metricKey="orders"`, `submetricKey="region-a-completion-rate"`
+  - Metric: `"Transactions"`, Category: `"Brand A"`, Label: `"% Completion Rate"`
+  - Result: `metricKey="transactions"`, `submetricKey="brand-a-completion-rate"`
 - **Important**: Category field is used to ensure different categories get different definitions and isolated comment threads
 
 ### Definition System Integration
@@ -313,13 +312,13 @@ This two-tier system enables comments to persist across slides while allowing in
 
 1. **Week 1**: Ingest slide with:
 
-   - `metric.name="Orders"`
-   - `submetric.category="Region A"`
+   - `metric.name="Transactions"`
+   - `submetric.category="Brand A"`
    - `submetric.label="Completion Rate"`
-   - System creates `submetric_definition(metricKey="orders", submetricKey="region-a-completion-rate")`
+   - System creates `submetric_definition(metricKey="transactions", submetricKey="brand-a-completion-rate")`
    - Links `submetric.definitionId`
 
-2. **User adds comment** on Region A data point "2024-01-08":
+2. **User adds comment** on Brand A data point "2024-01-08":
 
    - System auto-detects `bucketType="week"`
    - Normalizes "2024-01-08" → "2024-01-08" (ISO week start is Monday)
@@ -329,17 +328,17 @@ This two-tier system enables comments to persist across slides while allowing in
 3. **Week 2**: Ingest new slide with same metric/category/label
 
    - Links to existing `submetric_definition` via `definitionId` (same as Week 1)
-   - User hovers "2024-01-08" data point for Region A
+   - User hovers "2024-01-08" data point for Brand A
    - **Comment persists**: Shows "Spike due to promo campaign" from Week 1
 
 4. **Different Category (Region B)**:
 
-   - Region B submetric has different `definitionId` (metricKey="orders", submetricKey="region-b-completion-rate")
-   - Comments on Region A data points do NOT appear on Region B data points
+   - Region B submetric has different `definitionId` (metricKey="transactions", submetricKey="region-b-completion-rate")
+   - Comments on Brand A data points do NOT appear on Region B data points
    - Each category maintains isolated comment threads
 
 5. **Cross-Slide Visibility**:
-   - All slides with same `definitionId` (Region A Orders Completion Rate) show comments for "2024-01-08"
+   - All slides with same `definitionId` (Brand A Transactions Completion Rate) show comments for "2024-01-08"
    - Historical context preserved across weekly refreshes
    - Comments properly isolated per category
 
@@ -384,7 +383,7 @@ This two-tier system enables comments to persist across slides while allowing in
 ## Known Limitations (v1)
 
 1. **No workspace membership enforcement** (TODO markers in API routes)
-2. **No comment editing** (only create/soft delete)
+2. **No comment editing** (only create/delete)
 3. **No slide-scoped notes UI** (API exists, UI pending)
 4. **No comment badges on dots** (counts endpoint exists, UI pending)
 5. **No LLM features** (schema ready, features pending)

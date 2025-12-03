@@ -40,18 +40,26 @@ async function getSlideData(slideId: string): Promise<SlideWithMetrics | null> {
           },
           submetrics: {
             orderBy: (submetrics, { asc }) => [asc(submetrics.createdAt)],
+            // Fetch definition for category, metricName, xaxis, yaxis, unit, preferredTrend
+            with: {
+              definition: {
+                columns: {
+                  id: true,
+                  category: true,
+                  metricName: true,
+                  xaxis: true,
+                  yaxis: true,
+                  unit: true,
+                  preferredTrend: true,
+                },
+              },
+            },
             // Limit columns to reduce data transfer (especially important for dataPoints JSONB)
             columns: {
               id: true,
               metricId: true,
               definitionId: true,
-              label: true,
-              category: true,
-              xAxis: true,
-              yAxis: true,
               timezone: true,
-              preferredTrend: true,
-              unit: true,
               aggregationType: true,
               color: true,
               trafficLightColor: true,

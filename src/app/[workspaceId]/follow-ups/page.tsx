@@ -14,6 +14,12 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import {
+  getPriorityIcon,
+  getPriorityLabel,
+  getStatusIcon,
+  getStatusLabel,
+} from "@/components/config";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,12 +54,6 @@ import {
   useUsers,
   useWorkspace,
 } from "@/lib/api";
-import {
-  getPriorityIcon,
-  getPriorityLabel,
-  getStatusIcon,
-  getStatusLabel,
-} from "@/lib/follow-up-utils";
 import { cn } from "@/lib/utils";
 import type {
   FollowUpPriority,
@@ -163,21 +163,16 @@ export default function FollowUpsPage() {
     queryParams,
   );
   const { data: users = [], isLoading: isLoadingUsers } = useUsers();
-  const { workspace, loading: isLoadingWorkspace } = useWorkspace(workspaceId);
+  const {
+    workspace,
+    loading: isLoadingWorkspace,
+    refetch: refetchWorkspace,
+  } = useWorkspace(workspaceId);
 
   const followUps = data?.followUps || [];
   const pagination = data?.pagination;
   const slides = workspace?.slides || [];
   const isLoading = isLoadingFollowUps || isLoadingUsers || isLoadingWorkspace;
-
-  // Debug logging
-  console.log("Follow-ups page debug:", {
-    workspace,
-    slides,
-    slidesLength: slides.length,
-    isLoadingWorkspace,
-    slideFilter,
-  });
 
   // Mutations
   const createMutation = useCreateFollowUp(workspaceId);
@@ -189,11 +184,17 @@ export default function FollowUpsPage() {
 
   const handleCreateClick = () => {
     setEditingFollowUp(null);
+    // Trigger refetch - React Query will skip if data is fresh (within staleTime: 30s)
+    // This ensures we have the latest slides with submetric definitions without blocking
+    refetchWorkspace();
     setDialogOpen(true);
   };
 
   const handleEditClick = (followUp: FollowUpWithDetails) => {
     setEditingFollowUp(followUp);
+    // Trigger refetch - React Query will skip if data is fresh (within staleTime: 30s)
+    // This ensures we have the latest slides with submetric definitions without blocking
+    refetchWorkspace();
     setDialogOpen(true);
   };
 
@@ -842,15 +843,18 @@ export default function FollowUpsPage() {
       )}
 
       {/* Dialog */}
-      <FollowUpDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        followUp={editingFollowUp}
-        users={users}
-        slides={slides}
-        onSave={handleSave}
-        isLoading={createMutation.isPending || updateMutation.isPending}
-      />
+      {/* Only render dialog when workspace data is loaded to ensure slides have full nested data */}
+      {!isLoadingWorkspace && (
+        <FollowUpDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          followUp={editingFollowUp}
+          users={users}
+          slides={slides}
+          onSave={handleSave}
+          isLoading={createMutation.isPending || updateMutation.isPending}
+        />
+      )}
     </div>
   );
 }

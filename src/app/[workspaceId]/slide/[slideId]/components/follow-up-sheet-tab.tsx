@@ -10,11 +10,18 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { FollowUpDialog } from "@/app/[workspaceId]/follow-ups/components/follow-up-dialog";
+import {
+  getPriorityIcon,
+  getPriorityLabel,
+  getStatusBadgeColor,
+  getStatusIcon,
+  getStatusLabel,
+  STATUS_LABELS,
+} from "@/components/config";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,23 +53,13 @@ import {
 import { useSubmetricFollowUps } from "@/lib/api/follow-ups";
 import { useUsers } from "@/lib/api/users";
 import { useWorkspace } from "@/lib/api/workspaces";
-import {
-  getPriorityIcon,
-  getPriorityLabel,
-  getStatusBadgeColor,
-  getStatusIcon,
-  getStatusLabel,
-  STATUS_COLORS,
-  STATUS_LABELS,
-} from "@/lib/follow-up-utils";
 import { cn } from "@/lib/utils";
 import type {
   FollowUpPriority,
   FollowUpStatus,
   FollowUpWithDetails,
 } from "@/types/db/follow-up";
-import type { Slide, SlideWithMetrics } from "@/types/db/slide";
-import type { User } from "@/types/db/user";
+import type { Slide } from "@/types/db/slide";
 
 function getInitials(name: string | null | undefined): string {
   if (!name) return "?";
@@ -495,9 +492,7 @@ function FollowUpCard({
   onEdit,
   onDelete,
 }: FollowUpCardProps) {
-  const router = useRouter();
   const queryClient = useQueryClient();
-  const statusIcon = getStatusIcon(followUp.status, "h-2.5 w-2.5");
   const priorityIcon = getPriorityIcon(followUp.priority);
 
   // Check if current slide is before the slide where follow-up was created

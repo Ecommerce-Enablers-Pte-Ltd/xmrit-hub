@@ -1,9 +1,12 @@
 /**
- * Performance utilities for theme switching and rendering optimization
+ * Theme switching and rendering optimization utilities
  */
 
 /**
  * Measure the time it takes for a theme change to complete
+ * Logs performance metrics in development mode
+ *
+ * @param callback - The function that performs the theme change
  */
 export function measureThemeChangePerformance(callback: () => void): void {
   if (typeof window === "undefined" || !window.performance) return;
@@ -38,6 +41,9 @@ export function measureThemeChangePerformance(callback: () => void): void {
 
 /**
  * Check if the browser supports View Transitions API
+ * Used for smooth theme transitions in supported browsers
+ *
+ * @returns true if View Transitions API is supported
  */
 export function supportsViewTransitions(): boolean {
   return (

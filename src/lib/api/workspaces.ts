@@ -105,7 +105,7 @@ export function useWorkspace(
     queryFn: () => workspaceApiClient.getWorkspaceById(workspaceId),
     enabled: !!workspaceId,
     initialData, // Hydrate from SSR data
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 1000, // 30 seconds - shorter stale time to ensure fresh data with nested structure
     gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: true,
     // Stale-while-revalidate: show stale data while refetching

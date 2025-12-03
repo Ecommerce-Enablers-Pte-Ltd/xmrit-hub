@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -34,11 +34,7 @@ export async function PATCH(
       .select()
       .from(comments)
       .where(
-        and(
-          eq(comments.id, commentId),
-          eq(comments.userId, session.user.id),
-          eq(comments.isDeleted, false),
-        ),
+        and(eq(comments.id, commentId), eq(comments.userId, session.user.id)),
       )
       .limit(1);
 
@@ -71,7 +67,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/submetrics/definitions/[definitionId]/points/comments/[commentId]
- * Delete a comment (only by owner) and cascade delete all replies
+ * Delete a comment (only by owner) - child comments cascade delete via DB foreign key
  */
 export async function DELETE(
   _request: NextRequest,
@@ -90,11 +86,7 @@ export async function DELETE(
       .select()
       .from(comments)
       .where(
-        and(
-          eq(comments.id, commentId),
-          eq(comments.userId, session.user.id),
-          eq(comments.isDeleted, false),
-        ),
+        and(eq(comments.id, commentId), eq(comments.userId, session.user.id)),
       )
       .limit(1);
 
@@ -107,42 +99,12 @@ export async function DELETE(
       );
     }
 
-    // Cascade soft delete: mark comment and all its replies as deleted
-    // First, get all child comment IDs recursively
-    const getAllChildIds = async (parentId: string): Promise<string[]> => {
-      const children = await db
-        .select({ id: comments.id })
-        .from(comments)
-        .where(
-          and(eq(comments.parentId, parentId), eq(comments.isDeleted, false)),
-        );
-
-      const childIds = children.map((c) => c.id);
-
-      // Recursively get grandchildren
-      const grandchildIds = await Promise.all(
-        childIds.map((id) => getAllChildIds(id)),
-      );
-
-      return [parentId, ...childIds, ...grandchildIds.flat()];
-    };
-
-    const idsToDelete = await getAllChildIds(commentId);
-
-    // Soft delete all comments in the hierarchy
-    await db
-      .update(comments)
-      .set({
-        isDeleted: true,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(eq(comments.isDeleted, false), inArray(comments.id, idsToDelete)),
-      );
+    // Hard delete - child comments will cascade delete via DB foreign key constraint
+    await db.delete(comments).where(eq(comments.id, commentId));
 
     return NextResponse.json({
       success: true,
-      deletedIds: idsToDelete,
+      deletedId: commentId,
     });
   } catch (error) {
     console.error("Error deleting comment:", error);

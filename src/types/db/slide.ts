@@ -10,9 +10,6 @@ export interface Slide {
   description: string | null;
   workspaceId: string;
   slideDate: string | null; // Date string from database (YYYY-MM-DD format)
-  sortOrder: number | null;
-  layout: any; // JSON object for slide layout configuration
-  isPublished: boolean | null;
   createdAt: Date;
   updatedAt: Date;
 }

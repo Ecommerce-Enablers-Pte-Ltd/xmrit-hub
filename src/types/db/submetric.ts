@@ -15,8 +15,11 @@ export interface SubmetricDefinition {
   workspaceId: string;
   metricKey: string;
   submetricKey: string;
-  label: string | null;
-  unit: string | null;
+  category: string | null; // dimension/segment (e.g., "Brand A", "North America")
+  metricName: string | null; // the actual metric name (e.g., "% Completion Rate")
+  xaxis: string | null; // X-axis semantic label (e.g., "period", "tracked_week", "transaction_touched_at")
+  yaxis: string | null; // Y-axis semantic label / unit (e.g., "hours", "% completion", "complaints")
+  unit: string | null; // Unit of measurement (%, $, count) - often same as yaxis
   preferredTrend: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -26,20 +29,16 @@ export type TrafficLightColor = "green" | "yellow" | "red";
 
 export interface Submetric {
   id: string;
-  label: string;
-  category: string | null;
   metricId: string;
   definitionId: string | null;
-  xAxis: string;
-  yAxis: string | null;
   timezone: string | null;
-  preferredTrend: string | null;
-  unit: string | null;
   aggregationType: string | null;
   color: string | null;
-  trafficLightColor: TrafficLightColor | null; // Manual traffic light indicator (per submetric, not auto-calculated)
+  trafficLightColor: TrafficLightColor | null; // Slide-specific traffic light status
   metadata: any; // JSON object for additional metadata
   dataPoints: DataPointJson[] | null; // Data points stored as JSON array
   createdAt: Date;
   updatedAt: Date;
+  // Computed/joined fields from definition (populated via relations)
+  definition?: SubmetricDefinition | null;
 }

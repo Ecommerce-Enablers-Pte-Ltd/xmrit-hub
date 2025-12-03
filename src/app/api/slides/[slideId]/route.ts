@@ -53,18 +53,25 @@ export async function GET(
             },
             submetrics: {
               orderBy: (submetrics, { asc }) => [asc(submetrics.createdAt)],
-              // Limit columns to reduce payload size
+              // Fetch definition for category, metricName, xaxis, yaxis, unit, preferredTrend
+              with: {
+                definition: {
+                  columns: {
+                    id: true,
+                    category: true,
+                    metricName: true,
+                    xaxis: true,
+                    yaxis: true,
+                    unit: true,
+                    preferredTrend: true,
+                  },
+                },
+              },
               columns: {
                 id: true,
                 metricId: true,
                 definitionId: true,
-                label: true,
-                category: true,
-                xAxis: true,
-                yAxis: true,
                 timezone: true,
-                preferredTrend: true,
-                unit: true,
                 aggregationType: true,
                 color: true,
                 trafficLightColor: true,
@@ -195,7 +202,21 @@ export async function PUT(
                 definition: true,
               },
             },
-            submetrics: true,
+            submetrics: {
+              with: {
+                definition: {
+                  columns: {
+                    id: true,
+                    category: true,
+                    metricName: true,
+                    xaxis: true,
+                    yaxis: true,
+                    unit: true,
+                    preferredTrend: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
