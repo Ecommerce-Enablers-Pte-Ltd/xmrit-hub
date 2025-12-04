@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { EditSlideNameDialog } from "@/app/[workspaceId]/components/edit-slide-name-dialog";
 import { Button } from "@/components/ui/button";
+import { useSidebar } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { slideKeys, useSlide } from "@/lib/api/slides";
 import { CommentCountsProvider } from "@/providers/comment-counts-provider";
@@ -77,7 +78,7 @@ const SlideHeader = memo(
         </div>
       </div>
     );
-  },
+  }
 );
 SlideHeader.displayName = "SlideHeader";
 
@@ -89,6 +90,7 @@ export function SlideClient({
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const { open, setOpen, isMobile: isSidebarMobile } = useSidebar();
 
   // Initialize React Query cache with server data on mount (only once)
   // Use ref to prevent unnecessary re-initialization
@@ -100,6 +102,14 @@ export function SlideClient({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryClient, initialSlide]); // Depend on entire object to satisfy exhaustive-deps
+
+  // Auto-minimize sidebar when on slide page (desktop only)
+  useEffect(() => {
+    if (!isSidebarMobile && open) {
+      setOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   // Subscribe to React Query cache for live updates
   const { slide } = useSlide(initialSlide.id);
