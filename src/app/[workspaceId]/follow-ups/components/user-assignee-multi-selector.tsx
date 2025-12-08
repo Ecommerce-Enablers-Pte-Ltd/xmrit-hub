@@ -29,6 +29,21 @@ interface UserAssigneeMultiSelectorProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  // Filter mode props - for use in filter contexts
+  showUnassignedOption?: boolean;
+  unassigned?: boolean;
+  onUnassignedChange?: (unassigned: boolean) => void;
+  showMyTasksOption?: boolean;
+  currentUserId?: string;
+  currentUserName?: string;
+  currentUserEmail?: string;
+  currentUserImage?: string;
+  /** Width of the trigger button */
+  triggerWidth?: string;
+  /** Width of the popover content */
+  popoverWidth?: string;
+  /** Whether to show remove buttons on badges */
+  showRemoveButtons?: boolean;
 }
 
 export function UserAssigneeMultiSelector({
@@ -38,6 +53,17 @@ export function UserAssigneeMultiSelector({
   placeholder = "Assign to...",
   className,
   disabled = false,
+  showUnassignedOption = false,
+  unassigned = false,
+  onUnassignedChange,
+  showMyTasksOption = false,
+  currentUserId,
+  currentUserName,
+  currentUserEmail,
+  currentUserImage,
+  triggerWidth,
+  popoverWidth = "300px",
+  showRemoveButtons = true,
 }: UserAssigneeMultiSelectorProps) {
   const [open, setOpen] = React.useState(false);
   const [expanded, setExpanded] = React.useState(false);
@@ -50,26 +76,125 @@ export function UserAssigneeMultiSelector({
     [users, value],
   );
 
-  const toggleSelection = (userId: string) => {
-    const newValue = value.includes(userId)
-      ? value.filter((id) => id !== userId)
-      : [...value, userId];
-    onValueChange(newValue);
-  };
+  const toggleSelection = React.useCallback(
+    (userId: string) => {
+      // If selecting a user, clear unassigned filter
+      if (onUnassignedChange && unassigned) {
+        onUnassignedChange(false);
+      }
+      const newValue = value.includes(userId)
+        ? value.filter((id) => id !== userId)
+        : [...value, userId];
+      onValueChange(newValue);
+    },
+    [onUnassignedChange, unassigned, value, onValueChange],
+  );
 
-  const removeSelection = (userId: string, e?: React.MouseEvent) => {
-    if (e) {
-      e.stopPropagation();
+  const handleUnassignedToggle = React.useCallback(() => {
+    if (onUnassignedChange) {
+      const newUnassigned = !unassigned;
+      onUnassignedChange(newUnassigned);
+      // Clear selected users when selecting unassigned
+      if (newUnassigned && value.length > 0) {
+        onValueChange([]);
+      }
     }
-    onValueChange(value.filter((id) => id !== userId));
-  };
+  }, [onUnassignedChange, unassigned, value.length, onValueChange]);
+
+  const removeSelection = React.useCallback(
+    (userId: string, e?: React.MouseEvent) => {
+      if (e) {
+        e.stopPropagation();
+      }
+      onValueChange(value.filter((id) => id !== userId));
+    },
+    [onValueChange, value],
+  );
 
   // Define maxShownItems before using visibleItems
   const maxShownItems = 2;
-  const visibleUsers = expanded
-    ? selectedUsers
-    : selectedUsers.slice(0, maxShownItems);
+  const visibleUsers = React.useMemo(
+    () => (expanded ? selectedUsers : selectedUsers.slice(0, maxShownItems)),
+    [expanded, selectedUsers],
+  );
   const hiddenCount = selectedUsers.length - visibleUsers.length;
+
+  // Filter out current user from the main list if showMyTasksOption is enabled
+  const filteredUsers = React.useMemo(
+    () =>
+      showMyTasksOption && currentUserId
+        ? users.filter((user) => user.id !== currentUserId)
+        : users,
+    [showMyTasksOption, currentUserId, users],
+  );
+
+  // Render trigger content based on selection state
+  const renderTriggerContent = () => {
+    if (unassigned) {
+      return (
+        <Badge
+          variant="outline"
+          className="rounded-sm px-1.5 py-0.5 gap-1 shrink-0"
+        >
+          <span className="text-xs">Unassigned</span>
+        </Badge>
+      );
+    }
+
+    if (selectedUsers.length > 0) {
+      return (
+        <>
+          {visibleUsers.map((user) => (
+            <Badge
+              key={user.id}
+              variant="outline"
+              className="rounded-sm px-1.5 py-0.5 gap-1 shrink-0 max-w-[90px]"
+            >
+              <Avatar className="h-4 w-4 shrink-0">
+                <AvatarImage src={user.image || undefined} />
+                <AvatarFallback className="text-[8px]">
+                  {getInitials(user.name)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-xs truncate">
+                {user.name?.split(" ")[0] || user.email}
+              </span>
+              {showRemoveButtons && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-3.5 w-3.5 p-0 hover:bg-accent rounded-sm ml-0.5"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeSelection(user.id);
+                  }}
+                  asChild
+                >
+                  <span>
+                    <XIcon className="h-3 w-3" />
+                  </span>
+                </Button>
+              )}
+            </Badge>
+          ))}
+          {hiddenCount > 0 || expanded ? (
+            <Badge
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpanded((prev) => !prev);
+              }}
+              className="rounded-sm cursor-pointer hover:bg-accent shrink-0"
+            >
+              {expanded ? "Show Less" : `+${hiddenCount} more`}
+            </Badge>
+          ) : null}
+        </>
+      );
+    }
+
+    return <span className="text-sm">{placeholder}</span>;
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen} modal={true}>
@@ -80,71 +205,76 @@ export function UserAssigneeMultiSelector({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "h-auto min-h-9 w-full justify-between hover:bg-transparent font-normal",
-            selectedUsers.length === 0 && "text-muted-foreground",
+            "h-auto min-h-9 justify-between hover:bg-transparent font-normal",
+            selectedUsers.length === 0 &&
+              !unassigned &&
+              "text-muted-foreground",
+            triggerWidth ? triggerWidth : "w-full",
             className,
           )}
         >
-          <div className="flex flex-wrap items-center gap-1 pr-2.5">
-            {selectedUsers.length > 0 ? (
-              <>
-                {visibleUsers.map((user) => (
-                  <Badge
-                    key={user.id}
-                    variant="outline"
-                    className="rounded-sm px-1.5 py-0.5 gap-1"
-                  >
-                    <Avatar className="h-4 w-4 shrink-0">
-                      <AvatarImage src={user.image || undefined} />
-                      <AvatarFallback className="text-[8px]">
-                        {getInitials(user.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs">{user.name || user.email}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-3.5 w-3.5 p-0 hover:bg-accent rounded-sm ml-0.5"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeSelection(user.id);
-                      }}
-                      asChild
-                    >
-                      <span>
-                        <XIcon className="h-3 w-3" />
-                      </span>
-                    </Button>
-                  </Badge>
-                ))}
-                {hiddenCount > 0 || expanded ? (
-                  <Badge
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setExpanded((prev) => !prev);
-                    }}
-                    className="rounded-sm cursor-pointer hover:bg-accent"
-                  >
-                    {expanded ? "Show Less" : `+${hiddenCount} more`}
-                  </Badge>
-                ) : null}
-              </>
-            ) : (
-              <span>{placeholder}</span>
-            )}
+          <div className="flex flex-wrap items-center gap-1 pr-2.5 overflow-hidden min-w-0">
+            {renderTriggerContent()}
           </div>
           <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0" align="start" sideOffset={4}>
+      <PopoverContent
+        className="p-0"
+        style={{ width: popoverWidth }}
+        align="start"
+        sideOffset={4}
+      >
         <Command>
           <CommandInput placeholder="Search users..." className="h-9" />
           <CommandList className="max-h-[300px]">
             <CommandEmpty>No users found.</CommandEmpty>
             <CommandGroup>
-              {Array.isArray(users) &&
-                users.map((user) => {
+              {/* Unassigned option */}
+              {showUnassignedOption && (
+                <CommandItem
+                  onSelect={handleUnassignedToggle}
+                  className="cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 flex-1">
+                    <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center">
+                      <span className="text-xs text-muted-foreground">—</span>
+                    </div>
+                    <span className="text-sm font-medium">Unassigned</span>
+                  </div>
+                  {unassigned && <Check className="h-4 w-4 ml-auto" />}
+                </CommandItem>
+              )}
+
+              {/* My Tasks option */}
+              {showMyTasksOption && currentUserId && (
+                <CommandItem
+                  onSelect={() => toggleSelection(currentUserId)}
+                  className="cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 flex-1">
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={currentUserImage || undefined} />
+                      <AvatarFallback className="text-xs">
+                        {getInitials(currentUserName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">My Tasks</span>
+                      <span className="text-xs text-muted-foreground">
+                        {currentUserName || currentUserEmail}
+                      </span>
+                    </div>
+                  </div>
+                  {value.includes(currentUserId) && (
+                    <Check className="h-4 w-4 ml-auto" />
+                  )}
+                </CommandItem>
+              )}
+
+              {/* Regular users list */}
+              {Array.isArray(filteredUsers) &&
+                filteredUsers.map((user) => {
                   const isSelected = value.includes(user.id);
                   return (
                     <CommandItem
@@ -152,6 +282,7 @@ export function UserAssigneeMultiSelector({
                       value={`${user.name || ""} ${user.email || ""}`}
                       keywords={[user.name || "", user.email || ""]}
                       onSelect={() => toggleSelection(user.id)}
+                      className="cursor-pointer"
                     >
                       <div className="flex items-center gap-2 flex-1">
                         <Avatar className="h-6 w-6">
@@ -171,7 +302,7 @@ export function UserAssigneeMultiSelector({
                           )}
                         </div>
                       </div>
-                      {isSelected && <Check className="h-4 w-4" />}
+                      {isSelected && <Check className="h-4 w-4 ml-auto" />}
                     </CommandItem>
                   );
                 })}

@@ -4,7 +4,6 @@ import { Settings2, Trash2, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/utils";
 import { ZodError } from "zod";
 import {
   AlertDialog,
@@ -28,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useDeleteWorkspace, useUpdateWorkspace } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 import { updateWorkspaceSchema } from "@/lib/validations/workspace";
 import type { Workspace } from "@/types/db/workspace";
 
@@ -48,7 +47,7 @@ export function WorkspaceSettingsDialog({
   const [activeTab, setActiveTab] = React.useState<SettingsTab>("general");
   const [name, setName] = React.useState(workspace.name);
   const [description, setDescription] = React.useState(
-    workspace.description || ""
+    workspace.description || "",
   );
   const [deleteAlertOpen, setDeleteAlertOpen] = React.useState(false);
   const updateWorkspace = useUpdateWorkspace();
@@ -115,7 +114,7 @@ export function WorkspaceSettingsDialog({
       console.error("Error updating workspace:", error);
       const errorMessage = getErrorMessage(
         error,
-        "An unexpected error occurred. Please try again."
+        "An unexpected error occurred. Please try again.",
       );
       toast.error("Failed to update workspace", {
         description: errorMessage,
@@ -142,7 +141,7 @@ export function WorkspaceSettingsDialog({
       console.error("Error deleting workspace:", error);
       const errorMessage = getErrorMessage(
         error,
-        "An unexpected error occurred. Please try again."
+        "An unexpected error occurred. Please try again.",
       );
       toast.error("Failed to delete workspace", {
         description: errorMessage,
@@ -174,17 +173,47 @@ export function WorkspaceSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[85vh] p-0 gap-0 flex flex-col">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
-          <DialogTitle>Workspace Settings</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[800px] max-h-[60vh] p-0 gap-0 flex flex-col">
+        <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b shrink-0">
+          <DialogTitle className="text-base sm:text-lg">
+            Workspace Settings
+          </DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
             Manage your workspace settings and preferences.
           </DialogDescription>
         </DialogHeader>
 
+        {/* Mobile Horizontal Tabs */}
+        <div className="sm:hidden border-b bg-muted/20 px-2 py-2 shrink-0 overflow-x-auto">
+          <nav className="flex gap-1 min-w-max">
+            {menuItems.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => !item.disabled && setActiveTab(item.id)}
+                disabled={item.disabled}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors whitespace-nowrap",
+                  item.disabled
+                    ? "opacity-50 cursor-not-allowed"
+                    : activeTab === item.id
+                      ? ""
+                      : "hover:bg-muted",
+                  activeTab === item.id
+                    ? "bg-background text-foreground font-medium shadow-sm"
+                    : "text-muted-foreground",
+                )}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
         <div className="flex flex-1 overflow-hidden min-h-0">
-          {/* Side Menu */}
-          <div className="w-48 border-r bg-muted/20 p-4 shrink-0">
+          {/* Desktop Side Menu - Hidden on mobile */}
+          <div className="hidden sm:block w-48 border-r bg-muted/20 p-4 shrink-0">
             <nav className="space-y-1">
               {menuItems.map((item) => (
                 <button
@@ -197,11 +226,11 @@ export function WorkspaceSettingsDialog({
                     item.disabled
                       ? "opacity-50 cursor-not-allowed"
                       : activeTab === item.id
-                      ? ""
-                      : "hover:bg-muted",
+                        ? ""
+                        : "hover:bg-muted",
                     activeTab === item.id
                       ? "bg-background text-foreground font-medium"
-                      : "text-muted-foreground"
+                      : "text-muted-foreground",
                   )}
                 >
                   {item.icon}
@@ -213,22 +242,22 @@ export function WorkspaceSettingsDialog({
 
           {/* Content Area */}
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-1 p-6 overflow-y-auto">
+            <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
               {activeTab === "general" && (
                 <form onSubmit={handleSubmit} id="general-settings-form">
-                  <div className="space-y-6 max-w-xl">
+                  <div className="space-y-4 sm:space-y-6 max-w-xl">
                     <div>
-                      <h3 className="text-lg font-semibold mb-4">
+                      <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-4">
                         General Settings
                       </h3>
-                      <p className="text-sm text-muted-foreground mb-6">
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6">
                         Update your workspace name and description.
                       </p>
                     </div>
 
                     <div className="space-y-4">
                       <div className="grid gap-2">
-                        <Label htmlFor="name">
+                        <Label htmlFor="name" className="text-sm">
                           Workspace Name{" "}
                           <span className="text-destructive">*</span>
                         </Label>
@@ -238,6 +267,7 @@ export function WorkspaceSettingsDialog({
                           onChange={(e) => setName(e.target.value)}
                           placeholder="e.g., Marketing Dashboard"
                           required
+                          className="text-sm"
                         />
                         <p className="text-xs text-muted-foreground">
                           This is the display name for your workspace.
@@ -245,13 +275,16 @@ export function WorkspaceSettingsDialog({
                       </div>
 
                       <div className="grid gap-2">
-                        <Label htmlFor="description">Description</Label>
+                        <Label htmlFor="description" className="text-sm">
+                          Description
+                        </Label>
                         <Textarea
                           id="description"
                           value={description}
                           onChange={(e) => setDescription(e.target.value)}
                           placeholder="Add a description for your workspace (optional)"
-                          rows={4}
+                          rows={3}
+                          className="text-sm sm:rows-4"
                         />
                         <p className="text-xs text-muted-foreground">
                           Briefly describe what this workspace is used for.
@@ -260,23 +293,23 @@ export function WorkspaceSettingsDialog({
                     </div>
 
                     {/* Danger Zone */}
-                    <div className="pt-8 mt-8 border-t">
+                    <div className="pt-6 sm:pt-8 mt-6 sm:mt-8 border-t">
                       <div>
-                        <h4 className="text-base font-semibold mb-2 text-destructive">
+                        <h4 className="text-sm sm:text-base font-semibold mb-2 text-destructive">
                           Danger Zone
                         </h4>
-                        <p className="text-sm text-muted-foreground mb-6">
+                        <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6">
                           Irreversible and destructive actions.
                         </p>
                       </div>
 
-                      <div className="border border-destructive/50 rounded-lg p-6 bg-destructive/5">
-                        <div className="flex items-start justify-between gap-4">
+                      <div className="border border-destructive/50 rounded-lg p-4 sm:p-6 bg-destructive/5">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
                           <div className="flex-1">
-                            <h5 className="font-semibold text-foreground mb-2">
+                            <h5 className="font-semibold text-foreground mb-1 sm:mb-2 text-sm sm:text-base">
                               Delete Workspace
                             </h5>
-                            <p className="text-sm text-muted-foreground mb-4">
+                            <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
                               Once you delete a workspace, there is no going
                               back. This will permanently delete all slides,
                               metrics, and data. Please be certain.
@@ -288,7 +321,8 @@ export function WorkspaceSettingsDialog({
                           variant="destructive"
                           onClick={() => setDeleteAlertOpen(true)}
                           disabled={true}
-                          className="mt-2"
+                          className="mt-1 sm:mt-2 text-sm"
+                          size="sm"
                         >
                           <Trash2 className="h-4 w-4 mr-1" />
                           Delete Workspace
@@ -300,16 +334,18 @@ export function WorkspaceSettingsDialog({
               )}
 
               {activeTab === "members" && (
-                <div className="space-y-6 max-w-xl">
+                <div className="space-y-4 sm:space-y-6 max-w-xl">
                   <div>
-                    <h3 className="text-lg font-semibold mb-4">Members</h3>
-                    <p className="text-sm text-muted-foreground mb-6">
+                    <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-4">
+                      Members
+                    </h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6">
                       Manage workspace members and permissions.
                     </p>
                   </div>
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Member management coming soon.</p>
+                  <div className="text-center py-8 sm:py-12 text-muted-foreground">
+                    <Users className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 opacity-50" />
+                    <p className="text-sm">Member management coming soon.</p>
                   </div>
                 </div>
               )}
@@ -318,12 +354,13 @@ export function WorkspaceSettingsDialog({
             </div>
 
             {/* Footer with action buttons */}
-            <div className="border-t p-4 bg-muted/20 flex-shrink-0">
+            <div className="border-t p-3 sm:p-4 bg-muted/20 flex-shrink-0">
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => onOpenChange(false)}
+                  className="hidden sm:block"
                 >
                   Cancel
                 </Button>
@@ -331,6 +368,7 @@ export function WorkspaceSettingsDialog({
                   type="submit"
                   form="general-settings-form"
                   disabled={updateWorkspace.isPending || !hasChanges}
+                  className="w-full sm:w-auto"
                 >
                   {updateWorkspace.isPending ? "Saving..." : "Save Changes"}
                 </Button>
@@ -341,10 +379,12 @@ export function WorkspaceSettingsDialog({
       </DialogContent>
 
       <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[calc(100%-2rem)] max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-base sm:text-lg">
+              Are you absolutely sure?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs sm:text-sm">
               This action cannot be undone. This will permanently delete the{" "}
               <span className="font-semibold text-foreground">
                 {workspace.name}
@@ -353,11 +393,13 @@ export function WorkspaceSettingsDialog({
               our servers.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto mt-0">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteWorkspace}
-              className="bg-destructive text-white hover:bg-destructive/90"
+              className="w-full sm:w-auto bg-destructive text-white hover:bg-destructive/90"
             >
               {deleteWorkspace.isPending ? "Deleting..." : "Delete Workspace"}
             </AlertDialogAction>

@@ -13,7 +13,6 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/utils";
 import { FollowUpDialog } from "@/app/[workspaceId]/follow-ups/components/follow-up-dialog";
 import {
   getPriorityIcon,
@@ -54,7 +53,7 @@ import {
 import { useSubmetricFollowUps } from "@/lib/api/follow-ups";
 import { useUsers } from "@/lib/api/users";
 import { useWorkspace } from "@/lib/api/workspaces";
-import { cn } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 import type {
   FollowUpPriority,
   FollowUpStatus,
@@ -126,7 +125,7 @@ export function FollowUpTab({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -399,7 +398,7 @@ export function FollowUpTab({
                   <div
                     className={cn(
                       "flex items-center gap-2 pb-2",
-                      unresolved.length > 0 && "border-t pt-4"
+                      unresolved.length > 0 && "border-t pt-4",
                     )}
                   >
                     <h3 className="font-semibold text-sm text-muted-foreground">
@@ -696,7 +695,7 @@ function FollowUpCard({
   return (
     <div
       className={cn(
-        "rounded-lg border p-4 space-y-3 transition-all bg-card hover:shadow-sm"
+        "rounded-lg border p-4 space-y-3 transition-all bg-card hover:shadow-sm",
       )}
     >
       {/* Header with identifier and status */}
@@ -715,7 +714,7 @@ function FollowUpCard({
                 disabled={isResolved}
                 className={cn(
                   "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded transition-all",
-                  !isResolved && "hover:scale-105"
+                  !isResolved && "hover:scale-105",
                 )}
               >
                 <Badge
@@ -724,7 +723,7 @@ function FollowUpCard({
                     "text-xs gap-1.5",
                     !isResolved && "cursor-pointer",
                     isResolved && "opacity-60 cursor-not-allowed",
-                    getStatusBadgeColor(followUp.status)
+                    getStatusBadgeColor(followUp.status),
                   )}
                 >
                   {getStatusLabel(followUp.status)}
@@ -844,7 +843,7 @@ function FollowUpCard({
                 followUp.slide &&
                 window.open(
                   `/${workspaceId}/slide/${followUp.slide.id}`,
-                  "_blank"
+                  "_blank",
                 )
               }
               className="text-primary hover:underline cursor-pointer"
@@ -863,7 +862,7 @@ function FollowUpCard({
                 followUp.resolvedAtSlide &&
                 window.open(
                   `/${workspaceId}/slide/${followUp.resolvedAtSlide.id}`,
-                  "_blank"
+                  "_blank",
                 )
               }
               className="text-primary hover:underline cursor-pointer"

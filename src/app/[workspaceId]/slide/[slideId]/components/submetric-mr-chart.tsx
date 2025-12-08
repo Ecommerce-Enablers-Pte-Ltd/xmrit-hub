@@ -239,7 +239,7 @@ export const SubmetricMRChart = memo(
               interval="preserveStartEnd"
             >
               <Label
-                value={`date${
+                value={`${submetric.definition?.xaxis || "date"}${
                   submetric.timezone ? ` (${submetric.timezone})` : ""
                 } - MR Plot`}
                 offset={-10}

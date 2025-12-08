@@ -1,10 +1,9 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,12 +24,11 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDeleteSlide, useWorkspace } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 import type { SlideWithMetrics } from "@/types/db/slide";
 import type { WorkspaceWithSlides } from "@/types/db/workspace";
 import { EditSlideNameDialog } from "./edit-slide-name-dialog";
 import { SlideTable } from "./slide-table";
-import { WorkspaceSettingsDialog } from "./workspace-settings-dialog";
 
 interface WorkspaceClientProps {
   workspace: WorkspaceWithSlides;
@@ -62,11 +60,8 @@ export function WorkspaceClient({
   // Edit slide dialog state
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [slideToEdit, setSlideToEdit] = React.useState<SlideWithMetrics | null>(
-    null
+    null,
   );
-
-  // Workspace settings dialog state
-  const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   // Update URL with pagination params
   const updateSearchParams = React.useCallback(
@@ -83,7 +78,7 @@ export function WorkspaceClient({
 
       router.replace(`/${workspaceId}?${newParams.toString()}`);
     },
-    [searchParams, router, workspaceId]
+    [searchParams, router, workspaceId],
   );
 
   // Calculate pagination
@@ -127,7 +122,7 @@ export function WorkspaceClient({
       console.error("Error deleting slide:", error);
       const errorMessage = getErrorMessage(
         error,
-        "An unexpected error occurred. Please try again."
+        "An unexpected error occurred. Please try again.",
       );
       toast.error("Failed to delete slide", {
         description: errorMessage,
@@ -142,36 +137,25 @@ export function WorkspaceClient({
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div className="flex-1 min-w-0">
-              {loading ? (
-                <>
-                  <Skeleton className="h-8 w-64" />
-                  <Skeleton className="h-4 w-96 mt-1" />
-                </>
-              ) : (
-                <>
-                  <h1 className="text-2xl font-semibold tracking-tight">
-                    {currentWorkspace.name}
-                  </h1>
-                  {currentWorkspace.description && (
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      {currentWorkspace.description}
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSettingsOpen(true)}
-              title="Workspace settings"
-              className="shrink-0"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
+        <div className="flex items-center justify-between px-0 md:px-3 py-2.5 sm:py-4">
+          <div className="flex-1 min-w-0">
+            {loading ? (
+              <>
+                <Skeleton className="h-7 sm:h-8 w-48 sm:w-64" />
+                <Skeleton className="h-4 w-64 sm:w-96 mt-1 hidden sm:block" />
+              </>
+            ) : (
+              <>
+                <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">
+                  {currentWorkspace.name}
+                </h1>
+                {currentWorkspace.description && (
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 hidden sm:block">
+                    {currentWorkspace.description}
+                  </p>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -189,13 +173,13 @@ export function WorkspaceClient({
 
       {/* Footer with Pagination */}
       {(loading || totalSlides > 0) && (
-        <div className="border-t bg-background px-6 py-3">
-          <div className="flex items-center justify-between gap-4">
+        <div className="border-t bg-background px-0 md:px-3 py-2 sm:py-3">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
             {/* Left side - Total count and results info */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
                 {loading ? (
-                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-20 sm:w-32" />
                 ) : (
                   <span>
                     {totalSlides} total slide
@@ -204,7 +188,7 @@ export function WorkspaceClient({
                 )}
               </div>
 
-              {/* Items per page selector - only show if we have multiple pages or enough items */}
+              {/* Items per page selector - only show if we have multiple pages or enough items, hidden on mobile */}
               {totalSlides > 10 && !loading && (
                 <Select
                   value={String(limit)}
@@ -212,7 +196,7 @@ export function WorkspaceClient({
                     updateSearchParams({ limit: Number(value), page: 1 })
                   }
                 >
-                  <SelectTrigger className="w-[130px] h-8">
+                  <SelectTrigger className="w-[100px] sm:w-[130px] h-8 hidden sm:flex">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -227,18 +211,18 @@ export function WorkspaceClient({
 
             {/* Right side - Pagination controls */}
             {totalPages > 1 && !loading && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="text-sm text-muted-foreground hidden sm:inline">
                   Page {page} of {totalPages}
                 </span>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5 sm:gap-1">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => updateSearchParams({ page: page - 1 })}
                     disabled={page <= 1}
-                    className="h-8"
+                    className="h-7 sm:h-8 px-1.5 sm:px-3"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     <span className="hidden sm:inline ml-1">Previous</span>
@@ -267,7 +251,7 @@ export function WorkspaceClient({
                           onClick={() => updateSearchParams({ page: pageNum })}
                           className={cn(
                             "h-8 w-8 p-0",
-                            page === pageNum && "pointer-events-none"
+                            page === pageNum && "pointer-events-none",
                           )}
                         >
                           {pageNum}
@@ -276,12 +260,17 @@ export function WorkspaceClient({
                     })}
                   </div>
 
+                  {/* Simple page indicator for mobile */}
+                  <span className="text-[10px] sm:text-xs text-muted-foreground md:hidden px-0.5 sm:px-1">
+                    {page}/{totalPages}
+                  </span>
+
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => updateSearchParams({ page: page + 1 })}
                     disabled={!hasMore}
-                    className="h-8"
+                    className="h-7 sm:h-8 px-1.5 sm:px-3"
                   >
                     <span className="hidden sm:inline mr-1">Next</span>
                     <ChevronRight className="h-4 w-4" />
@@ -306,12 +295,6 @@ export function WorkspaceClient({
           workspaceId={currentWorkspace.id}
         />
       )}
-
-      <WorkspaceSettingsDialog
-        workspace={currentWorkspace}
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-      />
 
       <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
         <AlertDialogContent>

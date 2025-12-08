@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/utils";
 import { ZodError } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateWorkspace } from "@/lib/api";
+import { getErrorMessage } from "@/lib/utils";
 import { createWorkspaceSchema } from "@/lib/validations/workspace";
 
 interface CreateWorkspaceDialogProps {
@@ -80,7 +80,7 @@ export function CreateWorkspaceDialog({
       console.error("Error creating workspace:", error);
       const errorMessage = getErrorMessage(
         error,
-        "An unexpected error occurred. Please try again."
+        "An unexpected error occurred. Please try again.",
       );
       toast.error("Failed to create workspace", {
         description: errorMessage,
@@ -128,6 +128,7 @@ export function CreateWorkspaceDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              className="hidden sm:inline-flex"
             >
               Cancel
             </Button>

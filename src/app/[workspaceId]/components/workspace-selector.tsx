@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import type { Workspace } from "@/types/db/workspace";
 
@@ -26,6 +27,15 @@ export function WorkspaceSelector({
   onWorkspaceChange,
   onCreateWorkspace,
 }: WorkspaceSelectorProps) {
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const handleWorkspaceSelect = (workspace: Workspace) => {
+    onWorkspaceChange(workspace);
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -53,7 +63,7 @@ export function WorkspaceSelector({
         {workspaces.map((workspace) => (
           <DropdownMenuItem
             key={workspace.id}
-            onSelect={() => onWorkspaceChange(workspace)}
+            onSelect={() => handleWorkspaceSelect(workspace)}
             className="flex items-center justify-between px-3 py-3"
           >
             <div className="flex flex-col min-w-0 flex-1">

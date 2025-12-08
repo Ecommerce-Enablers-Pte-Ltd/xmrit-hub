@@ -7,7 +7,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { EditSlideNameDialog } from "@/app/[workspaceId]/components/edit-slide-name-dialog";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobileDevice } from "@/hooks/use-mobile-device";
 import { slideKeys, useSlide } from "@/lib/api/slides";
 import { CommentCountsProvider } from "@/providers/comment-counts-provider";
 import type { SlideWithMetrics } from "@/types/db/slide";
@@ -24,10 +24,10 @@ const MobileWarning = memo(() => (
   <div className="flex min-h-[80vh] items-center justify-center p-4">
     <div className="text-center max-w-md">
       <MonitorIcon className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-      <h2 className="text-2xl font-semibold mb-2">Desktop View Required</h2>
+      <h2 className="text-2xl font-semibold mb-2">Desktop Only</h2>
       <p className="text-muted-foreground">
-        Slide presentations are best viewed on a tablet or desktop for optimal
-        experience. Please switch to a larger screen to view this content.
+        This page is not available on mobile devices. Please access it from a
+        desktop or laptop computer for the full experience.
       </p>
     </div>
   </div>
@@ -78,7 +78,7 @@ const SlideHeader = memo(
         </div>
       </div>
     );
-  }
+  },
 );
 SlideHeader.displayName = "SlideHeader";
 
@@ -87,7 +87,7 @@ export function SlideClient({
   workspace,
 }: SlideClientProps) {
   const router = useRouter();
-  const isMobile = useIsMobile();
+  const { isMobileDevice, isLoading: isMobileLoading } = useIsMobileDevice();
   const queryClient = useQueryClient();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { open, setOpen, isMobile: isSidebarMobile } = useSidebar();
@@ -95,21 +95,24 @@ export function SlideClient({
   // Initialize React Query cache with server data on mount (only once)
   // Use ref to prevent unnecessary re-initialization
   const hasInitialized = useRef(false);
+  // Track if sidebar has been auto-minimized (for one-time effect)
+  const hasAutoMinimized = useRef(false);
+
   useEffect(() => {
     if (!hasInitialized.current) {
       queryClient.setQueryData(slideKeys.detail(initialSlide.id), initialSlide);
       hasInitialized.current = true;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryClient, initialSlide]); // Depend on entire object to satisfy exhaustive-deps
+  }, [queryClient, initialSlide]);
 
   // Auto-minimize sidebar when on slide page (desktop only)
+  // Use ref to ensure this only happens once per mount
   useEffect(() => {
-    if (!isSidebarMobile && open) {
+    if (!hasAutoMinimized.current && !isSidebarMobile && open) {
       setOpen(false);
+      hasAutoMinimized.current = true;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  }, [isSidebarMobile, open, setOpen]);
 
   // Subscribe to React Query cache for live updates
   const { slide } = useSlide(initialSlide.id);
@@ -145,8 +148,13 @@ export function SlideClient({
   // Memoize callbacks to prevent unnecessary re-renders
   const handleEditClick = useMemo(() => () => setIsEditDialogOpen(true), []);
 
-  // Show message on mobile devices
-  if (isMobile) {
+  // Show nothing while detecting device type to prevent content flash
+  if (isMobileLoading) {
+    return null;
+  }
+
+  // Block mobile devices from viewing slide page
+  if (isMobileDevice) {
     return <MobileWarning />;
   }
 

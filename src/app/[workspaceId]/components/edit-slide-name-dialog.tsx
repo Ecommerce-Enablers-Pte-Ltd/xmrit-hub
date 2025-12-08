@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/utils";
 import { ZodError } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUpdateSlide } from "@/lib/api/slides";
+import { getErrorMessage } from "@/lib/utils";
 import { updateSlideTitleSchema } from "@/lib/validations/slide";
 import type { SlideWithMetrics } from "@/types/db/slide";
 

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/utils";
 import { ZodError } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useUpdateMetricDefinition } from "@/lib/api/metric-definitions";
+import { getErrorMessage } from "@/lib/utils";
 import { updateMetricDefinitionSchema } from "@/lib/validations/metric";
 import type { MetricWithSubmetrics } from "@/types/db/metric";
 
@@ -30,7 +30,7 @@ export function EditMetricDefinitionDialog({
   metric,
 }: EditMetricDefinitionDialogProps) {
   const [definitionValue, setDefinitionValue] = useState(
-    metric.definition?.definition || ""
+    metric.definition?.definition || "",
   );
   const updateMetricDefinition = useUpdateMetricDefinition();
 

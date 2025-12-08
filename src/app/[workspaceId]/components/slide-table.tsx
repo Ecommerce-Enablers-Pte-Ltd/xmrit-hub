@@ -51,7 +51,7 @@ export function SlideTable({
 
   if (isLoading) {
     return (
-      <div className="px-6 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
+      <div className="px-0 md:px-6 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
         <Table>
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow className="hover:bg-transparent">
@@ -101,14 +101,16 @@ export function SlideTable({
   }
 
   return (
-    <div className="px-6 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
+    <div className="px-0 md:px-6 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
       {slides.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="rounded-full bg-muted p-4 mb-4">
-            <BarChart3 className="h-8 w-8 text-muted-foreground" />
+        <div className="flex flex-col items-center justify-center py-12 sm:py-16 px-3 sm:px-6 text-center">
+          <div className="rounded-full bg-muted p-3 sm:p-4 mb-3 sm:mb-4">
+            <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-semibold mb-1">No slides found</h3>
-          <p className="text-sm text-muted-foreground max-w-sm">
+          <h3 className="text-base sm:text-lg font-semibold mb-1">
+            No slides found
+          </h3>
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-sm">
             Create your first slide to start building your metrics dashboard and
             tracking performance.
           </p>
@@ -133,7 +135,7 @@ export function SlideTable({
             {slides.map((slide) => {
               const totalSubmetrics = slide.metrics.reduce(
                 (sum, metric) => sum + metric.submetrics.length,
-                0
+                0,
               );
 
               return (
@@ -172,7 +174,7 @@ export function SlideTable({
                                 month: "short",
                                 day: "numeric",
                                 year: "numeric",
-                              }
+                              },
                             )}
                           </span>
                         </>

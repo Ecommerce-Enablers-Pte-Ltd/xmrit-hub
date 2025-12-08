@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, ChevronDown, ChevronUp, Search } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronUp, Link2, Search } from "lucide-react";
 import {
   lazy,
   memo,
@@ -12,7 +12,6 @@ import {
   useState,
 } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
   CommandDialog,
   CommandEmpty,
@@ -22,6 +21,11 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { MetricWithSubmetrics } from "@/types/db/metric";
 import { EditMetricDefinitionDialog } from "./edit-metric-definition-dialog";
 
@@ -29,8 +33,33 @@ import { EditMetricDefinitionDialog } from "./edit-metric-definition-dialog";
 const SubmetricLineChart = lazy(() =>
   import("./submetric-card").then((mod) => ({
     default: mod.SubmetricLineChart,
-  }))
+  })),
 );
+
+// Generate URL-safe slug from category and metric name
+export function generateChartSlug(
+  category: string | null | undefined,
+  metricName: string | null | undefined,
+): string {
+  const parts: string[] = [];
+  if (category) {
+    parts.push(
+      category
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, ""),
+    );
+  }
+  if (metricName) {
+    parts.push(
+      metricName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, ""),
+    );
+  }
+  return parts.join("-") || "chart";
+}
 
 // Skeleton loader for charts - shows chart info even when lazy loaded
 function ChartSkeleton({
@@ -41,38 +70,68 @@ function ChartSkeleton({
   metricName?: string;
 }) {
   return (
-    <Card className="p-6">
-      <div className="space-y-4">
-        <div className="flex items-start justify-between">
-          <div className="space-y-2 flex-1">
-            {category || metricName ? (
-              <>
-                {category && (
-                  <span className="px-4 py-2 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-md text-sm font-bold uppercase tracking-wide inline-block">
-                    {category}
-                  </span>
-                )}
-                <h2 className="text-2xl font-semibold tracking-tight">
-                  {metricName || "Untitled"}
-                </h2>
-              </>
-            ) : (
-              <>
-                <Skeleton className="h-6 w-48" />
-                <Skeleton className="h-4 w-96" />
-              </>
-            )}
+    <div className="w-full border rounded-lg overflow-visible">
+      {/* Header Section */}
+      <div className="px-6 py-4">
+        {/* Chart Toolbar */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-8 rounded" />
           </div>
-          <Skeleton className="h-8 w-8 rounded" />
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-28" />
+            <Skeleton className="h-9 w-28" />
+            <Skeleton className="h-9 w-32" />
+            <div className="h-6 w-px bg-border mx-1" />
+            <Skeleton className="h-9 w-9" />
+            <Skeleton className="h-9 w-9" />
+          </div>
         </div>
-        <Skeleton className="h-[400px] w-full" />
-        <div className="flex gap-2">
-          <Skeleton className="h-9 w-24" />
-          <Skeleton className="h-9 w-24" />
-          <Skeleton className="h-9 w-24" />
+
+        {/* Title and Status Row */}
+        <div className="flex items-start justify-between mt-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-3">
+              {category || metricName ? (
+                <>
+                  {category && (
+                    <span className="px-4 py-2 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-md text-sm font-bold uppercase tracking-wide whitespace-nowrap shrink-0">
+                      {category}
+                    </span>
+                  )}
+                  <h2 className="text-2xl font-semibold tracking-tight overflow-hidden text-ellipsis whitespace-nowrap">
+                    {metricName || "Untitled"}
+                  </h2>
+                </>
+              ) : (
+                <>
+                  <Skeleton className="h-9 w-24 rounded-md" />
+                  <Skeleton className="h-8 w-64" />
+                </>
+              )}
+            </div>
+          </div>
+          {/* Traffic Light placeholder */}
+          <div className="flex flex-col items-end gap-2 mr-1">
+            <Skeleton className="h-10 w-10 rounded-full" />
+          </div>
         </div>
       </div>
-    </Card>
+
+      {/* Content Section - Two charts side by side */}
+      <div className="px-6 pb-6 pt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* X Chart skeleton */}
+          <div className="space-y-2">
+            <Skeleton className="h-[350px] w-full" />
+          </div>
+          {/* MR Chart skeleton */}
+          <div className="space-y-2">
+            <Skeleton className="h-[350px] w-full" />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -85,7 +144,7 @@ interface SlideContainerProps {
 // Custom comparison function for memo to prevent unnecessary re-renders
 function arePropsEqual(
   prevProps: SlideContainerProps,
-  nextProps: SlideContainerProps
+  nextProps: SlideContainerProps,
 ): boolean {
   // Only re-render if slideId, workspaceId or metrics data actually changes
   if (prevProps.slideId !== nextProps.slideId) return false;
@@ -142,13 +201,14 @@ export const SlideContainer = memo(function SlideContainer({
 
   // Track which charts should be rendered (visible + nearby)
   const [visibleCharts, setVisibleCharts] = useState<Set<number>>(
-    () => new Set([0, 1, 2]) // Initially render first 3 charts
+    () => new Set([0, 1, 2]), // Initially render first 3 charts
   );
 
   // Search dialog state
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const commandListRef = useRef<HTMLDivElement>(null);
+  const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
 
   // Flatten all submetrics into a single array for easier navigation
   const allCharts = useMemo(() => {
@@ -157,7 +217,11 @@ export const SlideContainer = memo(function SlideContainer({
         metricId: metric.id,
         metricName: metric.name,
         submetric,
-      }))
+        slug: generateChartSlug(
+          submetric.definition?.category,
+          submetric.definition?.metricName,
+        ),
+      })),
     );
   }, [metrics]);
 
@@ -200,14 +264,14 @@ export const SlideContainer = memo(function SlideContainer({
             "ring-2",
             "ring-primary/40",
             "ring-offset-2",
-            "ring-offset-background"
+            "ring-offset-background",
           );
           setTimeout(() => {
             element.classList.remove(
               "ring-2",
               "ring-primary/40",
               "ring-offset-2",
-              "ring-offset-background"
+              "ring-offset-background",
             );
           }, 1500);
         }, 50);
@@ -228,7 +292,7 @@ export const SlideContainer = memo(function SlideContainer({
       // Start trying after a brief delay for React to process state update
       setTimeout(() => tryScroll(), 10);
     },
-    [totalCharts]
+    [totalCharts],
   );
 
   // Navigate to previous chart - INSTANT, NO RE-RENDERS
@@ -283,7 +347,7 @@ export const SlideContainer = memo(function SlideContainer({
         root: null,
         rootMargin: "-40% 0px -40% 0px", // Middle 20% of viewport
         threshold: 0,
-      }
+      },
     );
 
     // Observer for managing which charts should render (virtualization)
@@ -303,7 +367,7 @@ export const SlideContainer = memo(function SlideContainer({
               } else {
                 // Keep charts in memory if they're adjacent to visible ones
                 const isAdjacent = Array.from(next).some(
-                  (visibleIndex) => Math.abs(visibleIndex - index) <= 1
+                  (visibleIndex) => Math.abs(visibleIndex - index) <= 1,
                 );
                 if (!isAdjacent) {
                   next.delete(index);
@@ -318,7 +382,7 @@ export const SlideContainer = memo(function SlideContainer({
         root: null,
         rootMargin: "400px", // Load charts 400px before they enter viewport
         threshold: 0,
-      }
+      },
     );
 
     // Observe all chart elements
@@ -343,7 +407,7 @@ export const SlideContainer = memo(function SlideContainer({
       currentIndexRef.current = chartIndex;
       scrollToChart(chartIndex);
     },
-    [scrollToChart]
+    [scrollToChart],
   );
 
   // Handle search dialog open/close
@@ -371,6 +435,30 @@ export const SlideContainer = memo(function SlideContainer({
     });
   }, []);
 
+  // Copy chart link from search dialog
+  const copyChartLink = useCallback(
+    async (slug: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      const url = `${window.location.origin}${window.location.pathname}#${slug}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        setCopiedSlug(slug);
+        setTimeout(() => setCopiedSlug(null), 1500);
+      } catch {
+        // Fallback for older browsers
+        const textArea = document.createElement("textarea");
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        setCopiedSlug(slug);
+        setTimeout(() => setCopiedSlug(null), 1500);
+      }
+    },
+    [],
+  );
+
   // Search dialog keyboard shortcut (Cmd+F or Ctrl+F) - replaces browser find
   useEffect(() => {
     const handleSearchShortcut = (e: KeyboardEvent) => {
@@ -383,6 +471,65 @@ export const SlideContainer = memo(function SlideContainer({
     window.addEventListener("keydown", handleSearchShortcut);
     return () => window.removeEventListener("keydown", handleSearchShortcut);
   }, []);
+
+  // Scroll to chart from URL hash (for deep linking)
+  const scrollToHashTarget = useCallback(() => {
+    const hash = window.location.hash;
+    if (!hash) return;
+
+    const slug = hash.slice(1); // Remove the # prefix
+
+    // Handle legacy #submetric-<id> format for backwards compatibility
+    if (slug.startsWith("submetric-")) {
+      const submetricId = slug.replace("submetric-", "");
+      const chartIndex = allCharts.findIndex(
+        (c) => c.submetric.id === submetricId,
+      );
+      if (chartIndex !== -1) {
+        currentIndexRef.current = chartIndex;
+        scrollToChart(chartIndex);
+      }
+      return;
+    }
+
+    // Handle legacy #metric-<id> format for backwards compatibility
+    if (slug.startsWith("metric-")) {
+      const metricId = slug.replace("metric-", "");
+      const chartIndex = allCharts.findIndex((c) => c.metricId === metricId);
+      if (chartIndex !== -1) {
+        currentIndexRef.current = chartIndex;
+        scrollToChart(chartIndex);
+      }
+      return;
+    }
+
+    // Handle new #{category}-{metricName} slug format
+    const chartIndex = allCharts.findIndex((c) => c.slug === slug);
+    if (chartIndex !== -1) {
+      currentIndexRef.current = chartIndex;
+      scrollToChart(chartIndex);
+    }
+  }, [allCharts, scrollToChart]);
+
+  // Scroll to hash target on initial load and when metrics change
+  useEffect(() => {
+    // Longer delay to ensure lazy-loaded charts are ready
+    const timeoutId = setTimeout(() => {
+      scrollToHashTarget();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [scrollToHashTarget]);
+
+  // Listen for hash changes while on the page
+  useEffect(() => {
+    const handleHashChange = () => {
+      scrollToHashTarget();
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, [scrollToHashTarget]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -500,6 +647,20 @@ export const SlideContainer = memo(function SlideContainer({
                       {metricName}
                     </span>
                   </div>
+                  <Tooltip open={copiedSlug === chart.slug}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => copyChartLink(chart.slug, e)}
+                        className="h-7 w-7 shrink-0 cursor-pointer"
+                        title="Copy link to this chart"
+                      >
+                        <Link2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">Copied!</TooltipContent>
+                  </Tooltip>
                 </CommandItem>
               );
             })}
@@ -548,7 +709,7 @@ export const SlideContainer = memo(function SlideContainer({
       {/* Charts Grid */}
       <div className="space-y-12">
         {metrics.map((metric) => (
-          <div key={metric.id} className="space-y-8">
+          <div key={metric.id} id={`metric-${metric.id}`} className="space-y-8">
             <div>
               <div className="flex items-center gap-2 mb-0.5">
                 <h2 className="text-3xl font-bold text-foreground">
@@ -598,16 +759,18 @@ export const SlideContainer = memo(function SlideContainer({
             ) : (
               <div className="grid gap-8 grid-cols-1">
                 {metric.submetrics.map((submetric) => {
-                  // Find the global index for this chart
+                  // Find the global index and chart data for this chart
                   const chartIndex = allCharts.findIndex(
-                    (c) => c.submetric.id === submetric.id
+                    (c) => c.submetric.id === submetric.id,
                   );
+                  const chartData = allCharts[chartIndex];
 
                   const shouldRender = visibleCharts.has(chartIndex);
 
                   return (
                     <div
                       key={submetric.id}
+                      id={chartData?.slug}
                       ref={(el) => {
                         chartRefs.current[chartIndex] = el;
                       }}
@@ -680,5 +843,4 @@ export const SlideContainer = memo(function SlideContainer({
       )}
     </>
   );
-},
-arePropsEqual);
+}, arePropsEqual);

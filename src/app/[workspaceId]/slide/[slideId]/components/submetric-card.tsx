@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Link2,
   ListTodo,
   Loader2,
   Lock,
@@ -9,10 +10,15 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useSubmetricFollowUpsCount } from "@/lib/api/follow-ups";
 import { detectBucketType } from "@/lib/time-buckets";
 import {
@@ -33,6 +39,7 @@ import {
   type XMRLimits,
 } from "@/lib/xmr-calculations";
 import type { Submetric } from "@/types/db/submetric";
+import { generateChartSlug } from "./slide-container";
 import { type DataPoint as CommentDataPoint, SlideSheet } from "./slide-sheet";
 import { SubmetricLockLimitsDialog } from "./submetric-lock-limits-dialog";
 import { SubmetricMRChart } from "./submetric-mr-chart";
@@ -645,6 +652,30 @@ export const SubmetricLineChart = memo(
       // or when explicitly requested via "Reset to Auto Lock Limit"
     };
 
+    // Copy deep link to clipboard
+    const [linkCopied, setLinkCopied] = useState(false);
+    const chartSlug = generateChartSlug(category, metricName);
+    const copyChartLink = useCallback(async () => {
+      const url = `${window.location.origin}${window.location.pathname}#${chartSlug}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        // Update URL hash to show current chart
+        window.history.replaceState(null, "", `#${chartSlug}`);
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 1500);
+      } catch {
+        // Fallback for older browsers
+        const textArea = document.createElement("textarea");
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 1500);
+      }
+    }, [chartSlug]);
+
     return (
       <div className="w-full border rounded-lg overflow-visible">
         {/* Header Section */}
@@ -652,6 +683,20 @@ export const SubmetricLineChart = memo(
           {/* Chart Toolbar */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
+              <Tooltip open={linkCopied}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={copyChartLink}
+                    className="h-8 w-8 cursor-pointer"
+                    title="Copy link to this chart"
+                  >
+                    <Link2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Copied!</TooltipContent>
+              </Tooltip>
               {preferredTrend && (
                 <span className="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
                   <span>{preferredTrend.toUpperCase()} PREFERRED</span>
@@ -812,22 +857,25 @@ export const SubmetricLineChart = memo(
           {/* Title and Status Row */}
           <div className="flex items-start justify-between mt-4">
             <div className="flex-1">
-              <div
-                className="flex items-center gap-3"
+              <button
+                onClick={copyChartLink}
+                className="flex items-center gap-3 text-left group cursor-pointer"
                 style={{ maxWidth: titleMaxWidth }}
+                title="Click to copy link"
+                type="button"
               >
                 {category && (
                   <span
-                    className="px-4 py-2 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-md text-sm font-bold uppercase tracking-wide whitespace-nowrap overflow-hidden text-ellipsis shrink-0"
+                    className="px-4 py-2 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-md text-sm font-bold uppercase tracking-wide whitespace-nowrap overflow-hidden text-ellipsis shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-blue-800 transition-colors"
                     style={{ maxWidth: categoryMaxWidth }}
                   >
                     {category}
                   </span>
                 )}
-                <h2 className="text-2xl font-semibold tracking-tight overflow-hidden text-ellipsis whitespace-nowrap min-w-0 flex-1">
+                <h2 className="text-2xl font-semibold tracking-tight overflow-hidden text-ellipsis whitespace-nowrap min-w-0 flex-1 transition-colors group-hover:text-primary">
                   {metricName}
                 </h2>
-              </div>
+              </button>
             </div>
             {hasData && (
               <div className="flex flex-col items-end gap-2 mr-1">

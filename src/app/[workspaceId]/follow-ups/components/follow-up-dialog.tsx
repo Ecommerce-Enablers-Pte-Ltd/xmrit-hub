@@ -254,7 +254,7 @@ export function FollowUpDialog({
       // Only clear if the current submetric definition is not in the available ones for this slide
       if (currentSubmetricId) {
         const isValidForSlide = availableSubmetricDefinitions.some(
-          (def) => def.id === currentSubmetricId
+          (def) => def.id === currentSubmetricId,
         );
 
         // Clear if not valid for the new slide
@@ -355,19 +355,19 @@ export function FollowUpDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-[640px] max-h-[90vh] flex flex-col overflow-hidden gap-0 p-0"
+        className="w-[calc(100vw-2rem)] sm:max-w-[560px] max-h-[60vh] sm:max-h-[75vh] flex flex-col overflow-hidden gap-0 p-0"
         onCloseAutoFocus={handleCloseAutoFocus}
       >
-        <DialogHeader className="shrink-0 px-6 pt-6 pb-3">
-          <DialogTitle className="text-xl font-semibold tracking-tight">
+        <DialogHeader className="shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-2 sm:pb-3">
+          <DialogTitle className="text-lg sm:text-xl font-semibold tracking-tight">
             {followUp ? "Edit Follow-up" : "Create Follow-up"}
           </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+          <DialogDescription className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
             {isResolved
               ? "This follow-up is resolved. You can edit details but cannot change the status. Reopen to change status."
               : followUp
-              ? "Update the follow-up details below."
-              : "Track action items, issues, and tasks."}
+                ? "Update the follow-up details below."
+                : "Track action items, issues, and tasks."}
           </DialogDescription>
         </DialogHeader>
 
@@ -375,11 +375,11 @@ export function FollowUpDialog({
           onSubmit={handleSubmit(onSubmit)}
           className="flex flex-col flex-1 min-h-0"
         >
-          <div className="flex-1 overflow-y-auto px-6 pb-6">
-            <div className="space-y-6">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Title Field */}
-              <div className="grid gap-2">
-                <Label htmlFor="title">
+              <div className="grid gap-1.5 sm:gap-2">
+                <Label htmlFor="title" className="text-sm">
                   Title <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -387,8 +387,9 @@ export function FollowUpDialog({
                   {...register("title")}
                   placeholder="What needs to be done?"
                   className={cn(
+                    "h-9 sm:h-10",
                     errors.title &&
-                      "border-destructive focus-visible:ring-destructive"
+                      "border-destructive focus-visible:ring-destructive",
                   )}
                   autoFocus
                   disabled={isLoading}
@@ -396,17 +397,16 @@ export function FollowUpDialog({
                 <FormError message={errors.title?.message} />
               </div>
 
-              {/* Status, Priority, and Due Date Row */}
-              <div
-                className="grid gap-4"
-                style={{ gridTemplateColumns: "160px 140px 240px" }}
-              >
+              {/* Status, Priority, and Due Date Row - responsive grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                 <Controller
                   name="status"
                   control={control}
                   render={({ field }) => (
-                    <div className="grid gap-2">
-                      <Label htmlFor="status">Status</Label>
+                    <div className="grid gap-1.5 sm:gap-2">
+                      <Label htmlFor="status" className="text-sm">
+                        Status
+                      </Label>
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
@@ -415,17 +415,17 @@ export function FollowUpDialog({
                         <SelectTrigger
                           id="status"
                           className={cn(
-                            "w-full",
+                            "w-full h-9 sm:h-10",
                             errors.status && "border-destructive",
-                            isResolved && "opacity-60 cursor-not-allowed"
+                            isResolved && "opacity-60 cursor-not-allowed",
                           )}
                         >
                           <SelectValue>
-                            <div className="flex items-center gap-2 w-full">
+                            <div className="flex items-center gap-1.5 sm:gap-2 w-full">
                               {getStatusIcon(field.value)}
-                              <span className="truncate">
+                              <span className="truncate text-sm">
                                 {STATUS_OPTIONS_WITH_RESOLVED.find(
-                                  (opt) => opt.value === field.value
+                                  (opt) => opt.value === field.value,
                                 )?.label || field.value}
                               </span>
                             </div>
@@ -434,7 +434,7 @@ export function FollowUpDialog({
                         <SelectContent>
                           {STATUS_OPTIONS.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
-                              <div className="flex items-center gap-2.5">
+                              <div className="flex items-center gap-2">
                                 {getStatusIcon(option.value)}
                                 <span>{option.label}</span>
                               </div>
@@ -451,8 +451,10 @@ export function FollowUpDialog({
                   name="priority"
                   control={control}
                   render={({ field }) => (
-                    <div className="grid gap-2">
-                      <Label htmlFor="priority">Priority</Label>
+                    <div className="grid gap-1.5 sm:gap-2">
+                      <Label htmlFor="priority" className="text-sm">
+                        Priority
+                      </Label>
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
@@ -461,16 +463,16 @@ export function FollowUpDialog({
                         <SelectTrigger
                           id="priority"
                           className={cn(
-                            "w-full",
-                            errors.priority && "border-destructive"
+                            "w-full h-9 sm:h-10",
+                            errors.priority && "border-destructive",
                           )}
                         >
                           <SelectValue>
-                            <div className="flex items-center gap-2 w-full">
+                            <div className="flex items-center gap-1.5 sm:gap-2 w-full">
                               {getPriorityIcon(field.value, "h-4 w-4")}
-                              <span className="truncate">
+                              <span className="truncate text-sm">
                                 {PRIORITY_OPTIONS.find(
-                                  (opt) => opt.value === field.value
+                                  (opt) => opt.value === field.value,
                                 )?.label || "No Priority"}
                               </span>
                             </div>
@@ -479,7 +481,7 @@ export function FollowUpDialog({
                         <SelectContent>
                           {PRIORITY_OPTIONS.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
-                              <div className="flex items-center gap-2.5">
+                              <div className="flex items-center gap-2">
                                 {getPriorityIcon(option.value, "h-4 w-4")}
                                 <span>{option.label}</span>
                               </div>
@@ -496,8 +498,10 @@ export function FollowUpDialog({
                   name="dueDate"
                   control={control}
                   render={({ field }) => (
-                    <div className="grid gap-2">
-                      <Label htmlFor="dueDate">Due Date</Label>
+                    <div className="grid gap-1.5 sm:gap-2 col-span-2 sm:col-span-1">
+                      <Label htmlFor="dueDate" className="text-sm">
+                        Due Date
+                      </Label>
                       <Popover
                         open={calendarOpen}
                         onOpenChange={(newOpen) => {
@@ -515,20 +519,22 @@ export function FollowUpDialog({
                             variant="outline"
                             disabled={isLoading}
                             className={cn(
-                              "w-full justify-start text-left font-normal min-w-0",
+                              "w-full h-9 sm:h-10 justify-start text-left font-normal min-w-0",
                               !field.value && "text-muted-foreground",
-                              errors.dueDate && "border-destructive"
+                              errors.dueDate && "border-destructive",
                             )}
                           >
-                            <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                            <span className="truncate flex-1">
+                            <CalendarIcon className="mr-1.5 sm:mr-2 h-4 w-4 shrink-0" />
+                            <span className="truncate flex-1 text-sm">
                               {field.value
-                                ? format(field.value, "PPP")
+                                ? format(field.value, "PP")
                                 : "Pick a date"}
                             </span>
                             {field.value && (
+                              // biome-ignore lint/a11y/useSemanticElements: Cannot use <button> inside Button component (nested buttons cause hydration errors)
                               <span
                                 role="button"
+                                tabIndex={0}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   e.preventDefault();
@@ -551,7 +557,7 @@ export function FollowUpDialog({
                                     }, 100);
                                   }
                                 }}
-                                className="ml-2 -mr-1 hover:bg-accent rounded-sm p-1 transition-colors cursor-pointer shrink-0"
+                                className="ml-1.5 sm:ml-2 -mr-1 hover:bg-accent rounded-sm p-1 transition-colors cursor-pointer shrink-0"
                                 aria-label="Clear date"
                               >
                                 <X className="h-3.5 w-3.5" />
@@ -582,17 +588,19 @@ export function FollowUpDialog({
               </div>
 
               {/* Description */}
-              <div className="grid gap-2">
-                <Label htmlFor="description">Description</Label>
+              <div className="grid gap-1.5 sm:gap-2">
+                <Label htmlFor="description" className="text-sm">
+                  Description
+                </Label>
                 <Textarea
                   id="description"
                   {...register("description")}
                   placeholder="Add more context or details..."
-                  rows={4}
+                  rows={3}
                   className={cn(
-                    "resize-none text-sm min-h-[100px]",
+                    "resize-none text-sm min-h-[80px] sm:min-h-[100px]",
                     errors.description &&
-                      "border-destructive focus-visible:ring-destructive"
+                      "border-destructive focus-visible:ring-destructive",
                   )}
                   disabled={isLoading}
                 />
@@ -604,8 +612,10 @@ export function FollowUpDialog({
                 name="slideId"
                 control={control}
                 render={({ field }) => (
-                  <div className="grid gap-2">
-                    <Label htmlFor="slide">Related Slide</Label>
+                  <div className="grid gap-1.5 sm:gap-2">
+                    <Label htmlFor="slide" className="text-sm">
+                      Related Slide
+                    </Label>
                     <Select
                       value={field.value || "none"}
                       onValueChange={(v) =>
@@ -615,7 +625,10 @@ export function FollowUpDialog({
                     >
                       <SelectTrigger
                         id="slide"
-                        className={cn(errors.slideId && "border-destructive")}
+                        className={cn(
+                          "h-9 sm:h-10",
+                          errors.slideId && "border-destructive",
+                        )}
                       >
                         <SelectValue placeholder="None" />
                       </SelectTrigger>
@@ -643,7 +656,7 @@ export function FollowUpDialog({
                   render={({ field }) => {
                     const selectedDefinition =
                       availableSubmetricDefinitions.find(
-                        (def) => def.id === field.value
+                        (def) => def.id === field.value,
                       );
                     const displayText = selectedDefinition
                       ? selectedDefinition.category
@@ -652,8 +665,11 @@ export function FollowUpDialog({
                       : "None";
 
                     return (
-                      <div className="grid gap-2">
-                        <Label htmlFor="submetricDefinition">
+                      <div className="grid gap-1.5 sm:gap-2">
+                        <Label
+                          htmlFor="submetricDefinition"
+                          className="text-sm"
+                        >
                           Related Submetric
                         </Label>
                         <Popover
@@ -668,13 +684,13 @@ export function FollowUpDialog({
                               aria-expanded={submetricOpen}
                               disabled={isLoading}
                               className={cn(
-                                "w-full justify-between font-normal overflow-hidden text-ellipsis whitespace-nowrap",
+                                "w-full h-9 sm:h-10 justify-between font-normal overflow-hidden text-ellipsis whitespace-nowrap",
                                 !field.value && "text-muted-foreground",
                                 errors.submetricDefinitionId &&
-                                  "border-destructive"
+                                  "border-destructive",
                               )}
                             >
-                              <span className="truncate overflow-hidden text-ellipsis whitespace-nowrap block flex-1 text-left">
+                              <span className="truncate overflow-hidden text-ellipsis whitespace-nowrap block flex-1 text-left text-sm">
                                 {displayText}
                               </span>
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -709,7 +725,7 @@ export function FollowUpDialog({
                                         "mr-2 h-4 w-4 shrink-0",
                                         !field.value
                                           ? "opacity-100"
-                                          : "opacity-0"
+                                          : "opacity-0",
                                       )}
                                     />
                                     <span className="text-muted-foreground truncate block flex-1 min-w-0">
@@ -736,7 +752,7 @@ export function FollowUpDialog({
                                               "mr-2 h-4 w-4 shrink-0",
                                               field.value === definition.id
                                                 ? "opacity-100"
-                                                : "opacity-0"
+                                                : "opacity-0",
                                             )}
                                           />
                                           <span className="truncate block flex-1 min-w-0">
@@ -744,7 +760,7 @@ export function FollowUpDialog({
                                           </span>
                                         </CommandItem>
                                       );
-                                    }
+                                    },
                                   )}
                                 </CommandGroup>
                               </CommandList>
@@ -765,8 +781,10 @@ export function FollowUpDialog({
                 name="assigneeIds"
                 control={control}
                 render={({ field }) => (
-                  <div className="grid gap-2">
-                    <Label htmlFor="assignees">Assignees</Label>
+                  <div className="grid gap-1.5 sm:gap-2">
+                    <Label htmlFor="assignees" className="text-sm">
+                      Assignees
+                    </Label>
                     <UserAssigneeMultiSelector
                       users={users}
                       value={field.value || []}
@@ -788,25 +806,23 @@ export function FollowUpDialog({
             </div>
           </div>
 
-          <DialogFooter className="shrink-0 border-t p-4 bg-muted/20">
-            <div className="flex justify-end gap-2">
+          <DialogFooter className="shrink-0 border-t px-4 sm:px-6 py-3 sm:py-4 bg-muted/20">
+            <div className="flex justify-end gap-2 w-full">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
                 disabled={isLoading}
+                className="h-9 sm:h-10 hidden sm:inline-flex"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isLoading || (followUp && !isDirty) || !isValid}
+                className="h-9 sm:h-10 w-full sm:w-auto"
               >
-                {isLoading
-                  ? "Saving..."
-                  : followUp
-                  ? "Save Changes"
-                  : "Create Follow-up"}
+                {isLoading ? "Saving..." : followUp ? "Save Changes" : "Create"}
               </Button>
             </div>
           </DialogFooter>

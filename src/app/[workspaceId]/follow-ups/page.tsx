@@ -1,38 +1,28 @@
 "use client";
 
 import {
-  Check,
   ChevronLeft,
   ChevronRight,
-  ChevronsUpDown,
   Filter,
   Loader2,
   Plus,
   Search,
+  SlidersHorizontal,
+  X,
 } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { getErrorMessage } from "@/lib/utils";
 import {
   getPriorityIcon,
   getPriorityLabel,
   getStatusIcon,
   getStatusLabel,
 } from "@/components/config";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -55,7 +45,7 @@ import {
   useUsers,
   useWorkspace,
 } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, getErrorMessage } from "@/lib/utils";
 import type {
   FollowUpPriority,
   FollowUpQueryParams,
@@ -64,6 +54,7 @@ import type {
 } from "@/types/db/follow-up";
 import { FollowUpDialog } from "./components/follow-up-dialog";
 import { FollowUpTable } from "./components/follow-up-table";
+import { UserAssigneeMultiSelector } from "./components/user-assignee-multi-selector";
 
 export default function FollowUpsPage() {
   const params = useParams();
@@ -83,6 +74,9 @@ export default function FollowUpsPage() {
   const [sortBy, setSortBy] =
     useState<FollowUpQueryParams["sortBy"]>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  // Popover states
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
 
   // Get query params from URL
   const page = Number(searchParams.get("page")) || 1;
@@ -104,7 +98,7 @@ export default function FollowUpsPage() {
   // Update URL with new search params
   const updateSearchParams = useCallback(
     (updates: Partial<FollowUpQueryParams>) => {
-      const newParams = new URLSearchParams(searchParams.toString());
+      const currentParams = new URLSearchParams(window.location.search);
 
       Object.entries(updates).forEach(([key, value]) => {
         if (
@@ -114,49 +108,67 @@ export default function FollowUpsPage() {
           value === false ||
           (Array.isArray(value) && value.length === 0)
         ) {
-          newParams.delete(key);
+          currentParams.delete(key);
         } else if (Array.isArray(value)) {
-          newParams.set(key, value.join(","));
+          currentParams.set(key, value.join(","));
         } else {
-          newParams.set(key, String(value));
+          currentParams.set(key, String(value));
         }
       });
 
       // Reset to page 1 when filters change (except when explicitly changing page)
       if (!("page" in updates) && Object.keys(updates).length > 0) {
-        newParams.set("page", "1");
+        currentParams.set("page", "1");
       }
 
-      router.replace(`/${workspaceId}/follow-ups?${newParams.toString()}`);
+      router.replace(`/${workspaceId}/follow-ups?${currentParams.toString()}`);
     },
-    [searchParams, router, workspaceId]
+    [router, workspaceId]
   );
 
-  // Sync local search state with URL param on mount
+  // Sync local search state with URL param on mount/change
   useEffect(() => {
     setLocalSearchQuery(searchQuery);
   }, [searchQuery]);
 
   // Update URL when debounced search changes
   useEffect(() => {
-    if (debouncedSearchQuery !== searchQuery) {
+    // Only update if debounced value differs from URL and local state matches debounced
+    if (
+      debouncedSearchQuery !== searchQuery &&
+      localSearchQuery === debouncedSearchQuery
+    ) {
       updateSearchParams({ search: debouncedSearchQuery || undefined });
     }
-  }, [debouncedSearchQuery, searchQuery, updateSearchParams]);
+  }, [debouncedSearchQuery, searchQuery, localSearchQuery, updateSearchParams]);
 
-  // Build query params object
-  const queryParams: FollowUpQueryParams = {
-    page,
-    limit,
-    sortBy,
-    sortOrder,
-    ...(statusFilter && { status: statusFilter as FollowUpStatus }),
-    ...(priorityFilter && { priority: priorityFilter as FollowUpPriority }),
-    ...(assigneeIds.length > 0 && { assigneeId: assigneeIds.join(",") }),
-    ...(slideFilter && { slideId: slideFilter }),
-    ...(searchQuery && { search: searchQuery }),
-    ...(unassignedFilter && { unassigned: true }),
-  };
+  // Build query params object - memoized to prevent unnecessary re-renders
+  const queryParams = useMemo<FollowUpQueryParams>(
+    () => ({
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      ...(statusFilter && { status: statusFilter as FollowUpStatus }),
+      ...(priorityFilter && { priority: priorityFilter as FollowUpPriority }),
+      ...(assigneeIds.length > 0 && { assigneeId: assigneeIds.join(",") }),
+      ...(slideFilter && { slideId: slideFilter }),
+      ...(searchQuery && { search: searchQuery }),
+      ...(unassignedFilter && { unassigned: true }),
+    }),
+    [
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      statusFilter,
+      priorityFilter,
+      assigneeIds,
+      slideFilter,
+      searchQuery,
+      unassignedFilter,
+    ]
+  );
 
   // Fetch data with React Query
   const { data, isLoading: isLoadingFollowUps } = useFollowUps(
@@ -272,116 +284,136 @@ export default function FollowUpsPage() {
     }
   };
 
-  const handleClearFilters = () => {
-    // Clear local search state
+  const handleClearFilters = useCallback(() => {
+    // Clear local search state first
     setLocalSearchQuery("");
 
     // Reset sorting to default
     setSortBy("createdAt");
     setSortOrder("desc");
 
-    // Clear URL params
-    router.push(`/${workspaceId}/follow-ups`);
-  };
+    // Close any open popovers/dialogs
+    setMoreFiltersOpen(false);
 
-  // Assignee multi-select state
-  const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false);
-  const selectedUsers = users.filter((user) => assigneeIds.includes(user.id));
+    // Clear URL params - use replace to avoid adding to history
+    router.replace(`/${workspaceId}/follow-ups`);
+  }, [router, workspaceId]);
 
-  const toggleAssignee = (userId: string) => {
-    const newAssigneeIds = assigneeIds.includes(userId)
-      ? assigneeIds.filter((id) => id !== userId)
-      : [...assigneeIds, userId];
+  // Assignee filter handlers
+  const handleAssigneeChange = useCallback(
+    (newAssigneeIds: string[]) => {
+      updateSearchParams({
+        assigneeId:
+          newAssigneeIds.length > 0 ? newAssigneeIds.join(",") : undefined,
+        unassigned: undefined,
+      });
+    },
+    [updateSearchParams]
+  );
 
-    updateSearchParams({
-      assigneeId:
-        newAssigneeIds.length > 0 ? newAssigneeIds.join(",") : undefined,
-      unassigned: undefined,
-    });
-  };
+  const handleUnassignedChange = useCallback(
+    (newUnassigned: boolean) => {
+      updateSearchParams({
+        unassigned: newUnassigned || undefined,
+        assigneeId: undefined,
+      });
+    },
+    [updateSearchParams]
+  );
 
-  const handleUnassignedFilter = () => {
-    updateSearchParams({
-      unassigned: !unassignedFilter,
-      assigneeId: undefined,
-    });
-  };
-
-  const handleSort = (field: FollowUpQueryParams["sortBy"]) => {
-    if (sortBy === field) {
-      // Cycle through: desc -> asc -> default (no sort)
-      if (sortOrder === "desc") {
-        setSortOrder("asc");
+  const handleSort = useCallback(
+    (field: FollowUpQueryParams["sortBy"]) => {
+      if (sortBy === field) {
+        // Cycle through: desc -> asc -> default (no sort)
+        if (sortOrder === "desc") {
+          setSortOrder("asc");
+        } else {
+          // Reset to default sort (createdAt desc)
+          setSortBy("createdAt");
+          setSortOrder("desc");
+        }
       } else {
-        // Reset to default sort (createdAt desc)
-        setSortBy("createdAt");
+        // Default to desc for new field
+        setSortBy(field);
         setSortOrder("desc");
       }
-    } else {
-      // Default to desc for new field
-      setSortBy(field);
-      setSortOrder("desc");
-    }
-  };
+    },
+    [sortBy, sortOrder]
+  );
 
-  const hasActiveFilters =
-    statusFilter ||
-    priorityFilter ||
-    assigneeIds.length > 0 ||
-    slideFilter ||
-    searchQuery ||
-    unassignedFilter;
+  const hasActiveFilters = useMemo(
+    () =>
+      Boolean(
+        statusFilter ||
+          priorityFilter ||
+          assigneeIds.length > 0 ||
+          slideFilter ||
+          searchQuery ||
+          unassignedFilter
+      ),
+    [
+      statusFilter,
+      priorityFilter,
+      assigneeIds.length,
+      slideFilter,
+      searchQuery,
+      unassignedFilter,
+    ]
+  );
 
-  // Helper to get user initials
-  const getInitials = (name: string | null | undefined): string => {
-    if (!name) return "?";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
+  // Count filters that are hidden on mobile (for badge)
+  const mobileHiddenFiltersCount = useMemo(
+    () =>
+      [
+        priorityFilter,
+        slideFilter,
+        assigneeIds.length > 0 || unassignedFilter,
+      ].filter(Boolean).length,
+    [priorityFilter, slideFilter, assigneeIds.length, unassignedFilter]
+  );
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
+        <div className="flex items-center justify-between  px-0 md:px-3  py-2.5 sm:py-4">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">
               Follow-ups
             </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 hidden sm:block">
               Track and manage tasks across your workspace
             </p>
           </div>
           <Button
             onClick={handleCreateClick}
             size="sm"
-            className="gap-2 shadow-sm"
+            className="gap-1.5 sm:gap-2 shadow-sm shrink-0"
           >
             <Plus className="h-4 w-4" />
-            New Follow-up
+            <span className="hidden sm:inline">New Follow-up</span>
+            <span className="sm:hidden">New</span>
           </Button>
         </div>
 
         {/* Filters Bar */}
-        <div className="px-6 pb-4">
-          <div className="flex items-center gap-2 overflow-x-auto">
-            <div className="relative w-[240px] shrink-0">
+        <div className="px-0 md:px-3 pb-2.5 sm:pb-4">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Search - always visible, responsive width */}
+            <div className="relative flex-1 sm:flex-none sm:w-[240px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Search..."
                 value={localSearchQuery}
                 onChange={(e) => setLocalSearchQuery(e.target.value)}
-                className="pl-9 pr-9 h-9 bg-background w-full"
+                className="pl-9 pr-9 h-9 bg-background w-full text-sm md:text-base"
               />
               {isSearchPending && (
                 <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
               )}
             </div>
 
+            {/* Status filter - always visible */}
             <Select
               value={statusFilter || "all"}
               onValueChange={(value) =>
@@ -391,18 +423,19 @@ export default function FollowUpsPage() {
                 })
               }
             >
-              <SelectTrigger className="w-[140px] h-9 shrink-0">
+              <SelectTrigger className="w-[110px] sm:w-[140px] h-9 shrink-0">
                 <SelectValue placeholder="Status">
                   {statusFilter ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                       {getStatusIcon(statusFilter as FollowUpStatus)}
-                      <span>
+                      <span className="hidden sm:inline">
                         {getStatusLabel(statusFilter as FollowUpStatus)}
                       </span>
                     </div>
                   ) : (
-                    "All statuses"
+                    <span className="hidden sm:inline">All statuses</span>
                   )}
+                  {!statusFilter && <span className="sm:hidden">Status</span>}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -440,6 +473,7 @@ export default function FollowUpsPage() {
               </SelectContent>
             </Select>
 
+            {/* Priority filter - hidden on mobile, visible on md+ */}
             <Select
               value={priorityFilter || "all"}
               onValueChange={(value) =>
@@ -449,7 +483,7 @@ export default function FollowUpsPage() {
                 })
               }
             >
-              <SelectTrigger className="w-[140px] h-9 shrink-0">
+              <SelectTrigger className="w-[140px] h-9 shrink-0 hidden md:flex">
                 <SelectValue placeholder="Priority">
                   {priorityFilter ? (
                     <div className="flex items-center gap-2">
@@ -498,6 +532,7 @@ export default function FollowUpsPage() {
               </SelectContent>
             </Select>
 
+            {/* Slide filter - hidden on mobile, visible on lg+ */}
             <Select
               value={slideFilter || "all"}
               onValueChange={(value) =>
@@ -508,7 +543,7 @@ export default function FollowUpsPage() {
               disabled={isLoadingWorkspace}
             >
               <SelectTrigger
-                className="w-[140px] h-9 shrink-0"
+                className="w-[140px] h-9 shrink-0 hidden lg:flex"
                 data-testid="slide-filter"
               >
                 <SelectValue placeholder="All slides">
@@ -538,168 +573,228 @@ export default function FollowUpsPage() {
               </SelectContent>
             </Select>
 
-            <Popover
-              open={assigneePopoverOpen}
-              onOpenChange={setAssigneePopoverOpen}
-            >
+            {/* Assignee selector - hidden on mobile, visible on lg+ */}
+            <div className="hidden lg:block">
+              <UserAssigneeMultiSelector
+                users={users}
+                value={assigneeIds}
+                onValueChange={handleAssigneeChange}
+                placeholder="Assignee"
+                showUnassignedOption
+                unassigned={unassignedFilter}
+                onUnassignedChange={handleUnassignedChange}
+                showMyTasksOption
+                currentUserId={session?.user?.id}
+                currentUserName={session?.user?.name ?? undefined}
+                currentUserEmail={session?.user?.email ?? undefined}
+                currentUserImage={session?.user?.image ?? undefined}
+                triggerWidth="w-[280px]"
+                showRemoveButtons={false}
+              />
+            </div>
+
+            {/* More Filters button - visible on mobile/tablet, hidden on lg+ */}
+            <Popover open={moreFiltersOpen} onOpenChange={setMoreFiltersOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  role="combobox"
-                  aria-expanded={assigneePopoverOpen}
-                  className={cn(
-                    "h-9 w-[280px] justify-between hover:bg-transparent font-normal shrink-0",
-                    selectedUsers.length === 0 &&
-                      !unassignedFilter &&
-                      "text-muted-foreground"
-                  )}
+                  size="sm"
+                  className="h-9 px-2.5 shrink-0 lg:hidden relative"
                 >
-                  <div className="flex items-center gap-1 overflow-hidden min-w-0">
-                    {unassignedFilter ? (
-                      <Badge
-                        variant="outline"
-                        className="rounded-sm px-1.5 py-0.5 gap-1 shrink-0"
-                      >
-                        <span className="text-xs">Unassigned</span>
-                      </Badge>
-                    ) : selectedUsers.length > 0 ? (
-                      <>
-                        {selectedUsers.slice(0, 2).map((user) => (
-                          <Badge
-                            key={user.id}
-                            variant="outline"
-                            className="rounded-sm px-1.5 py-0.5 gap-1 shrink-0 max-w-[90px]"
-                          >
-                            <Avatar className="h-4 w-4 shrink-0">
-                              <AvatarImage src={user.image || undefined} />
-                              <AvatarFallback className="text-[8px]">
-                                {getInitials(user.name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-xs truncate">
-                              {user.name?.split(" ")[0] || user.email}
-                            </span>
-                          </Badge>
-                        ))}
-                        {selectedUsers.length > 2 && (
-                          <Badge
-                            variant="outline"
-                            className="rounded-sm shrink-0"
-                          >
-                            +{selectedUsers.length - 2}
-                          </Badge>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-sm">Assignee</span>
-                    )}
-                  </div>
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  <SlidersHorizontal className="h-4 w-4" />
+                  {mobileHiddenFiltersCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
+                      {mobileHiddenFiltersCount}
+                    </span>
+                  )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent
-                className="w-[300px] p-0"
-                align="start"
+                className="w-[280px] p-3"
+                align="end"
                 sideOffset={4}
               >
-                <Command>
-                  <CommandInput placeholder="Search users..." className="h-9" />
-                  <CommandList className="max-h-[300px]">
-                    <CommandEmpty>No users found.</CommandEmpty>
-                    <CommandGroup>
-                      <CommandItem
-                        onSelect={handleUnassignedFilter}
-                        className="cursor-pointer"
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">More Filters</span>
+                    {mobileHiddenFiltersCount > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                          updateSearchParams({
+                            priority: undefined,
+                            slideId: undefined,
+                            assigneeId: undefined,
+                            unassigned: undefined,
+                          });
+                        }}
                       >
-                        <div className="flex items-center gap-2 flex-1">
-                          <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center">
-                            <span className="text-xs text-muted-foreground">
-                              —
-                            </span>
-                          </div>
-                          <span className="text-sm font-medium">
-                            Unassigned
-                          </span>
-                        </div>
-                        {unassignedFilter && (
-                          <Check className="h-4 w-4 ml-auto" />
-                        )}
-                      </CommandItem>
-                      {session?.user?.id && (
-                        <CommandItem
-                          onSelect={() => toggleAssignee(session.user.id)}
-                          className="cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2 flex-1">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage
-                                src={session.user.image || undefined}
-                              />
-                              <AvatarFallback className="text-xs">
-                                {getInitials(session.user.name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium">
-                                My Tasks
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {session.user.name || session.user.email}
-                              </span>
-                            </div>
-                          </div>
-                          {assigneeIds.includes(session.user.id) && (
-                            <Check className="h-4 w-4 ml-auto" />
-                          )}
-                        </CommandItem>
-                      )}
-                      {users
-                        .filter((user) => user.id !== session?.user?.id)
-                        .map((user) => (
-                          <CommandItem
-                            key={user.id}
-                            value={`${user.name || ""} ${user.email || ""}`}
-                            keywords={[user.name || "", user.email || ""]}
-                            onSelect={() => toggleAssignee(user.id)}
-                            className="cursor-pointer"
-                          >
-                            <div className="flex items-center gap-2 flex-1">
-                              <Avatar className="h-6 w-6">
-                                <AvatarImage src={user.image || undefined} />
-                                <AvatarFallback className="text-xs">
-                                  {getInitials(user.name)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex flex-col">
-                                <span className="text-sm font-medium">
-                                  {user.name || "Unnamed"}
-                                </span>
-                                {user.email && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {user.email}
-                                  </span>
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Priority filter in popover - visible only on mobile (hidden md+) */}
+                  <div className="space-y-1.5 md:hidden">
+                    <Label className="text-xs text-muted-foreground font-normal">
+                      Priority
+                    </Label>
+                    <Select
+                      value={priorityFilter || "all"}
+                      onValueChange={(value) =>
+                        updateSearchParams({
+                          priority:
+                            value === "all"
+                              ? undefined
+                              : (value as FollowUpPriority),
+                        })
+                      }
+                    >
+                      <SelectTrigger className="w-full h-9">
+                        <SelectValue placeholder="Priority">
+                          {priorityFilter ? (
+                            <div className="flex items-center gap-2">
+                              {getPriorityIcon(
+                                priorityFilter as FollowUpPriority
+                              )}
+                              <span>
+                                {getPriorityLabel(
+                                  priorityFilter as FollowUpPriority
                                 )}
-                              </div>
+                              </span>
                             </div>
-                            {assigneeIds.includes(user.id) && (
-                              <Check className="h-4 w-4 ml-auto" />
-                            )}
-                          </CommandItem>
-                        ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
+                          ) : (
+                            "All priorities"
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All priorities</SelectItem>
+                        <SelectItem value="no_priority">
+                          <div className="flex items-center gap-2.5">
+                            {getPriorityIcon("no_priority")}
+                            No Priority
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="urgent">
+                          <div className="flex items-center gap-2.5">
+                            {getPriorityIcon("urgent")}
+                            Urgent
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="high">
+                          <div className="flex items-center gap-2.5">
+                            {getPriorityIcon("high")}
+                            High
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="medium">
+                          <div className="flex items-center gap-2.5">
+                            {getPriorityIcon("medium")}
+                            Medium
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="low">
+                          <div className="flex items-center gap-2.5">
+                            {getPriorityIcon("low")}
+                            Low
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Slide filter in popover */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground font-normal">
+                      Slide
+                    </Label>
+                    <Select
+                      value={slideFilter || "all"}
+                      onValueChange={(value) =>
+                        updateSearchParams({
+                          slideId: value === "all" ? undefined : value,
+                        })
+                      }
+                      disabled={isLoadingWorkspace}
+                    >
+                      <SelectTrigger className="w-full h-9">
+                        <SelectValue placeholder="All slides">
+                          {slideFilter
+                            ? slides.find((s) => s.id === slideFilter)?.title ||
+                              "Loading..."
+                            : "All slides"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All slides</SelectItem>
+                        {isLoadingWorkspace ? (
+                          <SelectItem value="loading" disabled>
+                            Loading...
+                          </SelectItem>
+                        ) : slides.length > 0 ? (
+                          slides.map((slide) => (
+                            <SelectItem key={slide.id} value={slide.id}>
+                              {slide.title}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no-slides" disabled>
+                            No slides
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Assignee selector in popover */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground font-normal">
+                      Assignee
+                    </Label>
+                    <UserAssigneeMultiSelector
+                      users={users}
+                      value={assigneeIds}
+                      onValueChange={handleAssigneeChange}
+                      placeholder="Assignee"
+                      showUnassignedOption
+                      unassigned={unassignedFilter}
+                      onUnassignedChange={handleUnassignedChange}
+                      showMyTasksOption
+                      currentUserId={session?.user?.id}
+                      currentUserName={session?.user?.name ?? undefined}
+                      currentUserEmail={session?.user?.email ?? undefined}
+                      currentUserImage={session?.user?.image ?? undefined}
+                      showRemoveButtons={false}
+                    />
+                  </div>
+                </div>
               </PopoverContent>
             </Popover>
 
+            {/* Clear filters button - desktop only */}
             {hasActiveFilters && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-9 px-3 shrink-0"
+                className="h-9 px-3 shrink-0 hidden sm:flex"
                 onClick={handleClearFilters}
               >
                 Clear
+              </Button>
+            )}
+
+            {/* Clear filters icon button - mobile only */}
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 w-9 p-0 shrink-0 sm:hidden"
+                onClick={handleClearFilters}
+              >
+                <X className="h-4 w-4" />
               </Button>
             )}
           </div>
@@ -724,13 +819,13 @@ export default function FollowUpsPage() {
 
       {/* Footer with Pagination */}
       {(isLoading || (pagination && pagination.total > 0)) && (
-        <div className="border-t bg-background px-6 py-3">
-          <div className="flex items-center justify-between gap-4">
+        <div className="border-t bg-background px-0 md:px-3 py-2 sm:py-3">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
             {/* Left side - Total count and results info */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
                 {isLoading ? (
-                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-20 sm:w-32" />
                 ) : (
                   <>
                     {hasActiveFilters && (
@@ -752,7 +847,7 @@ export default function FollowUpsPage() {
                 )}
               </div>
 
-              {/* Items per page selector - only show if we have multiple pages or enough items */}
+              {/* Items per page selector - only show if we have multiple pages or enough items, hidden on mobile */}
               {pagination && pagination.total > 10 && (
                 <Select
                   value={String(limit)}
@@ -760,7 +855,7 @@ export default function FollowUpsPage() {
                     updateSearchParams({ limit: Number(value), page: 1 })
                   }
                 >
-                  <SelectTrigger className="w-[130px] h-8">
+                  <SelectTrigger className="w-[100px] sm:w-[130px] h-8 hidden sm:flex">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -775,18 +870,18 @@ export default function FollowUpsPage() {
 
             {/* Right side - Pagination controls */}
             {pagination && pagination.totalPages > 1 && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="text-sm text-muted-foreground hidden sm:inline">
                   Page {page} of {pagination.totalPages}
                 </span>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5 sm:gap-1">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => updateSearchParams({ page: page - 1 })}
                     disabled={page <= 1}
-                    className="h-8"
+                    className="h-7 sm:h-8 px-1.5 sm:px-3"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     <span className="hidden sm:inline ml-1">Previous</span>
@@ -829,12 +924,17 @@ export default function FollowUpsPage() {
                     )}
                   </div>
 
+                  {/* Simple page indicator for mobile */}
+                  <span className="text-[10px] sm:text-xs text-muted-foreground md:hidden px-0.5 sm:px-1">
+                    {page}/{pagination.totalPages}
+                  </span>
+
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => updateSearchParams({ page: page + 1 })}
                     disabled={!pagination.hasMore}
-                    className="h-8"
+                    className="h-7 sm:h-8 px-1.5 sm:px-3"
                   >
                     <span className="hidden sm:inline mr-1">Next</span>
                     <ChevronRight className="h-4 w-4" />

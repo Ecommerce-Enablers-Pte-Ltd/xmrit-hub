@@ -76,7 +76,7 @@ const DialogManager = memo(
         onCommentAdded={onCommentAdded}
       />
     );
-  }
+  },
 );
 
 DialogManager.displayName = "DialogManager";
@@ -240,7 +240,7 @@ const XAxisTick = memo(
       prevProps.x === nextProps.x &&
       prevProps.y === nextProps.y
     );
-  }
+  },
 );
 
 XAxisTick.displayName = "XAxisTick";
@@ -295,7 +295,7 @@ const CommentIndicatorDot = memo(
         />
       </foreignObject>
     );
-  }
+  },
 );
 
 CommentIndicatorDot.displayName = "CommentIndicatorDot";
@@ -564,7 +564,7 @@ const ChartTooltip = memo(
         </div>
       </div>
     );
-  }
+  },
 );
 
 ChartTooltip.displayName = "ChartTooltip";
@@ -590,7 +590,7 @@ const SubmetricXChartInternal = memo(
         batchIndex = 0,
         batchSize,
       },
-      ref
+      ref,
     ) => {
       // Track theme for dots (lightweight, singleton observer)
       const isDark = useChartTheme();
@@ -632,7 +632,7 @@ const SubmetricXChartInternal = memo(
         () => ({
           invalidateCommentCache,
         }),
-        [invalidateCommentCache]
+        [invalidateCommentCache],
       );
 
       // Detect bucket type from data
@@ -681,7 +681,7 @@ const SubmetricXChartInternal = memo(
             //            viewing charts 10-19 → charts 10-29 rendered
             //            viewing charts 20-29 → charts 20-39 rendered, etc.
             rootMargin: "5000px",
-          }
+          },
         );
 
         observer.observe(chartContainerRef.current);
@@ -694,8 +694,8 @@ const SubmetricXChartInternal = memo(
       // Returns { counts, isReady } - we wait for isReady before showing chart to avoid double render
       const { counts: bucketsWithComments, isReady: commentCountsReady } =
         useDefinitionCommentCounts(
-          isVisible ? submetric.definitionId ?? undefined : undefined,
-          bucketType
+          isVisible ? (submetric.definitionId ?? undefined) : undefined,
+          bucketType,
         );
 
       // Merge trend line data with chart data if trend is active
@@ -721,7 +721,7 @@ const SubmetricXChartInternal = memo(
         (props: any) => {
           return <CustomLabel {...props} chartData={chartData} />;
         },
-        [chartData] // Re-render when chartData changes to get latest violations
+        [chartData], // Re-render when chartData changes to get latest violations
       );
 
       // Fetch comments for a point when hovering
@@ -752,7 +752,7 @@ const SubmetricXChartInternal = memo(
               });
 
               const response = await fetch(
-                `/api/submetrics/definitions/${submetric.definitionId}/points?${params}`
+                `/api/submetrics/definitions/${submetric.definitionId}/points?${params}`,
               );
 
               if (response.ok) {
@@ -768,7 +768,7 @@ const SubmetricXChartInternal = memo(
             }
           })();
         },
-        [submetric.definitionId, bucketType]
+        [submetric.definitionId, bucketType],
       );
 
       // Tooltip wrapper that uses the separate ChartTooltip component
@@ -784,7 +784,7 @@ const SubmetricXChartInternal = memo(
             onFetchComments={fetchCommentsForPoint}
           />
         ),
-        [submetric, bucketType, fetchCommentsForPoint]
+        [submetric, bucketType, fetchCommentsForPoint],
       );
 
       // Memoize dot renderer
@@ -852,7 +852,7 @@ const SubmetricXChartInternal = memo(
             />
           );
         },
-        [isDark, submetric.color] // Depends on theme and submetric color
+        [isDark, submetric.color], // Depends on theme and submetric color
       );
 
       // Handle point click
@@ -868,7 +868,7 @@ const SubmetricXChartInternal = memo(
             bucketValue,
           });
         },
-        [submetric.definitionId, bucketType, onPointClick]
+        [submetric.definitionId, bucketType, onPointClick],
       );
 
       // Memoize active dot renderer
@@ -927,20 +927,20 @@ const SubmetricXChartInternal = memo(
             />
           );
         },
-        [isDark, submetric.color, handlePointClick] // Depends on theme, color, and click handler
+        [isDark, submetric.color, handlePointClick], // Depends on theme, color, and click handler
       );
 
       // Memoize tick formatter
       const tickFormatter = useCallback(
         (value: number) => Number(value).toFixed(1),
-        []
+        [],
       );
 
       // Memoize custom X-axis tick renderer (simplified - no comment indicators)
       // Use chartData instead of mergedChartData to avoid unnecessary re-renders from trend changes
       const renderXAxisTick = useCallback(
         (props: any) => <XAxisTick {...props} chartData={chartData} />,
-        [chartData]
+        [chartData],
       );
 
       // Memoize comment indicator dot renderer - renders for ALL data points
@@ -957,17 +957,17 @@ const SubmetricXChartInternal = memo(
             />
           );
         },
-        [bucketType, bucketsWithComments]
+        [bucketType, bucketsWithComments],
       );
 
       // Memoize static axis configurations
       const axisLineConfig = useMemo(
         () => ({ stroke: "currentColor", strokeWidth: 1 }),
-        []
+        [],
       );
       const tickLineConfig = useMemo(
         () => ({ stroke: "currentColor", strokeWidth: 1 }),
-        []
+        [],
       );
       const tickConfig = useMemo(() => ({ fontSize: 12 }), []);
 
@@ -982,7 +982,7 @@ const SubmetricXChartInternal = memo(
             fill: "#10b981",
           },
         }),
-        [xmrLimits.avgX]
+        [xmrLimits.avgX],
       );
 
       const unplLabel = useMemo(
@@ -995,7 +995,7 @@ const SubmetricXChartInternal = memo(
             fill: "#94a3b8",
           },
         }),
-        [xmrLimits.UNPL]
+        [xmrLimits.UNPL],
       );
 
       const lnplLabel = useMemo(
@@ -1008,7 +1008,7 @@ const SubmetricXChartInternal = memo(
             fill: "#94a3b8",
           },
         }),
-        [xmrLimits.LNPL]
+        [xmrLimits.LNPL],
       );
 
       // Only render chart when both visible AND comment counts are ready
@@ -1041,7 +1041,7 @@ const SubmetricXChartInternal = memo(
                   height={60}
                 >
                   <Label
-                    value={`date${
+                    value={`${submetric.definition?.xaxis || "date"}${
                       submetric.timezone ? ` (${submetric.timezone})` : ""
                     } - X Plot`}
                     offset={-10}
@@ -1216,8 +1216,8 @@ const SubmetricXChartInternal = memo(
           )}
         </div>
       );
-    }
-  )
+    },
+  ),
 );
 
 SubmetricXChartInternal.displayName = "SubmetricXChartInternal";
@@ -1252,7 +1252,7 @@ export const SubmetricXChart = memo((props: SubmetricXChartProps) => {
       setSelectedPoint(data);
       setCommentsDialogOpen(true);
     },
-    []
+    [],
   );
 
   // Handle dialog close
@@ -1274,7 +1274,7 @@ export const SubmetricXChart = memo((props: SubmetricXChartProps) => {
       // Note: Comment counts will be automatically refetched by React Query
       // when the mutations in SlideSheet invalidate the query
     },
-    [props.onCommentAdded]
+    [props.onCommentAdded],
   );
 
   return (

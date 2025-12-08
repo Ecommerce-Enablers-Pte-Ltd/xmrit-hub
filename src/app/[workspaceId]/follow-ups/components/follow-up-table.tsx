@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   getPriorityIcon,
   getStatusBadgeColor,
@@ -85,6 +85,54 @@ function isOverdue(dueDate: string | null): boolean {
   return new Date(dueDate) < new Date();
 }
 
+// Sortable column header component - defined outside to prevent recreation on every render
+interface SortableHeaderProps {
+  field: SortField;
+  children: React.ReactNode;
+  className?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  onSort?: (field: SortField) => void;
+}
+
+function SortableHeader({
+  field,
+  children,
+  className,
+  sortBy,
+  sortOrder,
+  onSort,
+}: SortableHeaderProps) {
+  const isSorted = sortBy === field;
+  const isAsc = sortOrder === "asc";
+
+  return (
+    <TableHead className={className}>
+      <button
+        type="button"
+        onClick={() => onSort?.(field)}
+        className="flex items-center gap-1.5 hover:text-foreground transition-colors group font-medium text-xs h-10 -my-2 cursor-pointer"
+        disabled={!onSort}
+      >
+        <span>{children}</span>
+        {onSort && (
+          <span className="text-muted-foreground">
+            {isSorted ? (
+              isAsc ? (
+                <ArrowUpIcon className="h-3.5 w-3.5" />
+              ) : (
+                <ArrowDownIcon className="h-3.5 w-3.5" />
+              )
+            ) : (
+              <ArrowUpDown className="h-3.5 w-3.5 opacity-0 group-hover:opacity-50" />
+            )}
+          </span>
+        )}
+      </button>
+    </TableHead>
+  );
+}
+
 export function FollowUpTable({
   followUps,
   workspaceId,
@@ -101,74 +149,34 @@ export function FollowUpTable({
   const [followUpToDelete, setFollowUpToDelete] =
     useState<FollowUpWithDetails | null>(null);
 
-  // Sortable column header component
-  const SortableHeader = ({
-    field,
-    children,
-    className,
-  }: {
-    field: SortField;
-    children: React.ReactNode;
-    className?: string;
-  }) => {
-    const isSorted = sortBy === field;
-    const isAsc = sortOrder === "asc";
-
-    return (
-      <TableHead className={className}>
-        <button
-          type="button"
-          onClick={() => onSort?.(field)}
-          className="flex items-center gap-1.5 hover:text-foreground transition-colors group font-medium text-xs h-10 -my-2 cursor-pointer"
-          disabled={!onSort}
-        >
-          <span>{children}</span>
-          {onSort && (
-            <span className="text-muted-foreground">
-              {isSorted ? (
-                isAsc ? (
-                  <ArrowUpIcon className="h-3.5 w-3.5" />
-                ) : (
-                  <ArrowDownIcon className="h-3.5 w-3.5" />
-                )
-              ) : (
-                <ArrowUpDown className="h-3.5 w-3.5 opacity-0 group-hover:opacity-50" />
-              )}
-            </span>
-          )}
-        </button>
-      </TableHead>
-    );
-  };
-
-  const handleDeleteClick = (followUp: FollowUpWithDetails) => {
+  const handleDeleteClick = useCallback((followUp: FollowUpWithDetails) => {
     setFollowUpToDelete(followUp);
     setDeleteDialogOpen(true);
-  };
+  }, []);
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = useCallback(() => {
     if (followUpToDelete) {
       onDelete(followUpToDelete.id);
       setDeleteDialogOpen(false);
       setFollowUpToDelete(null);
     }
-  };
+  }, [followUpToDelete, onDelete]);
 
-  const handleDeleteCancel = () => {
+  const handleDeleteCancel = useCallback(() => {
     setDeleteDialogOpen(false);
     setFollowUpToDelete(null);
-  };
+  }, []);
 
   if (isLoading) {
     return (
-      <div className="px-6 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
+      <div className="px-0 md:px-6 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
         <Table>
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow className="hover:bg-transparent">
               <TableHead className="h-10 w-[100px] font-medium text-xs">
                 ID
               </TableHead>
-              <TableHead className="h-10 w-[300px] font-medium text-xs">
+              <TableHead className="h-10 w-[400px] font-medium text-xs">
                 Title
               </TableHead>
               <TableHead className="h-10 w-[120px] font-medium text-xs">
@@ -193,16 +201,16 @@ export function FollowUpTable({
             {[0, 1, 2, 3, 4].map((rowNum) => (
               <TableRow key={`skeleton-followup-${rowNum}`}>
                 <TableCell>
-                  <Skeleton className="h-4 w-[5vw]" />
+                  <Skeleton className="h-4 w-12 sm:w-16" />
                 </TableCell>
                 <TableCell>
-                  <Skeleton className="h-4 w-[20vw]" />
+                  <Skeleton className="h-4 w-48 sm:w-64" />
                 </TableCell>
                 <TableCell>
-                  <Skeleton className="h-5 w-[6vw]" />
+                  <Skeleton className="h-5 w-16 sm:w-20" />
                 </TableCell>
                 <TableCell>
-                  <Skeleton className="h-5 w-[6vw]" />
+                  <Skeleton className="h-5 w-16 sm:w-20" />
                 </TableCell>
                 <TableCell>
                   <div className="flex -space-x-2">
@@ -212,10 +220,10 @@ export function FollowUpTable({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Skeleton className="h-4 w-[6vw]" />
+                  <Skeleton className="h-4 w-16 sm:w-20" />
                 </TableCell>
                 <TableCell>
-                  <Skeleton className="h-4 w-[10vw]" />
+                  <Skeleton className="h-4 w-20 sm:w-28" />
                 </TableCell>
                 <TableCell>
                   <Skeleton className="h-8 w-8" />
@@ -230,12 +238,14 @@ export function FollowUpTable({
 
   if (followUps.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 px-6 text-center border-t">
-        <div className="rounded-full bg-muted p-4 mb-4">
-          <Circle className="h-8 w-8 text-muted-foreground" />
+      <div className="flex flex-col items-center justify-center py-12 sm:py-16 px-3 sm:px-6 text-center border-t">
+        <div className="rounded-full bg-muted p-3 sm:p-4 mb-3 sm:mb-4">
+          <Circle className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-semibold mb-1">No follow-ups found</h3>
-        <p className="text-sm text-muted-foreground max-w-sm">
+        <h3 className="text-base sm:text-lg font-semibold mb-1">
+          No follow-ups found
+        </h3>
+        <p className="text-xs sm:text-sm text-muted-foreground max-w-sm">
           Create your first follow-up to start tracking tasks and issues in your
           workspace.
         </p>
@@ -244,131 +254,161 @@ export function FollowUpTable({
   }
 
   return (
-    <div className="px-6 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
-      <Table>
-        <TableHeader className="sticky top-0 bg-background z-10">
-          <TableRow className="hover:bg-transparent">
-            <SortableHeader field="identifier" className="w-[100px]">
-              ID
-            </SortableHeader>
-            <SortableHeader field="title" className="w-[300px]">
-              Title
-            </SortableHeader>
-            <SortableHeader field="status" className="w-[120px]">
-              Status
-            </SortableHeader>
-            <SortableHeader field="priority" className="w-[120px]">
-              Priority
-            </SortableHeader>
-            <TableHead className="h-10 w-[150px] font-medium text-xs">
-              Assignees
-            </TableHead>
-            <SortableHeader field="dueDate" className="w-[120px]">
-              Due Date
-            </SortableHeader>
-            <TableHead className="h-10 w-[150px] font-medium text-xs">
-              Slide
-            </TableHead>
-            <TableHead className="h-10 w-[60px]"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {followUps.map((followUp) => {
-            return (
-              <TableRow
-                key={followUp.id}
-                className={cn(
-                  "cursor-pointer group border-b transition-colors",
-                  followUp.status === "resolved"
-                    ? "bg-muted/20 hover:bg-muted/30"
-                    : "hover:bg-muted/50"
-                )}
-                onClick={() => onEdit(followUp)}
-                title="Click to edit"
+    <TooltipProvider delayDuration={300}>
+      <div className="px-0 md:px-6 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
+        <Table>
+          <TableHeader className="sticky top-0 bg-background z-10">
+            <TableRow className="hover:bg-transparent">
+              <SortableHeader
+                field="identifier"
+                className="w-[100px]"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={onSort}
               >
-                <TableCell className="py-3 font-mono text-xs text-muted-foreground">
-                  {followUp.identifier}
-                </TableCell>
-                <TableCell className="py-3">
-                  <div className="flex flex-col gap-1">
-                    <div className="font-medium text-sm leading-none max-w-[20vw] truncate">
-                      {followUp.title}
-                    </div>
-                    {followUp.description && (
-                      <div className="text-xs text-muted-foreground line-clamp-1">
-                        {followUp.description}
+                ID
+              </SortableHeader>
+              <SortableHeader
+                field="title"
+                className="w-[400px]"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={onSort}
+              >
+                Title
+              </SortableHeader>
+              <SortableHeader
+                field="status"
+                className="w-[120px]"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={onSort}
+              >
+                Status
+              </SortableHeader>
+              <SortableHeader
+                field="priority"
+                className="w-[120px]"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={onSort}
+              >
+                Priority
+              </SortableHeader>
+              <TableHead className="h-10 w-[150px] font-medium text-xs">
+                Assignees
+              </TableHead>
+              <SortableHeader
+                field="dueDate"
+                className="w-[120px]"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={onSort}
+              >
+                Due Date
+              </SortableHeader>
+              <TableHead className="h-10 w-[150px] font-medium text-xs">
+                Slide
+              </TableHead>
+              <TableHead className="h-10 w-[60px]"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {followUps.map((followUp) => {
+              return (
+                <TableRow
+                  key={followUp.id}
+                  className={cn(
+                    "cursor-pointer group border-b transition-colors",
+                    followUp.status === "resolved"
+                      ? "bg-muted/20 hover:bg-muted/30"
+                      : "hover:bg-muted/50"
+                  )}
+                  onClick={() => onEdit(followUp)}
+                  title="Click to edit"
+                >
+                  <TableCell className="py-3 font-mono text-xs text-muted-foreground">
+                    {followUp.identifier}
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <div className="flex flex-col gap-1">
+                      <div className="font-medium text-sm leading-none max-w-[350px] truncate">
+                        {followUp.title}
                       </div>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="py-3">
-                  {followUp.status === "resolved" ? (
-                    // Show non-interactive badge when resolved
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-xs font-normal opacity-60 cursor-not-allowed",
-                        getStatusBadgeColor(followUp.status)
+                      {followUp.description && (
+                        <div className="text-xs text-muted-foreground line-clamp-1">
+                          {followUp.description}
+                        </div>
                       )}
-                      title="Reopen to change status"
-                    >
-                      {getStatusLabel(followUp.status)}
-                    </Badge>
-                  ) : (
-                    // Show dropdown menu for active statuses
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={(e) => e.stopPropagation()}
-                          className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded transition-all hover:scale-105"
-                        >
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-xs font-normal cursor-pointer",
-                              getStatusBadgeColor(followUp.status)
-                            )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-3">
+                    {followUp.status === "resolved" ? (
+                      // Show non-interactive badge when resolved
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs font-normal opacity-60 cursor-not-allowed",
+                          getStatusBadgeColor(followUp.status)
+                        )}
+                        title="Reopen to change status"
+                      >
+                        {getStatusLabel(followUp.status)}
+                      </Badge>
+                    ) : (
+                      // Show dropdown menu for active statuses
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={(e) => e.stopPropagation()}
+                            className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded transition-all hover:scale-105"
                           >
-                            {getStatusLabel(followUp.status)}
-                          </Badge>
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-40">
-                        {Object.entries(STATUS_LABELS)
-                          .filter(([value]) => value !== "resolved")
-                          .map(([value, label]) => (
-                            <DropdownMenuItem
-                              key={value}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onStatusChange(followUp.id, value);
-                              }}
+                            <Badge
+                              variant="outline"
                               className={cn(
-                                followUp.status === value && "bg-accent"
+                                "text-xs font-normal cursor-pointer",
+                                getStatusBadgeColor(followUp.status)
                               )}
                             >
-                              <div className="flex items-center gap-2">
-                                {getStatusIcon(value, "h-2 w-2")}
-                                <span className="text-xs">{label}</span>
-                              </div>
-                            </DropdownMenuItem>
-                          ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </TableCell>
-                <TableCell className="py-3">
-                  <div className="flex items-center gap-1.5">
-                    {getPriorityIcon(followUp.priority, "h-4 w-4")}
-                    <span className="text-xs text-muted-foreground">
-                      {PRIORITY_LABELS[followUp.priority]}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className="py-3">
-                  {followUp.assignees && followUp.assignees.length > 0 ? (
-                    <TooltipProvider delayDuration={300}>
+                              {getStatusLabel(followUp.status)}
+                            </Badge>
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-40">
+                          {Object.entries(STATUS_LABELS)
+                            .filter(([value]) => value !== "resolved")
+                            .map(([value, label]) => (
+                              <DropdownMenuItem
+                                key={value}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onStatusChange(followUp.id, value);
+                                }}
+                                className={cn(
+                                  followUp.status === value && "bg-accent"
+                                )}
+                              >
+                                <div className="flex items-center gap-2">
+                                  {getStatusIcon(value, "h-2 w-2")}
+                                  <span className="text-xs">{label}</span>
+                                </div>
+                              </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <div className="flex items-center gap-1.5">
+                      {getPriorityIcon(followUp.priority, "h-4 w-4")}
+                      <span className="text-xs text-muted-foreground">
+                        {PRIORITY_LABELS[followUp.priority]}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-3">
+                    {followUp.assignees && followUp.assignees.length > 0 ? (
                       <div className="flex -space-x-2">
                         {followUp.assignees.slice(0, 3).map((assignee) => {
                           const isCurrentUser =
@@ -445,136 +485,136 @@ export function FollowUpTable({
                           </Tooltip>
                         )}
                       </div>
-                    </TooltipProvider>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">
-                      Unassigned
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className="py-3">
-                  {followUp.dueDate ? (
-                    <div
-                      className={cn(
-                        "flex items-center gap-1.5 text-sm",
-                        isOverdue(followUp.dueDate) &&
-                          followUp.status !== "done" &&
-                          followUp.status !== "cancelled" &&
-                          followUp.status !== "resolved" &&
-                          "text-red-600 dark:text-red-400"
-                      )}
-                    >
-                      <Calendar className="h-3.5 w-3.5" />
-                      <span>
-                        {new Date(followUp.dueDate).toLocaleDateString(
-                          "en-US",
-                          {
-                            month: "short",
-                            day: "numeric",
-                          }
-                        )}
+                    ) : (
+                      <span className="text-sm text-muted-foreground">
+                        Unassigned
                       </span>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell className="py-3">
-                  {followUp.slide ? (
-                    <Link
-                      href={`/${workspaceId}/slide/${followUp.slideId}`}
-                      target="_blank"
-                      className="text-sm hover:underline truncate max-w-[160px] block"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {followUp.slide.title}
-                    </Link>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell className="py-3">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 hover:bg-muted"
+                    )}
+                  </TableCell>
+                  <TableCell className="py-3">
+                    {followUp.dueDate ? (
+                      <div
+                        className={cn(
+                          "flex items-center gap-1.5 text-sm",
+                          isOverdue(followUp.dueDate) &&
+                            followUp.status !== "done" &&
+                            followUp.status !== "cancelled" &&
+                            followUp.status !== "resolved" &&
+                            "text-red-600 dark:text-red-400"
+                        )}
+                      >
+                        <Calendar className="h-3.5 w-3.5" />
+                        <span>
+                          {new Date(followUp.dueDate).toLocaleDateString(
+                            "en-US",
+                            {
+                              month: "short",
+                              day: "numeric",
+                            }
+                          )}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="py-3">
+                    {followUp.slide ? (
+                      <Link
+                        href={`/${workspaceId}/slide/${followUp.slideId}`}
+                        target="_blank"
+                        className="text-sm hover:underline truncate max-w-[160px] block"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <MoreVertical className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEdit(followUp);
-                        }}
-                      >
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      {followUp.status === "resolved" && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onStatusChange(followUp.id, "todo");
-                            }}
-                          >
-                            <Circle className="mr-2 h-4 w-4" />
-                            Reopen
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteClick(followUp);
-                        }}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4 text-destructive" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                        {followUp.slide.title}
+                      </Link>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 hover:bg-muted"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(followUp);
+                          }}
+                        >
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        {followUp.status === "resolved" && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onStatusChange(followUp.id, "todo");
+                              }}
+                            >
+                              <Circle className="mr-2 h-4 w-4" />
+                              Reopen
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(followUp);
+                          }}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Follow-up?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete{" "}
-              <span className="font-semibold text-foreground">
-                {followUpToDelete?.title}
-              </span>
-              ? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleDeleteCancel}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Follow-up?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete{" "}
+                <span className="font-semibold text-foreground">
+                  {followUpToDelete?.title}
+                </span>
+                ? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handleDeleteCancel}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteConfirm}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </TooltipProvider>
   );
 }

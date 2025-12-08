@@ -20,6 +20,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { usePrefetchSlide } from "@/lib/api";
 import type { Slide } from "@/types/db/slide";
@@ -53,6 +54,14 @@ export function DashboardSidebar({
 }: DashboardSidebarProps) {
   const pathname = usePathname();
   const prefetchSlide = usePrefetchSlide();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  // Close sidebar on mobile when navigating
+  const handleNavClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   const navigationItems: NavigationItem[] = [
     {
@@ -93,11 +102,18 @@ export function DashboardSidebar({
               <SidebarMenuButton
                 asChild={!!item.href}
                 isActive={item.href ? pathname === item.href : false}
-                onClick={item.onClick}
+                onClick={
+                  !item.href
+                    ? () => {
+                        handleNavClick();
+                        item.onClick?.();
+                      }
+                    : undefined
+                }
                 className="cursor-pointer"
               >
                 {item.href ? (
-                  <Link href={item.href}>
+                  <Link href={item.href} onClick={handleNavClick}>
                     <item.icon className="h-4 w-4" />
                     <span>{item.label}</span>
                   </Link>
