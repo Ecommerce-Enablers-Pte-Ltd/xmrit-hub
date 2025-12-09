@@ -47,7 +47,7 @@ export function WorkspaceSettingsDialog({
   const [activeTab, setActiveTab] = React.useState<SettingsTab>("general");
   const [name, setName] = React.useState(workspace.name);
   const [description, setDescription] = React.useState(
-    workspace.description || "",
+    workspace.description || ""
   );
   const [deleteAlertOpen, setDeleteAlertOpen] = React.useState(false);
   const updateWorkspace = useUpdateWorkspace();
@@ -114,7 +114,7 @@ export function WorkspaceSettingsDialog({
       console.error("Error updating workspace:", error);
       const errorMessage = getErrorMessage(
         error,
-        "An unexpected error occurred. Please try again.",
+        "An unexpected error occurred. Please try again."
       );
       toast.error("Failed to update workspace", {
         description: errorMessage,
@@ -141,7 +141,7 @@ export function WorkspaceSettingsDialog({
       console.error("Error deleting workspace:", error);
       const errorMessage = getErrorMessage(
         error,
-        "An unexpected error occurred. Please try again.",
+        "An unexpected error occurred. Please try again."
       );
       toast.error("Failed to delete workspace", {
         description: errorMessage,
@@ -197,11 +197,11 @@ export function WorkspaceSettingsDialog({
                   item.disabled
                     ? "opacity-50 cursor-not-allowed"
                     : activeTab === item.id
-                      ? ""
-                      : "hover:bg-muted",
+                    ? ""
+                    : "hover:bg-muted",
                   activeTab === item.id
                     ? "bg-background text-foreground font-medium shadow-sm"
-                    : "text-muted-foreground",
+                    : "text-muted-foreground"
                 )}
               >
                 {item.icon}
@@ -226,11 +226,11 @@ export function WorkspaceSettingsDialog({
                     item.disabled
                       ? "opacity-50 cursor-not-allowed"
                       : activeTab === item.id
-                        ? ""
-                        : "hover:bg-muted",
+                      ? ""
+                      : "hover:bg-muted",
                     activeTab === item.id
                       ? "bg-background text-foreground font-medium"
-                      : "text-muted-foreground",
+                      : "text-muted-foreground"
                   )}
                 >
                   {item.icon}
@@ -394,7 +394,7 @@ export function WorkspaceSettingsDialog({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel className="w-full sm:w-auto mt-0">
+            <AlertDialogCancel className="hidden sm:inline-flex w-full sm:w-auto mt-0">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

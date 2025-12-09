@@ -111,6 +111,7 @@ export function EditSlideNameDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={updateSlide.isPending}
+            className="hidden sm:inline-flex"
           >
             Cancel
           </Button>

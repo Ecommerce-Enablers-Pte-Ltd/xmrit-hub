@@ -602,7 +602,10 @@ export function FollowUpTable({
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={handleDeleteCancel}>
+              <AlertDialogCancel
+                onClick={handleDeleteCancel}
+                className="hidden sm:inline-flex"
+              >
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
