@@ -57,7 +57,7 @@ function generateSampleDataPoints(
   count: number,
   baseValue: number,
   variance: number,
-  source: string = "sample_data"
+  source: string = "sample_data",
 ): Array<{
   timestamp: string;
   value: number;
@@ -212,13 +212,13 @@ async function createDefaultWorkspace() {
         30,
         50000,
         10000,
-        "sales_database"
+        "sales_database",
       );
       const revenueLabel = "All Regions - Total Revenue";
       const revenueCategory = "sales";
       const revenueSubmetricKey = buildSubmetricKey(
         revenueCategory,
-        revenueLabel
+        revenueLabel,
       );
 
       const revenueSubmetricDef = await sql`
@@ -261,13 +261,13 @@ async function createDefaultWorkspace() {
         30,
         30000,
         6000,
-        "ecommerce_platform"
+        "ecommerce_platform",
       );
       const onlineRevenueLabel = "Online - Revenue";
       const onlineRevenueCategory = "sales";
       const onlineRevenueSubmetricKey = buildSubmetricKey(
         onlineRevenueCategory,
-        onlineRevenueLabel
+        onlineRevenueLabel,
       );
 
       const onlineRevenueDef = await sql`
@@ -349,7 +349,7 @@ async function createDefaultWorkspace() {
       const customersMetricKey = normalizeKey("Customer Acquisition");
       const customersSubmetricKey = buildSubmetricKey(
         customersCategory,
-        customersLabel
+        customersLabel,
       );
 
       const customersDef = await sql`
@@ -392,7 +392,7 @@ async function createDefaultWorkspace() {
         30,
         200,
         40,
-        "marketing_automation"
+        "marketing_automation",
       );
       const trialsLabel = "Free Trial - Sign-ups";
       const trialsCategory = "acquisition";
@@ -434,7 +434,7 @@ async function createDefaultWorkspace() {
       `;
 
       console.log(
-        "    ✓ Added metric: Customer Acquisition (with 2 submetrics)"
+        "    ✓ Added metric: Customer Acquisition (with 2 submetrics)",
       );
 
       // Create Sample Slide 2: Product Metrics
@@ -494,7 +494,7 @@ async function createDefaultWorkspace() {
         30,
         5000,
         500,
-        "analytics_platform"
+        "analytics_platform",
       );
       const dauLabel = "Mobile + Web - Daily Active Users";
       const dauCategory = "engagement";
@@ -541,13 +541,13 @@ async function createDefaultWorkspace() {
         30,
         12,
         2,
-        "analytics_platform"
+        "analytics_platform",
       );
       const sessionLabel = "Average - Session Duration";
       const sessionCategory = "engagement";
       const sessionSubmetricKey = buildSubmetricKey(
         sessionCategory,
-        sessionLabel
+        sessionLabel,
       );
 
       const sessionDef = await sql`
@@ -600,7 +600,7 @@ async function createDefaultWorkspace() {
 
       if (existingUsers.length > 0) {
         console.log(
-          `  Found ${existingUsers.length} existing user(s) for follow-up assignments`
+          `  Found ${existingUsers.length} existing user(s) for follow-up assignments`,
         );
 
         // Create Follow-up 1: Linked to Revenue submetric definition
@@ -637,7 +637,7 @@ async function createDefaultWorkspace() {
               (gen_random_uuid()::text, ${followUp1[0].id}, ${existingUsers[1].id}, NOW())
           `;
           console.log(
-            "  ✅ Created follow-up: Investigate revenue spike (2 assignees)"
+            "  ✅ Created follow-up: Investigate revenue spike (2 assignees)",
           );
         } else {
           await sql`
@@ -645,7 +645,7 @@ async function createDefaultWorkspace() {
             VALUES (gen_random_uuid()::text, ${followUp1[0].id}, ${existingUsers[0].id}, NOW())
           `;
           console.log(
-            "  ✅ Created follow-up: Investigate revenue spike (1 assignee)"
+            "  ✅ Created follow-up: Investigate revenue spike (1 assignee)",
           );
         }
 
@@ -679,7 +679,7 @@ async function createDefaultWorkspace() {
           VALUES (gen_random_uuid()::text, ${followUp2[0].id}, ${existingUsers[0].id}, NOW())
         `;
         console.log(
-          "  ✅ Created follow-up: Optimize trial conversion (1 assignee)"
+          "  ✅ Created follow-up: Optimize trial conversion (1 assignee)",
         );
 
         // Create Follow-up 3: General slide-level task (no submetric definition)
@@ -745,14 +745,14 @@ async function createDefaultWorkspace() {
           )
         `;
         console.log(
-          "  ✅ Created follow-up: Document methodology (unassigned)"
+          "  ✅ Created follow-up: Document methodology (unassigned)",
         );
 
         console.log("\n✅ Sample follow-ups created successfully!\n");
       } else {
         console.log("  ⚠️  No users found - skipping follow-up creation");
         console.log(
-          "     Sign in to the app first, then re-run this script to create sample follow-ups\n"
+          "     Sign in to the app first, then re-run this script to create sample follow-ups\n",
         );
       }
 
@@ -777,7 +777,7 @@ async function createDefaultWorkspace() {
           if (bodyParam?.includes("workspace_id")) {
             node.parameters.body = bodyParam.replace(
               /workspace_id:\s*"[^"]*"/,
-              `workspace_id: "${workspaceId}"`
+              `workspace_id: "${workspaceId}"`,
             );
             updated = true;
             console.log("✅ Updated n8n.json with workspace ID");
@@ -803,7 +803,7 @@ async function createDefaultWorkspace() {
     console.log("   • 2 Slides with 3 metrics and 6 submetrics");
     console.log("   • 3 Metric definitions (workspace-level documentation)");
     console.log(
-      "   • 6 Submetric definitions (stable identities for comments)"
+      "   • 6 Submetric definitions (stable identities for comments)",
     );
     console.log("   • 180+ data points across all metrics");
     console.log("   • 4 Follow-up tasks (if users exist)");

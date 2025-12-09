@@ -60,7 +60,7 @@ export function WorkspaceClient({
   // Edit slide dialog state
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [slideToEdit, setSlideToEdit] = React.useState<SlideWithMetrics | null>(
-    null
+    null,
   );
 
   // Update URL with pagination params
@@ -78,7 +78,7 @@ export function WorkspaceClient({
 
       router.replace(`/${workspaceId}?${newParams.toString()}`);
     },
-    [searchParams, router, workspaceId]
+    [searchParams, router, workspaceId],
   );
 
   // Calculate pagination
@@ -122,7 +122,7 @@ export function WorkspaceClient({
       console.error("Error deleting slide:", error);
       const errorMessage = getErrorMessage(
         error,
-        "An unexpected error occurred. Please try again."
+        "An unexpected error occurred. Please try again.",
       );
       toast.error("Failed to delete slide", {
         description: errorMessage,
@@ -251,7 +251,7 @@ export function WorkspaceClient({
                           onClick={() => updateSearchParams({ page: pageNum })}
                           className={cn(
                             "h-8 w-8 p-0",
-                            page === pageNum && "pointer-events-none"
+                            page === pageNum && "pointer-events-none",
                           )}
                         >
                           {pageNum}

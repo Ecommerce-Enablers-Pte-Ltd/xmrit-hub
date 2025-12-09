@@ -17,7 +17,7 @@ export class BaseApiClient {
 
   protected async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<T> {
     const url = `${this.baseUrl}/api${endpoint}`;
 
@@ -52,7 +52,7 @@ export class BaseApiClient {
       // Extract error message using utility function
       const errorMessage = getErrorMessage(
         errorData,
-        `API request failed (${response.status})`
+        `API request failed (${response.status})`,
       );
 
       throw new Error(errorMessage);

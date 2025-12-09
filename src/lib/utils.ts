@@ -12,7 +12,7 @@ export function cn(...inputs: ClassValue[]) {
 export function setCookie(
   name: string,
   value: string,
-  options?: { path?: string; maxAge?: number }
+  options?: { path?: string; maxAge?: number },
 ): void {
   if (typeof window === "undefined") return;
 
@@ -57,7 +57,7 @@ export function getCookie(name: string): string | null {
 
   const cookies = document.cookie.split("; ");
   const cookie = cookies.find((c) => c.startsWith(`${name}=`));
-  return cookie ? cookie.split("=")[1] ?? null : null;
+  return cookie ? (cookie.split("=")[1] ?? null) : null;
 }
 
 /**
@@ -70,7 +70,7 @@ export function getCookie(name: string): string | null {
  */
 export function getErrorMessage(
   error: unknown,
-  fallback: string = "An unexpected error occurred"
+  fallback: string = "An unexpected error occurred",
 ): string {
   // Handle Error instances
   if (error instanceof Error) {

@@ -50,7 +50,7 @@ const SlideHeader = memo(
     onEditClick,
   }: Omit<SlideHeaderProps, "workspaceId" | "slideId">) => {
     return (
-      <div className="px-6 py-4 border-b">
+      <div className="px-2 py-4 border-b">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
@@ -174,7 +174,7 @@ export function SlideClient({
         workspaceId={workspace.id}
       />
 
-      <div className="px-6 py-6">
+      <div className="px-2 py-6">
         {/* Wrap with CommentCountsProvider to batch-fetch all comment counts in ONE request */}
         <CommentCountsProvider
           slideId={currentSlide.id}

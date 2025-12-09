@@ -656,6 +656,13 @@ export const SubmetricLineChart = memo(
     const [linkCopied, setLinkCopied] = useState(false);
     const chartSlug = generateChartSlug(category, metricName);
     const copyChartLink = useCallback(async () => {
+      // Remove focus from the clicked element
+      setTimeout(() => {
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+      }, 0);
+
       const url = `${window.location.origin}${window.location.pathname}#${chartSlug}`;
       try {
         await navigator.clipboard.writeText(url);

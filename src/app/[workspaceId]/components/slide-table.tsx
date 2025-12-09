@@ -51,7 +51,7 @@ export function SlideTable({
 
   if (isLoading) {
     return (
-      <div className="px-0 md:px-6 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
+      <div className="px-0 md:px-2 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
         <Table>
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow className="hover:bg-transparent">
@@ -101,7 +101,7 @@ export function SlideTable({
   }
 
   return (
-    <div className="px-0 md:px-6 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
+    <div className="px-0 md:px-2 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
       {slides.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 sm:py-16 px-3 sm:px-6 text-center">
           <div className="rounded-full bg-muted p-3 sm:p-4 mb-3 sm:mb-4">

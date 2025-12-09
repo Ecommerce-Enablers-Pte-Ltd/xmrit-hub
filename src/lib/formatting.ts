@@ -43,4 +43,3 @@ export function formatNumber(value: number | null | undefined): string {
   // Remove trailing zeros and decimal point if not needed
   return formatted.replace(/\.?0+$/, "");
 }
-

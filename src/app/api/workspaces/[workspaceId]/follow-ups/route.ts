@@ -12,7 +12,7 @@ import {
 // GET /api/workspaces/[workspaceId]/follow-ups - List follow-ups with pagination and filtering
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ workspaceId: string }> }
+  { params }: { params: Promise<{ workspaceId: string }> },
 ) {
   try {
     const session = await getAuthSession();
@@ -33,7 +33,7 @@ export async function GET(
     if (!workspace.length) {
       return NextResponse.json(
         { error: "Workspace not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -48,7 +48,7 @@ export async function GET(
           error: "Invalid query parameters",
           details: validationResult.error.issues,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -88,7 +88,7 @@ export async function GET(
     // Submetric definition filter
     if (submetricDefinitionId) {
       conditions.push(
-        eq(followUps.submetricDefinitionId, submetricDefinitionId)
+        eq(followUps.submetricDefinitionId, submetricDefinitionId),
       );
     }
 
@@ -98,7 +98,7 @@ export async function GET(
       const searchCondition = or(
         like(followUps.title, searchPattern),
         like(followUps.description, searchPattern),
-        like(followUps.identifier, searchPattern)
+        like(followUps.identifier, searchPattern),
       );
       if (searchCondition) {
         conditions.push(searchCondition);
@@ -109,7 +109,7 @@ export async function GET(
     if (overdue) {
       const overdueCondition = and(
         lt(followUps.dueDate, new Date().toISOString().split("T")[0]),
-        sql`${followUps.status} != 'done'`
+        sql`${followUps.status} != 'done'`,
       );
       if (overdueCondition) {
         conditions.push(overdueCondition);
@@ -138,11 +138,11 @@ export async function GET(
     // Client-side filtering for assignee (complex join)
     if (unassigned) {
       allFollowUps = allFollowUps.filter(
-        (followUp) => !followUp.assignees || followUp.assignees.length === 0
+        (followUp) => !followUp.assignees || followUp.assignees.length === 0,
       );
     } else if (assigneeId) {
       allFollowUps = allFollowUps.filter((followUp) =>
-        followUp.assignees?.some((assignee) => assignee.userId === assigneeId)
+        followUp.assignees?.some((assignee) => assignee.userId === assigneeId),
       );
     }
 
@@ -215,13 +215,13 @@ export async function GET(
           hasMore: page < totalPages,
         },
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error fetching follow-ups:", error);
     return NextResponse.json(
       { error: "Failed to fetch follow-ups" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -229,7 +229,7 @@ export async function GET(
 // POST /api/workspaces/[workspaceId]/follow-ups - Create new follow-up
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ workspaceId: string }> }
+  { params }: { params: Promise<{ workspaceId: string }> },
 ) {
   try {
     const session = await getAuthSession();
@@ -250,7 +250,7 @@ export async function POST(
     if (!workspace.length) {
       return NextResponse.json(
         { error: "Workspace not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -264,7 +264,7 @@ export async function POST(
           error: "Invalid request data",
           details: validationResult.error.issues,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -329,19 +329,19 @@ export async function POST(
           if (attempts >= maxAttempts) {
             console.error(
               "Failed to generate unique identifier after retries:",
-              err
+              err,
             );
             return NextResponse.json(
               {
                 error:
                   "Failed to generate unique identifier. Please try again.",
               },
-              { status: 500 }
+              { status: 500 },
             );
           }
           // Wait a short random time before retrying to reduce collision probability
           await new Promise((resolve) =>
-            setTimeout(resolve, Math.random() * 100)
+            setTimeout(resolve, Math.random() * 100),
           );
           continue;
         }
@@ -354,7 +354,7 @@ export async function POST(
     if (!newFollowUp) {
       return NextResponse.json(
         { error: "Failed to create follow-up" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -367,7 +367,7 @@ export async function POST(
         validatedData.assigneeIds.map((userId) => ({
           followUpId: createdFollowUpId,
           userId,
-        }))
+        })),
       );
     }
 
@@ -393,7 +393,7 @@ export async function POST(
     console.error("Error creating follow-up:", error);
     return NextResponse.json(
       { error: "Failed to create follow-up" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

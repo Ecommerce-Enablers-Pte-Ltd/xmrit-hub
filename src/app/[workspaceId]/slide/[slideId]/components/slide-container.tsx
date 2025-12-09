@@ -672,7 +672,7 @@ export const SlideContainer = memo(function SlideContainer({
       {totalCharts > 1 && (
         <div
           ref={navigationRef}
-          className="fixed right-18 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 opacity-40 hover:opacity-100 transition-opacity duration-300"
+          className="fixed right-14 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 opacity-40 hover:opacity-100 transition-opacity duration-300"
         >
           <Button
             onClick={() => setIsSearchOpen(true)}

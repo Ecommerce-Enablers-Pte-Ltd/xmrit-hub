@@ -18,4 +18,3 @@ export function handleCloseAutoFocus(e: Event): void {
     document.activeElement.blur();
   }
 }
-

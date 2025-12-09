@@ -16,7 +16,7 @@ const optionalUuidField = (message: string) =>
       (val) => val === undefined || z.string().uuid().safeParse(val).success,
       {
         message,
-      }
+      },
     );
 
 /**
@@ -46,7 +46,7 @@ export const createFollowUpSchema = z.object({
     .optional(),
   slideId: optionalUuidField("Invalid slide ID format"),
   submetricDefinitionId: optionalUuidField(
-    "Invalid submetric definition ID format"
+    "Invalid submetric definition ID format",
   ),
   threadId: optionalUuidField("Invalid thread ID format"),
   status: z
@@ -58,7 +58,7 @@ export const createFollowUpSchema = z.object({
   assigneeIds: z.array(z.string().uuid("Invalid user ID format")).optional(),
   dueDate: optionalDateField(
     /^\d{4}-\d{2}-\d{2}$/,
-    "Due date must be in YYYY-MM-DD format"
+    "Due date must be in YYYY-MM-DD format",
   ),
   workspaceId: optionalUuidField("Invalid workspace ID format"),
 });
@@ -79,7 +79,7 @@ export const updateFollowUpSchema = z.object({
     .optional(),
   slideId: optionalUuidField("Invalid slide ID format"),
   submetricDefinitionId: optionalUuidField(
-    "Invalid submetric definition ID format"
+    "Invalid submetric definition ID format",
   ),
   threadId: optionalUuidField("Invalid thread ID format"),
   resolvedAtSlideId: z
@@ -94,7 +94,7 @@ export const updateFollowUpSchema = z.object({
         z.string().uuid().safeParse(val).success,
       {
         message: "Invalid slide ID format",
-      }
+      },
     ),
   status: z
     .enum(["todo", "in_progress", "done", "cancelled", "resolved"])
@@ -105,7 +105,7 @@ export const updateFollowUpSchema = z.object({
   assigneeIds: z.array(z.string().uuid("Invalid user ID format")).optional(),
   dueDate: optionalDateField(
     /^\d{4}-\d{2}-\d{2}$/,
-    "Due date must be in YYYY-MM-DD format"
+    "Due date must be in YYYY-MM-DD format",
   ),
 });
 
@@ -148,7 +148,7 @@ export const followUpQuerySchema = z.object({
   assigneeId: optionalUuidField("Invalid user ID format"),
   slideId: optionalUuidField("Invalid slide ID format"),
   submetricDefinitionId: optionalUuidField(
-    "Invalid submetric definition ID format"
+    "Invalid submetric definition ID format",
   ),
   search: z.string().max(200).optional(),
 
