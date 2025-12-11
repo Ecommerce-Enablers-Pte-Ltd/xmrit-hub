@@ -58,6 +58,7 @@ export async function GET(
       .select({
         id: slides.id,
         title: slides.title,
+        slideNumber: slides.slideNumber,
         description: slides.description,
         slideDate: slides.slideDate,
         workspaceId: slides.workspaceId,

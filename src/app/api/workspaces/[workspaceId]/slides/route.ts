@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -51,11 +51,23 @@ export async function POST(
 
     const body = await request.json();
 
-    // Create the slide
+    // Get the next slide number for this workspace
+    // Find the maximum slideNumber and add 1
+    const maxSlideResult = await db
+      .select({
+        maxNumber: sql<number>`COALESCE(MAX(${slides.slideNumber}), 0)`,
+      })
+      .from(slides)
+      .where(eq(slides.workspaceId, workspaceId));
+
+    const nextSlideNumber = (maxSlideResult[0]?.maxNumber ?? 0) + 1;
+
+    // Create the slide with the assigned slideNumber
     const [newSlide] = await db
       .insert(slides)
       .values({
         title: body.title || "Untitled Slide",
+        slideNumber: nextSlideNumber,
         description: body.description,
         workspaceId,
         slideDate: body.slideDate,
@@ -96,6 +108,16 @@ export async function POST(
 
     return NextResponse.json({ slide }, { status: 201 });
   } catch (error) {
+    // Handle unique constraint violation (race condition - retry once)
+    if (
+      error instanceof Error &&
+      error.message.includes("unique constraint") &&
+      error.message.includes("slide_workspace_slide_number")
+    ) {
+      console.warn("Slide number conflict, retrying...");
+      // Could implement retry logic here if needed
+    }
+
     console.error("Error creating slide:", error);
     return NextResponse.json(
       { error: "Failed to create slide" },

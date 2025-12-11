@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
+// Main middleware - handles authentication only
+// URL normalization is handled at the page level
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isLoggedIn = !!req.auth;
 
-  // Create response based on authentication logic
   let response: NextResponse;
 
   // Allow access to public API routes (needed for NextAuth)
@@ -32,6 +33,17 @@ export default auth((req) => {
   else {
     response = NextResponse.next();
   }
+
+  // Add headers to prevent search engine indexing and crawling
+  response.headers.set(
+    "X-Robots-Tag",
+    "noindex, nofollow, noarchive, nosnippet, noimageindex",
+  );
+
+  // Additional security headers to prevent metadata exposure
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("Referrer-Policy", "no-referrer");
 
   return response;
 });

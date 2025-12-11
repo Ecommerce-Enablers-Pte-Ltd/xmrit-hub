@@ -1,5 +1,7 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ZodError } from "zod";
@@ -14,15 +16,21 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { workspaceKeys } from "@/lib/api";
 import { useUpdateSlide } from "@/lib/api/slides";
 import { getErrorMessage } from "@/lib/utils";
 import { updateSlideTitleSchema } from "@/lib/validations/slide";
-import type { SlideWithMetrics } from "@/types/db/slide";
+
+// Minimal slide type needed for editing
+interface SlideForEdit {
+  id: string;
+  title: string;
+}
 
 interface EditSlideNameDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  slide: SlideWithMetrics;
+  slide: SlideForEdit;
   workspaceId: string;
 }
 
@@ -32,6 +40,8 @@ export function EditSlideNameDialog({
   slide,
   workspaceId,
 }: EditSlideNameDialogProps) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [titleValue, setTitleValue] = useState(slide.title);
   const updateSlide = useUpdateSlide();
 
@@ -64,6 +74,17 @@ export function EditSlideNameDialog({
 
       toast.success("Slide title updated");
       onOpenChange(false);
+
+      // Invalidate workspace cache so sidebar updates
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.detail(workspaceId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.slidesList(workspaceId),
+      });
+
+      // Refresh the page to get updated data from server
+      router.refresh();
     } catch (error) {
       if (error instanceof ZodError) {
         // Show validation errors to user

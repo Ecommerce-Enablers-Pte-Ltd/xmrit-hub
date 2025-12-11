@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
@@ -9,6 +9,7 @@ import {
   submetrics,
   workspaces,
 } from "@/lib/db/schema";
+import { slugify } from "@/lib/utils";
 
 /**
  * Metric Ingestion API
@@ -33,7 +34,7 @@ import {
  *       "chart_type": "line", // optional, default: "line"
  *       "submetrics": [
  *         {
- *           "category": "Brand A",            // optional - dimension/segment (e.g., "Brand A", "North America")
+ *           "category": "Adidas",            // optional - dimension/segment (e.g., "Adidas", "North America")
  *           "timezone": "ltz",               // optional - default: "UTC"
  *           "xaxis": "period",               // optional - x-axis semantic label (stored in definition)
  *           "yaxis": "% of transactions",    // optional - y-axis semantic label (stored in definition, fallback for unit)
@@ -65,10 +66,10 @@ interface DataPointInput {
 }
 
 interface SubmetricInput {
-  category?: string; // Dimension/segment (e.g., "Brand A", "North America")
+  category?: string; // Dimension/segment (e.g., "Adidas", "North America")
   timezone?: string;
   xaxis?: string; // X-axis semantic label (stored in definition, e.g., "period", "tracked_week")
-  yaxis?: string; // Y-axis semantic label (stored in definition, e.g., "hours", "% completion")
+  yaxis?: string; // Y-axis semantic label (stored in definition, e.g., "hours", "% of MCB")
   preferred_trend?: "uptrend" | "downtrend" | "stable" | null;
   unit?: string; // Unit of measurement (stored in definition, takes precedence over yaxis if both provided)
   aggregation_type?: string;
@@ -96,7 +97,7 @@ interface IngestRequest {
 
 /**
  * Normalize a string to a stable key format
- * Example: "% Completion Rate" -> "completion-rate"
+ * Example: "% of MCB Count" -> "of-mcb-count"
  */
 function normalizeKey(str: string): string {
   return str
@@ -108,7 +109,7 @@ function normalizeKey(str: string): string {
 
 /**
  * Derive stable submetric key from category and metric name
- * Example: category="Brand A", metricName="% Completion Rate" -> "brand-a-completion-rate"
+ * Example: category="Adidas", metricName="% of MCB Count" -> "adidas-of-mcb-count"
  * Example: category=null, metricName="Transaction Count" -> "transaction-count"
  */
 function deriveSubmetricKey(
@@ -229,10 +230,16 @@ export async function POST(request: NextRequest) {
     let workspaceId = body.workspace_id;
     if (!workspaceId) {
       // Create a new public workspace if not provided
+      const workspaceName = body.slide_title || "API Ingestion Workspace";
+      // Generate a unique slug by combining slugified name with a timestamp suffix
+      // Use fallback "api-workspace" if slugify returns empty (e.g., all special chars)
+      const baseSlug = slugify(workspaceName, "api-workspace");
+      const uniqueSlug = `${baseSlug}-${Date.now().toString(36)}`;
       const [newWorkspace] = await db
         .insert(workspaces)
         .values({
-          name: body.slide_title || "API Ingestion Workspace",
+          name: workspaceName,
+          slug: uniqueSlug,
           description: "Created via API",
           isPublic: true,
         })
@@ -262,11 +269,19 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Get the next slide number for this workspace
+      const maxSlideNumberResult = await db
+        .select({ maxNum: sql<number>`COALESCE(MAX("slideNumber"), 0)` })
+        .from(slides)
+        .where(eq(slides.workspaceId, workspaceId));
+      const nextSlideNumber = (maxSlideNumberResult[0]?.maxNum ?? 0) + 1;
+
       // Create new slide
       const [newSlide] = await db
         .insert(slides)
         .values({
           title: body.slide_title,
+          slideNumber: nextSlideNumber,
           description: body.slide_description || null,
           workspaceId,
           slideDate: body.slide_date || null,
@@ -503,16 +518,16 @@ export async function GET(request: NextRequest) {
       slide_description: "Optional description",
       metrics: [
         {
-          metric_name: "% Completion Rate",
+          metric_name: "% of MCB Count to Total Transactions",
           description: "Optional description",
           ranking: 1,
           chart_type: "line",
           submetrics: [
             {
-              category: "Brand A",
+              category: "Adidas",
               timezone: "ltz",
               xaxis: "period",
-              yaxis: "% completion",
+              yaxis: "% of MCB",
               unit: "%",
               preferred_trend: "downtrend",
               aggregation_type: "avg",

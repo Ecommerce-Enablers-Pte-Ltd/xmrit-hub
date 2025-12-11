@@ -1,16 +1,17 @@
 "use client";
 
 import { LoaderCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { use, useEffect, useMemo } from "react";
+import { use, useEffect, useMemo, useRef } from "react";
 import { useWorkspaceSlidesList, useWorkspaces } from "@/lib/api";
+import { normalizeSlug } from "@/lib/utils";
 import { DashboardLayout } from "./components/dashboard-layout";
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
   params: Promise<{
-    workspaceId: string;
+    workspaceSlug: string;
   }>;
 }
 
@@ -18,9 +19,14 @@ export default function WorkspaceLayout({
   children,
   params,
 }: WorkspaceLayoutProps) {
-  const { workspaceId } = use(params);
+  const { workspaceSlug } = use(params);
   const { data: session, status } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Track if workspace was ever found - used to distinguish between
+  // "workspace doesn't exist" (404) vs "workspace was deleted" (no 404)
+  const wasWorkspaceFoundRef = useRef(false);
 
   // Fetch lightweight data for layout
   const {
@@ -29,21 +35,48 @@ export default function WorkspaceLayout({
     error: workspacesError,
   } = useWorkspaces();
 
+  // URL Normalization: Check synchronously
+  const normalizedSlug = normalizeSlug(workspaceSlug);
+  const needsNormalization = workspaceSlug !== normalizedSlug;
+
+  // Find current workspace from the workspaces list by slug
+  // Uses normalizeSlug for consistent case-insensitive comparison
+  const workspace = useMemo(
+    () =>
+      workspaces.find(
+        (w) => normalizeSlug(w.slug) === normalizeSlug(workspaceSlug),
+      ),
+    [workspaces, workspaceSlug],
+  );
+
   // Use lightweight endpoint that only loads slide metadata (no metrics/submetrics)
+  // Only fetch slides if we found the workspace
   const {
     slides,
     loading: slidesLoading,
     error: slidesError,
-  } = useWorkspaceSlidesList(workspaceId);
+  } = useWorkspaceSlidesList(workspace?.id ?? "");
 
-  // Find current workspace from the workspaces list
-  const workspace = useMemo(
-    () => workspaces.find((w) => w.id === workspaceId),
-    [workspaces, workspaceId],
-  );
-
-  const loading = workspacesLoading || slidesLoading;
+  const loading = workspacesLoading || (workspace && slidesLoading);
   const error = workspacesError || slidesError;
+
+  // URL Normalization redirect
+  useEffect(() => {
+    if (needsNormalization) {
+      const normalizedPath = pathname.replace(
+        `/${workspaceSlug}`,
+        `/${normalizedSlug}`,
+      );
+      router.replace(normalizedPath);
+    }
+  }, [needsNormalization, workspaceSlug, normalizedSlug, pathname, router]);
+
+  // Track if workspace was ever found
+  useEffect(() => {
+    if (workspace) {
+      wasWorkspaceFoundRef.current = true;
+    }
+  }, [workspace]);
 
   useEffect(() => {
     // If not authenticated, redirect to sign-in
@@ -54,11 +87,25 @@ export default function WorkspaceLayout({
   }, [status, router]);
 
   useEffect(() => {
-    if (!loading && !workspace && workspaces.length > 0) {
-      // Workspace not found in the list, redirect to 404
+    // Only redirect to 404 if:
+    // 1. Not loading
+    // 2. Workspace not found
+    // 3. Other workspaces exist (so it's not just an empty state)
+    // 4. Workspace was NEVER found (i.e., it's a bad URL, not a deletion)
+    if (
+      !workspacesLoading &&
+      !workspace &&
+      workspaces.length > 0 &&
+      !wasWorkspaceFoundRef.current
+    ) {
       router.push("/404");
     }
-  }, [loading, workspace, workspaces, router]);
+  }, [workspacesLoading, workspace, workspaces, router]);
+
+  // Return null immediately if URL needs normalization
+  if (needsNormalization) {
+    return null;
+  }
 
   if (status === "loading") {
     return (

@@ -7,8 +7,33 @@ import { config } from "dotenv";
 config();
 
 /**
+ * Converts a string into a URL-safe slug (lowercase).
+ * Similar to how Metabase generates URL slugs.
+ * Examples:
+ *   "Hello World" -> "hello-world"
+ *   "Q4 2024 Revenue Report" -> "q4-2024-revenue-report"
+ *   "!!!" -> "" (empty, use fallback parameter if needed)
+ */
+function slugify(text: string, fallback?: string): string {
+  const result = text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "") // Remove special characters except hyphens
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+    .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
+
+  // Return fallback if result is empty and fallback is provided
+  if (!result && fallback !== undefined) {
+    return fallback;
+  }
+
+  return result;
+}
+
+/**
  * Normalize a string to a stable key format
- * Example: "Number of Transactions" -> "number-of-transactions"
+ * Example: "% of MCB Count" -> "of-mcb-count"
  */
 function normalizeKey(str: string): string {
   return str
@@ -21,8 +46,8 @@ function normalizeKey(str: string): string {
 /**
  * Derive submetric key from label
  * Extracts both category prefix and metric name to create a unique key
- * Example: "[Brand A] - Number of Transactions" -> "brand-a-number-of-transactions"
- * Example: "[Brand B] - Number of Transactions" -> "brand-b-number-of-transactions"
+ * Example: "[Adidas] - % of MCB Count" -> "adidas-of-mcb-count"
+ * Example: "[Nike] - % of MCB Count" -> "nike-of-mcb-count"
  * Example: "Transaction Count" -> "transaction-count"
  */
 function deriveSubmetricKey(label: string): string {
@@ -94,54 +119,72 @@ async function createDefaultWorkspace() {
   const DATABASE_URL = process.env.DATABASE_URL;
 
   if (!DATABASE_URL) {
-    console.error("❌ DATABASE_URL not found in environment");
-    process.exit(1);
+    console.log(
+      "⚠️  DATABASE_URL not found - skipping default workspace creation",
+    );
+    console.log(
+      "   Run 'npm run db:create-default-workspace' manually after setting up your database",
+    );
+    return;
   }
 
-  console.log("🚀 Initializing default workspace and sample data...\n");
+  console.log("🚀 Checking for existing workspaces...\n");
 
   try {
     const sql = neon(DATABASE_URL);
 
     // ==========================================
-    // 1. CHECK/CREATE DEFAULT WORKSPACE
+    // 1. CHECK IF ANY WORKSPACES EXIST
     // ==========================================
-    const existingWorkspaces = await sql`
-      SELECT id, name FROM "workspace"
-      WHERE name = 'Xmrit Hub Sample Workspace'
-      LIMIT 1
+    const workspaceCount = await sql`
+      SELECT COUNT(*)::int as count FROM "workspace"
     `;
 
-    let workspaceId: string;
+    const count = workspaceCount[0]?.count ?? 0;
 
-    if (existingWorkspaces.length > 0) {
-      workspaceId = existingWorkspaces[0].id;
-      console.log("✓ Default workspace already exists");
-      console.log(`  ID: ${workspaceId}`);
-      console.log(`  Name: ${existingWorkspaces[0].name}\n`);
-    } else {
-      const newWorkspace = await sql`
-        INSERT INTO "workspace" (id, name, description, "isPublic", "isArchived", "createdAt", "updatedAt")
-        VALUES (
-          gen_random_uuid()::text,
-          'Xmrit Hub Sample Workspace',
-          'Sample workspace with example slides demonstrating XMR charts, metrics tracking, and statistical process control',
-          true,
-          false,
-          NOW(),
-          NOW()
-        )
-        RETURNING id, name
-      `;
-
-      workspaceId = newWorkspace[0].id;
-      console.log("✅ Created new default workspace");
-      console.log(`  ID: ${workspaceId}`);
-      console.log(`  Name: ${newWorkspace[0].name}\n`);
+    if (count > 0) {
+      console.log(
+        `✓ Found ${count} existing workspace(s) - skipping default workspace creation`,
+      );
+      console.log(
+        "   Run 'npm run db:create-default-workspace' manually if you want to create the sample workspace\n",
+      );
+      return;
     }
 
+    console.log(
+      "✓ No workspaces found - creating default workspace and sample data...\n",
+    );
+
     // ==========================================
-    // 2. CHECK/CREATE SAMPLE SLIDES
+    // 2. CREATE DEFAULT WORKSPACE
+    // ==========================================
+    const workspaceName = "Xmrit Hub Sample Workspace";
+    const workspaceSlug = slugify(workspaceName, "xmrit-hub-sample-workspace");
+
+    const newWorkspace = await sql`
+      INSERT INTO "workspace" (id, name, slug, description, "isPublic", "isArchived", "createdAt", "updatedAt")
+      VALUES (
+        gen_random_uuid()::text,
+        ${workspaceName},
+        ${workspaceSlug},
+        'Sample workspace with example slides demonstrating XMR charts, metrics tracking, and statistical process control',
+        true,
+        false,
+        NOW(),
+        NOW()
+      )
+      RETURNING id, name, slug
+    `;
+
+    const workspaceId = newWorkspace[0].id;
+    console.log("✅ Created new default workspace");
+    console.log(`  ID: ${workspaceId}`);
+    console.log(`  Name: ${newWorkspace[0].name}`);
+    console.log(`  Slug: ${newWorkspace[0].slug}\n`);
+
+    // ==========================================
+    // 3. CHECK/CREATE SAMPLE SLIDES
     // ==========================================
     const existingSlides = await sql`
       SELECT id, title FROM "slide"
@@ -155,22 +198,35 @@ async function createDefaultWorkspace() {
     } else {
       console.log("📊 Creating sample slides with metrics...\n");
 
+      // Get the next slide number for this workspace
+      const maxSlideResult = await sql`
+        SELECT COALESCE(MAX("slideNumber"), 0) as max_number
+        FROM "slide"
+        WHERE "workspaceId" = ${workspaceId}
+      `;
+      const nextSlideNumber =
+        Number.parseInt(maxSlideResult[0]?.max_number ?? "0", 10) + 1;
+
       // Create Sample Slide 1: Sales Performance
       const slide1 = await sql`
-        INSERT INTO "slide" (id, title, description, "workspaceId", "slideDate", "createdAt", "updatedAt")
+        INSERT INTO "slide" (id, title, "slideNumber", description, "workspaceId", "slideDate", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           'Sales Performance Dashboard',
+          ${nextSlideNumber},
           'Key sales metrics and performance indicators',
           ${workspaceId},
           CURRENT_DATE,
           NOW(),
           NOW()
         )
-        RETURNING id
+        RETURNING id, "slideNumber"
       `;
       const slide1Id = slide1[0].id;
-      console.log("  ✅ Created slide: Sales Performance Dashboard");
+      const slide1Number = slide1[0].slideNumber;
+      console.log(
+        `  ✅ Created slide: Sales Performance Dashboard (Slide #${slide1Number})`,
+      );
 
       // Create Metric 1: Revenue
       const revenueMetricKey = normalizeKey("Revenue");
@@ -437,22 +493,27 @@ async function createDefaultWorkspace() {
         "    ✓ Added metric: Customer Acquisition (with 2 submetrics)",
       );
 
-      // Create Sample Slide 2: Product Metrics
+      // Create Sample Slide 2: Product Metrics (slide number is slide1Number + 1)
+      const nextSlide2Number = slide1Number + 1;
       const slide2 = await sql`
-        INSERT INTO "slide" (id, title, description, "workspaceId", "slideDate", "createdAt", "updatedAt")
+        INSERT INTO "slide" (id, title, "slideNumber", description, "workspaceId", "slideDate", "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid()::text,
           'Product Engagement Metrics',
+          ${nextSlide2Number},
           'User engagement and product usage statistics',
           ${workspaceId},
           CURRENT_DATE,
           NOW(),
           NOW()
         )
-        RETURNING id
+        RETURNING id, "slideNumber"
       `;
       const slide2Id = slide2[0].id;
-      console.log("  ✅ Created slide: Product Engagement Metrics");
+      const slide2Number = slide2[0].slideNumber;
+      console.log(
+        `  ✅ Created slide: Product Engagement Metrics (Slide #${slide2Number})`,
+      );
 
       // Create Metric 3: Active Users
       const activeUsersMetricKey = normalizeKey("Active Users");
@@ -796,9 +857,18 @@ async function createDefaultWorkspace() {
     // ==========================================
     // 6. SUMMARY
     // ==========================================
+    // Get workspace slug for display
+    const workspaceInfo = await sql`
+      SELECT slug FROM "workspace"
+      WHERE id = ${workspaceId}
+      LIMIT 1
+    `;
+    const workspaceSlugDisplay = workspaceInfo[0]?.slug ?? workspaceSlug;
+
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     console.log("🎉 Workspace initialization complete!\n");
     console.log(`📍 Workspace ID: ${workspaceId}`);
+    console.log(`📍 Workspace Slug: ${workspaceSlugDisplay}`);
     console.log("\n📊 Sample Data Created:");
     console.log("   • 2 Slides with 3 metrics and 6 submetrics");
     console.log("   • 3 Metric definitions (workspace-level documentation)");
@@ -810,8 +880,9 @@ async function createDefaultWorkspace() {
     console.log("\n📝 Next steps:");
     console.log("   1. Run 'npm run dev' to start the development server");
     console.log("   2. Sign in to create your user account");
-    console.log("   3. View sample slides and follow-ups in the dashboard");
-    console.log("   4. Configure n8n workflow for data ingestion");
+    console.log(`   3. View workspace at: /${workspaceSlugDisplay}`);
+    console.log("   4. View sample slides and follow-ups in the dashboard");
+    console.log("   5. Configure n8n workflow for data ingestion");
     console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
   } catch (error) {
     console.error("\n❌ Failed to initialize workspace:", error);

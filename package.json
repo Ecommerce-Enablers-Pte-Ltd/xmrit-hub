@@ -8,6 +8,7 @@
     "start": "next start -p ${PORT:-3000} -H 0.0.0.0",
     "lint": "biome check",
     "format": "biome format --write",
+    "postinstall": "npm run db:create-default-workspace || true",
     "db:push": "drizzle-kit push",
     "db:check": "drizzle-kit check",
     "db:introspect": "drizzle-kit introspect",

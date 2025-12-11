@@ -4,7 +4,6 @@ import {
   ArrowDownIcon,
   ArrowUpDown,
   ArrowUpIcon,
-  Calendar,
   Circle,
   MoreVertical,
   Pencil,
@@ -56,20 +55,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { getInitials } from "@/lib/formatting";
-import { cn } from "@/lib/utils";
+import { cn, generateSlideUrl } from "@/lib/utils";
 import type { FollowUpWithDetails } from "@/types/db/follow-up";
 
-type SortField =
-  | "identifier"
-  | "title"
-  | "status"
-  | "priority"
-  | "dueDate"
-  | "createdAt";
+type SortField = "identifier" | "title" | "status" | "priority" | "createdAt";
 
 interface FollowUpTableProps {
   followUps: FollowUpWithDetails[];
-  workspaceId: string;
+  workspaceSlug: string;
   currentUserId?: string; // Current user's ID to highlight their assignments
   onEdit: (followUp: FollowUpWithDetails) => void;
   onDelete: (followUpId: string) => void;
@@ -80,9 +73,29 @@ interface FollowUpTableProps {
   onSort?: (field: SortField) => void;
 }
 
-function isOverdue(dueDate: string | null): boolean {
-  if (!dueDate) return false;
-  return new Date(dueDate) < new Date();
+// Generate URL-safe slug from category and metric name (matching slide-container.tsx)
+function generateChartSlug(
+  category: string | null | undefined,
+  metricName: string | null | undefined,
+): string {
+  const parts: string[] = [];
+  if (category) {
+    parts.push(
+      category
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, ""),
+    );
+  }
+  if (metricName) {
+    parts.push(
+      metricName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, ""),
+    );
+  }
+  return parts.join("-") || "chart";
 }
 
 // Sortable column header component - defined outside to prevent recreation on every render
@@ -135,7 +148,7 @@ function SortableHeader({
 
 export function FollowUpTable({
   followUps,
-  workspaceId,
+  workspaceSlug,
   currentUserId,
   onEdit,
   onDelete,
@@ -169,63 +182,65 @@ export function FollowUpTable({
 
   if (isLoading) {
     return (
-      <div className="px-0 md:px-2 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
-        <Table>
+      <div className="px-0 md:px-2 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
+        <Table className="table-fixed min-w-[600px] lg:min-w-[870px]">
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow className="hover:bg-transparent">
-              <TableHead className="h-10 w-[100px] font-medium text-xs">
+              <TableHead className="h-10 w-[70px] lg:w-[80px] font-medium text-xs">
                 ID
               </TableHead>
-              <TableHead className="h-10 w-[400px] font-medium text-xs">
+              <TableHead className="h-10 w-[200px] sm:w-[280px] lg:w-[350px] font-medium text-xs">
                 Title
               </TableHead>
-              <TableHead className="h-10 w-[120px] font-medium text-xs">
+              <TableHead className="h-10 w-[90px] lg:w-[100px] font-medium text-xs">
                 Status
               </TableHead>
-              <TableHead className="h-10 w-[120px] font-medium text-xs">
+              <TableHead className="h-10 w-[90px] lg:w-[100px] font-medium text-xs hidden sm:table-cell">
                 Priority
               </TableHead>
-              <TableHead className="h-10 w-[150px] font-medium text-xs">
+              <TableHead className="h-10 w-[100px] lg:w-[120px] font-medium text-xs hidden md:table-cell">
                 Assignees
               </TableHead>
-              <TableHead className="h-10 w-[120px] font-medium text-xs">
-                Due Date
+              <TableHead className="h-10 w-[160px] lg:w-[180px] font-medium text-xs hidden lg:table-cell">
+                Submetric
               </TableHead>
-              <TableHead className="h-10 w-[150px] font-medium text-xs">
-                Slide
-              </TableHead>
-              <TableHead className="h-10 w-[60px]"></TableHead>
+              <TableHead className="h-10 w-[48px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {[0, 1, 2, 3, 4].map((rowNum) => (
               <TableRow key={`skeleton-followup-${rowNum}`}>
-                <TableCell>
-                  <Skeleton className="h-4 w-12 sm:w-16" />
+                <TableCell className="w-[70px] lg:w-[80px] py-3">
+                  <Skeleton className="h-4 w-14" />
                 </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-48 sm:w-64" />
+                <TableCell className="w-[200px] sm:w-[280px] lg:w-[350px] py-3">
+                  <div className="flex flex-col gap-1">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
                 </TableCell>
-                <TableCell>
-                  <Skeleton className="h-5 w-16 sm:w-20" />
+                <TableCell className="w-[90px] lg:w-[100px] py-3">
+                  <Skeleton className="h-5 w-16 rounded-full" />
                 </TableCell>
-                <TableCell>
-                  <Skeleton className="h-5 w-16 sm:w-20" />
+                <TableCell className="w-[90px] lg:w-[100px] py-3 hidden sm:table-cell">
+                  <div className="flex items-center gap-1.5">
+                    <Skeleton className="h-4 w-4" />
+                    <Skeleton className="h-4 w-12" />
+                  </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="w-[100px] lg:w-[120px] py-3 hidden md:table-cell">
                   <div className="flex -space-x-2">
-                    <Skeleton className="h-6 w-6 rounded-full" />
                     <Skeleton className="h-6 w-6 rounded-full" />
                     <Skeleton className="h-6 w-6 rounded-full" />
                   </div>
                 </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-16 sm:w-20" />
+                <TableCell className="w-[160px] lg:w-[180px] py-3 hidden lg:table-cell">
+                  <div className="flex flex-col gap-1">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-4 w-28" />
+                  </div>
                 </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-20 sm:w-28" />
-                </TableCell>
-                <TableCell>
+                <TableCell className="w-[48px] py-3">
                   <Skeleton className="h-8 w-8" />
                 </TableCell>
               </TableRow>
@@ -255,13 +270,13 @@ export function FollowUpTable({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="px-0 md:px-2 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
-        <Table>
+      <div className="px-0 md:px-2 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
+        <Table className="table-fixed min-w-[600px] lg:min-w-[870px]">
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow className="hover:bg-transparent">
               <SortableHeader
                 field="identifier"
-                className="w-[100px]"
+                className="w-[70px] lg:w-[80px]"
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={onSort}
@@ -270,7 +285,7 @@ export function FollowUpTable({
               </SortableHeader>
               <SortableHeader
                 field="title"
-                className="w-[400px]"
+                className="w-[200px] sm:w-[280px] lg:w-[350px]"
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={onSort}
@@ -279,7 +294,7 @@ export function FollowUpTable({
               </SortableHeader>
               <SortableHeader
                 field="status"
-                className="w-[120px]"
+                className="w-[90px] lg:w-[100px]"
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={onSort}
@@ -288,29 +303,20 @@ export function FollowUpTable({
               </SortableHeader>
               <SortableHeader
                 field="priority"
-                className="w-[120px]"
+                className="w-[90px] lg:w-[100px] hidden sm:table-cell"
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={onSort}
               >
                 Priority
               </SortableHeader>
-              <TableHead className="h-10 w-[150px] font-medium text-xs">
+              <TableHead className="h-10 w-[100px] lg:w-[120px] font-medium text-xs hidden md:table-cell">
                 Assignees
               </TableHead>
-              <SortableHeader
-                field="dueDate"
-                className="w-[120px]"
-                sortBy={sortBy}
-                sortOrder={sortOrder}
-                onSort={onSort}
-              >
-                Due Date
-              </SortableHeader>
-              <TableHead className="h-10 w-[150px] font-medium text-xs">
-                Slide
+              <TableHead className="h-10 w-[160px] lg:w-[180px] font-medium text-xs hidden lg:table-cell">
+                Submetric
               </TableHead>
-              <TableHead className="h-10 w-[60px]"></TableHead>
+              <TableHead className="h-10 w-[48px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -327,22 +333,22 @@ export function FollowUpTable({
                   onClick={() => onEdit(followUp)}
                   title="Click to edit"
                 >
-                  <TableCell className="py-3 font-mono text-xs text-muted-foreground">
+                  <TableCell className="w-[70px] lg:w-[80px] py-3 font-mono text-xs text-muted-foreground">
                     {followUp.identifier}
                   </TableCell>
-                  <TableCell className="py-3">
+                  <TableCell className="w-[200px] sm:w-[280px] lg:w-[350px] py-3">
                     <div className="flex flex-col gap-1">
-                      <div className="font-medium text-sm leading-none max-w-[350px] truncate">
+                      <div className="font-medium text-sm leading-none truncate">
                         {followUp.title}
                       </div>
                       {followUp.description && (
-                        <div className="text-xs text-muted-foreground line-clamp-1">
+                        <div className="text-xs text-muted-foreground truncate">
                           {followUp.description}
                         </div>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="py-3">
+                  <TableCell className="w-[90px] lg:w-[100px] py-3">
                     {followUp.status === "resolved" ? (
                       // Show non-interactive badge when resolved
                       <Badge
@@ -399,7 +405,7 @@ export function FollowUpTable({
                       </DropdownMenu>
                     )}
                   </TableCell>
-                  <TableCell className="py-3">
+                  <TableCell className="w-[90px] lg:w-[100px] py-3 hidden sm:table-cell">
                     <div className="flex items-center gap-1.5">
                       {getPriorityIcon(followUp.priority, "h-4 w-4")}
                       <span className="text-xs text-muted-foreground">
@@ -407,7 +413,7 @@ export function FollowUpTable({
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className="py-3">
+                  <TableCell className="w-[100px] lg:w-[120px] py-3 hidden md:table-cell">
                     {followUp.assignees && followUp.assignees.length > 0 ? (
                       <div className="flex -space-x-2">
                         {followUp.assignees.slice(0, 3).map((assignee) => {
@@ -491,48 +497,47 @@ export function FollowUpTable({
                       </span>
                     )}
                   </TableCell>
-                  <TableCell className="py-3">
-                    {followUp.dueDate ? (
-                      <div
-                        className={cn(
-                          "flex items-center gap-1.5 text-sm",
-                          isOverdue(followUp.dueDate) &&
-                            followUp.status !== "done" &&
-                            followUp.status !== "cancelled" &&
-                            followUp.status !== "resolved" &&
-                            "text-red-600 dark:text-red-400",
-                        )}
-                      >
-                        <Calendar className="h-3.5 w-3.5" />
-                        <span>
-                          {new Date(followUp.dueDate).toLocaleDateString(
-                            "en-US",
-                            {
-                              month: "short",
-                              day: "numeric",
-                            },
-                          )}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="py-3">
-                    {followUp.slide ? (
+                  <TableCell className="w-[160px] lg:w-[180px] py-3 hidden lg:table-cell">
+                    {followUp.submetricDefinition ? (
                       <Link
-                        href={`/${workspaceId}/slide/${followUp.slideId}`}
+                        href={
+                          followUp.slide
+                            ? `${generateSlideUrl(
+                                workspaceSlug,
+                                followUp.slide.slideNumber,
+                                followUp.slide.title,
+                              )}#${generateChartSlug(
+                                followUp.submetricDefinition.category,
+                                followUp.submetricDefinition.metricName,
+                              )}`
+                            : "#"
+                        }
                         target="_blank"
-                        className="text-sm hover:underline truncate max-w-[160px] block"
-                        onClick={(e) => e.stopPropagation()}
+                        className="text-sm hover:underline block"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!followUp.slide) {
+                            e.preventDefault();
+                          }
+                        }}
                       >
-                        {followUp.slide.title}
+                        <div className="flex flex-col gap-0.5">
+                          {followUp.submetricDefinition.category && (
+                            <span className="text-xs text-muted-foreground truncate">
+                              {followUp.submetricDefinition.category}
+                            </span>
+                          )}
+                          <span className="truncate">
+                            {followUp.submetricDefinition.metricName ||
+                              followUp.submetricDefinition.submetricKey}
+                          </span>
+                        </div>
                       </Link>
                     ) : (
                       <span className="text-sm text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="py-3">
+                  <TableCell className="w-[48px] py-3">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button

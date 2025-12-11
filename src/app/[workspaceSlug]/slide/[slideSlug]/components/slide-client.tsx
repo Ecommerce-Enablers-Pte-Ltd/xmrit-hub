@@ -4,11 +4,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { MonitorIcon, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { EditSlideNameDialog } from "@/app/[workspaceId]/components/edit-slide-name-dialog";
+import { EditSlideNameDialog } from "@/app/[workspaceSlug]/components/edit-slide-name-dialog";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useIsMobileDevice } from "@/hooks/use-mobile-device";
 import { slideKeys, useSlide } from "@/lib/api/slides";
+import { generateSlideUrl } from "@/lib/utils";
 import { CommentCountsProvider } from "@/providers/comment-counts-provider";
 import type { SlideWithMetrics } from "@/types/db/slide";
 import type { Workspace } from "@/types/db/workspace";
@@ -95,8 +96,8 @@ export function SlideClient({
   // Initialize React Query cache with server data on mount (only once)
   // Use ref to prevent unnecessary re-initialization
   const hasInitialized = useRef(false);
-  // Track if sidebar has been auto-minimized (for one-time effect)
-  const hasAutoMinimized = useRef(false);
+  // Track if we've already collapsed the sidebar on mount
+  const hasCollapsedSidebar = useRef(false);
 
   useEffect(() => {
     if (!hasInitialized.current) {
@@ -106,25 +107,39 @@ export function SlideClient({
   }, [queryClient, initialSlide]);
 
   // Auto-minimize sidebar when on slide page (desktop only)
-  // Use ref to ensure this only happens once per mount
+  // This effect runs once on mount to collapse the sidebar if expanded
   useEffect(() => {
-    if (!hasAutoMinimized.current && !isSidebarMobile && open) {
-      setOpen(false);
-      hasAutoMinimized.current = true;
+    if (!hasCollapsedSidebar.current) {
+      hasCollapsedSidebar.current = true;
+      if (!isSidebarMobile && open) {
+        setOpen(false);
+      }
     }
   }, [isSidebarMobile, open, setOpen]);
 
-  // Subscribe to React Query cache for live updates
+  // Subscribe to React Query cache for live updates (only for title changes)
   const { slide } = useSlide(initialSlide.id);
 
-  // Use the cached slide data if available, otherwise fall back to initial prop
-  const currentSlide = slide || initialSlide;
+  // Only extract reactive values from slide (title) - avoid changing object references
+  // Use initialSlide for static data (metrics) to prevent chart re-renders
+  const slideTitle = slide?.title ?? initialSlide.title;
+  const slideDescription = slide?.description ?? initialSlide.description;
+  const slideDate = slide?.slideDate ?? initialSlide.slideDate;
+
+  // Static values from initialSlide - these don't change and won't cause re-renders
+  const slideId = initialSlide.id;
+  const slideNumber = initialSlide.slideNumber;
+  const workspaceSlug = workspace.slug;
+  const workspaceId = workspace.id;
+
+  // Use initialSlide.metrics directly - this reference is stable and won't cause chart re-renders
+  const metrics = initialSlide.metrics;
 
   // Extract all definition IDs for the CommentCountsProvider
   // This allows ONE batch query instead of N individual queries (100+ submetrics = 100+ requests!)
   const definitionIds = useMemo(() => {
     const ids: string[] = [];
-    for (const metric of currentSlide.metrics) {
+    for (const metric of metrics) {
       for (const submetric of metric.submetrics) {
         if (submetric.definitionId) {
           ids.push(submetric.definitionId);
@@ -132,18 +147,35 @@ export function SlideClient({
       }
     }
     return ids;
-  }, [currentSlide.metrics]);
+  }, [metrics]);
 
   // Verify slide belongs to the workspace
   useEffect(() => {
-    if (
-      currentSlide &&
-      workspace &&
-      currentSlide.workspaceId !== workspace.id
-    ) {
+    if (initialSlide.workspaceId !== workspaceId) {
       router.push("/404");
     }
-  }, [currentSlide, workspace, router]);
+  }, [initialSlide.workspaceId, workspaceId, router]);
+
+  // Update URL slug when slide title changes (without re-render)
+  // Uses History API directly - reads current path from window to avoid reactive dependencies
+
+  useEffect(() => {
+    if (!slideTitle || !slideNumber || !workspaceSlug) return;
+
+    const expectedPath = generateSlideUrl(
+      workspaceSlug,
+      slideNumber,
+      slideTitle,
+    );
+
+    // Read current path from window (non-reactive) instead of usePathname
+    const currentPath = window.location.pathname;
+
+    // Only update if the path is different (avoids unnecessary history entries)
+    if (currentPath !== expectedPath) {
+      window.history.replaceState(null, "", expectedPath);
+    }
+  }, [slideTitle, slideNumber, workspaceSlug]);
 
   // Memoize callbacks to prevent unnecessary re-renders
   const handleEditClick = useMemo(() => () => setIsEditDialogOpen(true), []);
@@ -161,29 +193,26 @@ export function SlideClient({
   return (
     <div>
       <SlideHeader
-        title={currentSlide.title}
-        description={currentSlide.description}
-        slideDate={currentSlide.slideDate}
+        title={slideTitle}
+        description={slideDescription}
+        slideDate={slideDate}
         onEditClick={handleEditClick}
       />
 
       <EditSlideNameDialog
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
-        slide={currentSlide}
-        workspaceId={workspace.id}
+        slide={{ id: slideId, title: slideTitle }}
+        workspaceId={workspaceId}
       />
 
       <div className="px-2 py-6">
         {/* Wrap with CommentCountsProvider to batch-fetch all comment counts in ONE request */}
-        <CommentCountsProvider
-          slideId={currentSlide.id}
-          definitionIds={definitionIds}
-        >
+        <CommentCountsProvider slideId={slideId} definitionIds={definitionIds}>
           <SlideContainer
-            metrics={currentSlide.metrics}
-            slideId={currentSlide.id}
-            workspaceId={workspace.id}
+            metrics={metrics}
+            slideId={slideId}
+            workspaceId={workspaceId}
           />
         </CommentCountsProvider>
       </div>

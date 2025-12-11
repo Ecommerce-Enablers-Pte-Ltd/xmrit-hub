@@ -160,8 +160,14 @@ export function useCreateWorkspace() {
   return useMutation({
     mutationFn: (data: Partial<Workspace>) =>
       workspaceApiClient.createWorkspace(data),
-    onSuccess: () => {
-      // Invalidate and refetch workspaces list
+    onSuccess: (newWorkspace) => {
+      // Optimistically add new workspace to cache for immediate availability
+      // This ensures the workspace is found when navigating to it
+      queryClient.setQueryData<Workspace[]>(workspaceKeys.list(), (old) => {
+        if (!old) return [newWorkspace];
+        return [...old, newWorkspace];
+      });
+      // Also invalidate to ensure data is fresh in background
       queryClient.invalidateQueries({ queryKey: workspaceKeys.list() });
     },
   });
@@ -194,8 +200,35 @@ export function useDeleteWorkspace() {
   return useMutation({
     mutationFn: (workspaceId: string) =>
       workspaceApiClient.deleteWorkspace(workspaceId),
+    onMutate: async (workspaceId) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: workspaceKeys.list() });
+
+      // Snapshot the previous value for rollback
+      const previousWorkspaces = queryClient.getQueryData<Workspace[]>(
+        workspaceKeys.list(),
+      );
+
+      // Optimistically remove the workspace from the list immediately
+      // This prevents the layout from detecting "missing workspace" and redirecting to 404
+      queryClient.setQueryData<Workspace[]>(workspaceKeys.list(), (old) => {
+        if (!old) return [];
+        return old.filter((w) => w.id !== workspaceId);
+      });
+
+      return { previousWorkspaces };
+    },
+    onError: (_err, _workspaceId, context) => {
+      // If the mutation fails, roll back to the previous value
+      if (context?.previousWorkspaces) {
+        queryClient.setQueryData(
+          workspaceKeys.list(),
+          context.previousWorkspaces,
+        );
+      }
+    },
     onSuccess: (_, workspaceId) => {
-      // Remove from cache and invalidate list
+      // Remove detail cache and invalidate list to ensure fresh data
       queryClient.removeQueries({
         queryKey: workspaceKeys.detail(workspaceId),
       });

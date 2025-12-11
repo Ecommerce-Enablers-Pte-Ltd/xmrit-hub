@@ -7,6 +7,7 @@ import type { MetricWithSubmetrics } from "@/types/db/metric";
 export interface Slide {
   id: string;
   title: string;
+  slideNumber: number; // Per-workspace sequential number (Metabase-style), immutable
   description: string | null;
   workspaceId: string;
   slideDate: string | null; // Date string from database (YYYY-MM-DD format)

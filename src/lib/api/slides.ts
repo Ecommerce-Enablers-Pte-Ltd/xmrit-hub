@@ -203,3 +203,12 @@ export function useDeleteSlide() {
     },
   });
 }
+
+export interface ChartInfo {
+  id: string;
+  metricId: string;
+  category: string;
+  name: string;
+  slug: string;
+  metricName: string;
+}

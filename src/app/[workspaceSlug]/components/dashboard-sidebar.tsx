@@ -23,6 +23,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { usePrefetchSlide } from "@/lib/api";
+import { generateSlideUrl } from "@/lib/utils";
 import type { Slide } from "@/types/db/slide";
 import type { Workspace } from "@/types/db/workspace";
 import { ThemeToggle } from "./theme-toggle";
@@ -67,12 +68,12 @@ export function DashboardSidebar({
     {
       icon: Home,
       label: "Home",
-      href: `/${currentWorkspace.id}`,
+      href: `/${currentWorkspace.slug}`,
     },
     {
       icon: ListTodo,
       label: "Follow-ups",
-      href: `/${currentWorkspace.id}/follow-ups`,
+      href: `/${currentWorkspace.slug}/follow-ups`,
     },
     {
       icon: Settings,
@@ -144,10 +145,14 @@ export function DashboardSidebar({
               <SidebarMenuItem key={slide.id} className="group/item">
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname.includes(`/slide/${slide.id}`)}
+                  isActive={pathname.includes(`/slide/${slide.slideNumber}`)}
                 >
                   <Link
-                    href={`/${currentWorkspace.id}/slide/${slide.id}`}
+                    href={generateSlideUrl(
+                      currentWorkspace.slug,
+                      slide.slideNumber,
+                      slide.title,
+                    )}
                     target="_blank"
                     rel="noopener noreferrer"
                     onMouseEnter={() => prefetchSlide(slide.id)}

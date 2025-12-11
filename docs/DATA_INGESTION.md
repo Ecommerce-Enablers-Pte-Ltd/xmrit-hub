@@ -4,6 +4,8 @@
 
 The Data Ingestion API enables programmatic ingestion of metrics data from various sources including data warehouses, ETL pipelines (n8n, Zapier, Airflow), BI tools (Metabase, Tableau), or any HTTP-capable system. This REST API endpoint provides a standardized way to populate Xmrit with time-series data for statistical process control analysis.
 
+**Important:** This API uses **UUIDs (IDs)**, not slugs. While the web application uses URL-friendly slugs (e.g., `/my-workspace/slide/1-weekly-review`), the ingestion API requires workspace and slide UUIDs. See the [Slugs vs IDs](#slugs-vs-ids) section below for details.
+
 ## Endpoint
 
 ```
@@ -36,14 +38,16 @@ Content-Type: application/json
 
 ### Top-Level Fields
 
-| Field               | Type   | Required    | Description                                                              |
-| ------------------- | ------ | ----------- | ------------------------------------------------------------------------ |
-| `workspace_id`      | UUID   | No          | Target workspace ID. If not provided, creates a new public workspace     |
-| `slide_id`          | UUID   | No          | Target slide ID. If not provided, creates/updates based on `slide_title` |
-| `slide_title`       | String | Conditional | Required if `slide_id` not provided. Used to create or update slides     |
-| `slide_date`        | String | No          | Slide date in YYYY-MM-DD format                                          |
-| `slide_description` | String | No          | Optional description for the slide                                       |
-| `metrics`           | Array  | Yes         | Array of metric objects (see below)                                      |
+| Field               | Type   | Required    | Description                                                                                      |
+| ------------------- | ------ | ----------- | ------------------------------------------------------------------------------------------------ |
+| `workspace_id`      | UUID   | No          | **UUID** of the target workspace (not slug). If not provided, creates a new public workspace     |
+| `slide_id`          | UUID   | No          | **UUID** of the target slide (not slug). If not provided, creates/updates based on `slide_title` |
+| `slide_title`       | String | Conditional | Required if `slide_id` not provided. Used to create or update slides                             |
+| `slide_date`        | String | No          | Slide date in YYYY-MM-DD format                                                                  |
+| `slide_description` | String | No          | Optional description for the slide                                                               |
+| `metrics`           | Array  | Yes         | Array of metric objects (see below)                                                              |
+
+**Note:** Both `workspace_id` and `slide_id` are UUIDs, not URL slugs. The web application uses slugs in URLs (e.g., `/my-workspace/slide/1-weekly-review`), but the API requires UUIDs. To find a workspace UUID, check the workspace settings in the UI or query the database.
 
 ### Metric Object Structure
 
@@ -111,6 +115,8 @@ Content-Type: application/json
 | `dimensions` | Object | No       | Additional dimensional data           |
 
 ## Example Payload
+
+**Important:** The `workspace_id` and `slide_id` fields use UUIDs, not URL slugs. URLs use slugs (e.g., `/my-workspace/slide/1-weekly-review`), but the API requires UUIDs.
 
 ```json
 {
@@ -254,7 +260,9 @@ Content-Type: application/json
 1. **Authentication**: Validate Bearer token against `METRICS_API_KEY`
 2. **Request Parsing**: Parse and validate JSON payload
 3. **Workspace Resolution**: Get existing workspace or create new public workspace
-4. **Slide Resolution**: Get existing slide by ID or create/update by title and date
+4. **Slide Resolution**:
+   - If `slide_id` provided: Get existing slide by UUID
+   - If `slide_id` not provided: Create new slide with auto-assigned slide number (next sequential number for workspace)
 5. **Metric Definition Upsert**: Create or update metric definitions (workspace-level, shared across slides)
 6. **Metric Insertion**: Insert metrics linked to definitions with configured chart types and rankings
 7. **Submetric Definition Upsert**: Create or update submetric definitions (workspace-level, stable identities)
@@ -326,12 +334,24 @@ When `workspace_id` is not provided:
 
 - Requires `slide_title`
 - Uses `slide_date` if provided
+- **Automatically assigns slide number**: The API calculates the next sequential slide number for the workspace by finding the maximum existing slide number and adding 1
+  - Example: If workspace has slides 1, 2, 3, 4, 5 → new slide gets number 6
+  - Example: If workspace has slides 1, 2, 5 (after deletion) → new slide gets number 6 (not 3 - numbers don't fill gaps)
 - Creates new slide in specified workspace
+- **You don't need to specify slide numbers** - they're automatically assigned per workspace
+- **Numbers keep incrementing**: Each new slide creation automatically gets the next number (MAX + 1)
 
 **Update (when matching slide found):**
 
 - Matches by `slide_title` and `slide_date` within workspace
 - Updates existing slide instead of creating duplicate
+- Slide number remains unchanged (slide numbers are immutable after creation)
+
+**Important Notes:**
+
+- Slide numbers are **immutable identifiers** - once assigned, they never change
+- If slides are deleted, the numbers don't "fill in the gaps" - the next slide continues from the highest number
+- This ensures stable URLs and prevents breaking links when slides are deleted
 
 ### Default Values and Schema Enforcement
 
@@ -559,6 +579,63 @@ Example log output:
 [AUDIT] Successfully ingested metrics from 192.168.1.100: workspace=550e8400-..., slide=660e8400-..., metrics=2, submetrics=3, datapoints=12, duration=245ms
 ```
 
+## Slugs vs IDs
+
+**Important Distinction:** The application uses two different identifiers:
+
+### URLs Use Slugs
+
+- **Workspace slugs**: URL-friendly identifiers (e.g., `my-workspace`, `engineering-team`)
+
+  - Used in web URLs: `/my-workspace/slide/1-weekly-review`
+  - Stored in `workspaces.slug` field
+  - Auto-generated from workspace name when created via API
+  - Immutable after creation
+
+- **Slide slugs**: Combination of slide number and title (e.g., `1-weekly-review`)
+  - Used in web URLs: `/my-workspace/slide/1-weekly-review`
+  - Not stored in database - constructed from `slideNumber` + `title`
+  - Format: `{slideNumber}-{slugified-title}`
+
+### APIs Use UUIDs
+
+- **Workspace IDs**: UUIDs (e.g., `550e8400-e29b-41d4-a716-446655440000`)
+
+  - Used in API endpoints: `/api/workspaces/[workspaceId]/...`
+  - Used in ingestion API: `workspace_id` field
+  - Stored in `workspaces.id` field
+
+- **Slide IDs**: UUIDs (e.g., `660e8400-e29b-41d4-a716-446655440001`)
+  - Used in API endpoints: `/api/slides/[slideId]/...`
+  - Used in ingestion API: `slide_id` field
+  - Stored in `slides.id` field
+
+### Data Ingestion API
+
+The data ingestion API (`POST /api/ingest/metrics`) **uses UUIDs, not slugs**:
+
+- `workspace_id`: UUID (not workspace slug)
+- `slide_id`: UUID (not slide slug)
+
+If you only have a workspace slug, you'll need to:
+
+1. Query the workspace by slug to get its UUID
+2. Use the UUID in the ingestion API
+
+**Example:**
+
+```bash
+# ❌ Wrong - Don't use slugs in the API
+{
+  "workspace_id": "my-workspace"  # This is a slug, not a UUID
+}
+
+# ✅ Correct - Use UUIDs
+{
+  "workspace_id": "550e8400-e29b-41d4-a716-446655440000"  # This is a UUID
+}
+```
+
 ## Related Documentation
 
 - [Controller Logic](./CONTROLLER_TRAFFIC_LIGHT.md) - Understanding process control status indicators
@@ -566,6 +643,7 @@ Example log output:
 - [Lock Limit](./LOCK_LIMIT.md) - Manual limit locking
 - [Trend Lines](./TREND_LINES.md) - Trend analysis for time series data
 - [Seasonality](./DESEASONALISATION.md) - Seasonal adjustments for recurring patterns
+- [Database Schema](./SCHEMA.md) - Complete schema reference including slug fields
 
 ## Future Enhancements
 

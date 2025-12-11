@@ -355,7 +355,6 @@ export const OUTLIER_DETECTION = {
 ```
 
 **Important Notes:**
-
 - These constants are **more aggressive** than typical statistical outlier detection
 - Lower thresholds mean more points will be flagged as outliers
 - The low `VARIATION_THRESHOLD` (0.1%) means auto-lock will trigger even on datasets with minimal variation
@@ -383,7 +382,6 @@ export const OUTLIER_DETECTION = {
 ```
 
 **What this means:**
-
 - Loading the same data multiple times will **always** produce the same auto-lock results
 - No more inconsistent outlier detection across page refreshes
 - Data point index serves as a stable tie-breaker when statistical measures are nearly identical

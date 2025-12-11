@@ -12,6 +12,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { generateSlideUrl } from "@/lib/utils";
 import type { Slide } from "@/types/db/slide";
 import type { Workspace } from "@/types/db/workspace";
 
@@ -36,7 +37,7 @@ export function BreadcrumbNav({ workspace, slides }: BreadcrumbNavProps) {
     },
     {
       label: workspace.name,
-      href: `/${workspace.id}`,
+      href: `/${workspace.slug}`,
       isClickable: true,
     },
   ];
@@ -45,20 +46,28 @@ export function BreadcrumbNav({ workspace, slides }: BreadcrumbNavProps) {
   if (pathSegments.length >= 2 && pathSegments[1] === "follow-ups") {
     breadcrumbItems.push({
       label: "Follow-ups",
-      href: `/${workspace.id}/follow-ups`,
+      href: `/${workspace.slug}/follow-ups`,
       isClickable: true,
     });
   }
 
   // Add slide-specific breadcrumb if we're on a slide page
+  // The URL format is /workspace-slug/slide/slideNumber-title
   if (pathSegments.length >= 3 && pathSegments[1] === "slide") {
-    const slideId = pathSegments[2];
-    const slide = slides.find((s) => s.id === slideId);
+    const slideSlug = pathSegments[2];
+    // Parse the slide number from the slug (e.g., "1-my-slide" -> 1)
+    const slideNumberMatch = slideSlug.match(/^(\d+)/);
+    const slideNumber = slideNumberMatch
+      ? Number.parseInt(slideNumberMatch[1], 10)
+      : null;
+    const slide = slideNumber
+      ? slides.find((s) => s.slideNumber === slideNumber)
+      : null;
 
     if (slide) {
       breadcrumbItems.push({
         label: slide.title,
-        href: `/${workspace.id}/slide/${slideId}`,
+        href: generateSlideUrl(workspace.slug, slide.slideNumber, slide.title),
         isClickable: true,
       });
     }

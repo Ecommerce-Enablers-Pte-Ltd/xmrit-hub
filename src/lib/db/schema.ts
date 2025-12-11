@@ -63,6 +63,7 @@ export const workspaces = pgTable(
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     name: text("name").notNull(),
+    slug: text("slug").notNull().unique(), // URL-friendly slug, immutable after creation
     description: text("description"),
     settings: json("settings"), // JSON for workspace-level settings
     isArchived: boolean("isArchived").default(false),
@@ -76,6 +77,7 @@ export const workspaces = pgTable(
   },
   (table) => ({
     nameIdx: index("workspace_name_idx").on(table.name),
+    slugIdx: uniqueIndex("workspace_slug_idx").on(table.slug), // Unique slug index
     updatedAtIdx: index("workspace_updated_at_idx").on(table.updatedAt), // For ordering workspaces
     isArchivedIdx: index("workspace_is_archived_idx").on(table.isArchived), // For filtering archived workspaces
   }),
@@ -89,6 +91,7 @@ export const slides = pgTable(
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     title: text("title").notNull(),
+    slideNumber: integer("slideNumber").notNull(), // Per-workspace sequential number (Metabase-style), immutable
     description: text("description"),
     workspaceId: text("workspaceId")
       .notNull()
@@ -103,6 +106,10 @@ export const slides = pgTable(
   },
   (table) => ({
     workspaceIdIdx: index("slide_workspace_id_idx").on(table.workspaceId),
+    workspaceSlideNumberIdx: uniqueIndex("slide_workspace_slide_number_idx").on(
+      table.workspaceId,
+      table.slideNumber,
+    ), // Unique slide number per workspace
     dateIdx: index("slide_date_idx").on(table.slideDate),
     createdAtIdx: index("slide_created_at_idx").on(table.createdAt), // For ordering recent slides
   }),
@@ -212,10 +219,10 @@ export const submetricDefinitions = pgTable(
       .references(() => workspaces.id, { onDelete: "cascade" }),
     metricKey: text("metricKey").notNull(), // stable key for metric family
     submetricKey: text("submetricKey").notNull(), // stable key for logical submetric
-    category: text("category"), // dimension/segment (e.g., "Brand A", "North America")
-    metricName: text("metricName"), // the actual metric name (e.g., "% Completion Rate"), nullable for safety during ingestion
+    category: text("category"), // dimension/segment (e.g., "Adidas", "North America")
+    metricName: text("metricName"), // the actual metric name (e.g., "% of MCB Count"), nullable for safety during ingestion
     xaxis: text("xaxis"), // x-axis semantic label (e.g., "period", "tracked_week", "transaction_touched_at")
-    yaxis: text("yaxis"), // y-axis semantic label / unit (e.g., "hours", "% completion", "complaints")
+    yaxis: text("yaxis"), // y-axis semantic label / unit (e.g., "hours", "% of MCB", "complaints")
     unit: text("unit"), // unit of measurement (e.g., "%", "$", "count") - often same as yaxis
     preferredTrend: text("preferredTrend"),
     createdAt: timestamp("createdAt", { mode: "date" })

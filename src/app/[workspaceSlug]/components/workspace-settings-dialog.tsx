@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useDeleteWorkspace, useUpdateWorkspace } from "@/lib/api";
-import { cn, getErrorMessage } from "@/lib/utils";
+import { cn, displayWorkspaceSlug, getErrorMessage } from "@/lib/utils";
 import { updateWorkspaceSchema } from "@/lib/validations/workspace";
 import type { Workspace } from "@/types/db/workspace";
 
@@ -82,6 +82,9 @@ export function WorkspaceSettingsDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Declare loadingToast outside try block so it's accessible in catch
+    let loadingToast: string | number | undefined;
+
     // Validate with Zod before sending to backend
     try {
       const validatedData = updateWorkspaceSchema.parse({
@@ -89,7 +92,7 @@ export function WorkspaceSettingsDialog({
         description: description.trim() || null,
       });
 
-      const loadingToast = toast.loading("Updating workspace...");
+      loadingToast = toast.loading("Updating workspace...");
 
       await updateWorkspace.mutateAsync({
         workspaceId: workspace.id,
@@ -102,6 +105,11 @@ export function WorkspaceSettingsDialog({
       });
       onOpenChange(false);
     } catch (error) {
+      // Always dismiss loading toast if it was created
+      if (loadingToast) {
+        toast.dismiss(loadingToast);
+      }
+
       if (error instanceof ZodError) {
         // Show validation errors to user
         const firstError = error.issues[0];
@@ -123,8 +131,10 @@ export function WorkspaceSettingsDialog({
   };
 
   const handleDeleteWorkspace = React.useCallback(async () => {
+    let loadingToast: string | number | undefined;
+
     try {
-      const loadingToast = toast.loading("Deleting workspace...");
+      loadingToast = toast.loading("Deleting workspace...");
 
       await deleteWorkspace.mutateAsync(workspace.id);
 
@@ -135,9 +145,14 @@ export function WorkspaceSettingsDialog({
 
       onOpenChange(false);
 
-      // Redirect to home page
-      router.push("/");
+      // Redirect to home page (use replace to prevent back navigation to deleted workspace)
+      router.replace("/");
     } catch (error) {
+      // Always dismiss loading toast if it was created
+      if (loadingToast) {
+        toast.dismiss(loadingToast);
+      }
+
       console.error("Error deleting workspace:", error);
       const errorMessage = getErrorMessage(
         error,
@@ -271,6 +286,25 @@ export function WorkspaceSettingsDialog({
                         />
                         <p className="text-xs text-muted-foreground">
                           This is the display name for your workspace.
+                        </p>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label htmlFor="slug" className="text-sm">
+                          Workspace Slug
+                        </Label>
+                        <Input
+                          id="slug"
+                          value={displayWorkspaceSlug(
+                            workspace.slug,
+                          ).toLowerCase()}
+                          readOnly
+                          disabled
+                          className="text-sm bg-muted font-mono"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          The URL-friendly identifier for your workspace. This
+                          cannot be changed after creation.
                         </p>
                       </div>
 

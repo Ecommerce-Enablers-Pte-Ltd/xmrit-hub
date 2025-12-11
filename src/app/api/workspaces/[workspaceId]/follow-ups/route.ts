@@ -1,5 +1,5 @@
 import type { SQL } from "drizzle-orm";
-import { and, eq, like, lt, or, sql } from "drizzle-orm";
+import { and, eq, ilike, lt, or, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -92,13 +92,15 @@ export async function GET(
       );
     }
 
-    // Search filter (title, description, identifier)
+    // Search filter (title, description, identifier) - case-insensitive
     if (search) {
-      const searchPattern = `%${search}%`;
+      // Normalize search by trimming and using case-insensitive matching
+      const normalizedSearch = search.trim();
+      const searchPattern = `%${normalizedSearch}%`;
       const searchCondition = or(
-        like(followUps.title, searchPattern),
-        like(followUps.description, searchPattern),
-        like(followUps.identifier, searchPattern),
+        ilike(followUps.title, searchPattern),
+        ilike(followUps.description, searchPattern),
+        ilike(followUps.identifier, searchPattern),
       );
       if (searchCondition) {
         conditions.push(searchCondition);
@@ -141,8 +143,12 @@ export async function GET(
         (followUp) => !followUp.assignees || followUp.assignees.length === 0,
       );
     } else if (assigneeId) {
+      // Support multiple assignee IDs (comma-separated)
+      const assigneeIds = assigneeId.split(",").filter(Boolean);
       allFollowUps = allFollowUps.filter((followUp) =>
-        followUp.assignees?.some((assignee) => assignee.userId === assigneeId),
+        followUp.assignees?.some((assignee) =>
+          assigneeIds.includes(assignee.userId),
+        ),
       );
     }
 

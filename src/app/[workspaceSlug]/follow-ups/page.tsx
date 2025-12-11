@@ -44,8 +44,9 @@ import {
   useUpdateFollowUp,
   useUsers,
   useWorkspace,
+  useWorkspaces,
 } from "@/lib/api";
-import { cn, getErrorMessage } from "@/lib/utils";
+import { cn, getErrorMessage, normalizeSlug } from "@/lib/utils";
 import type {
   FollowUpPriority,
   FollowUpQueryParams,
@@ -54,13 +55,17 @@ import type {
 } from "@/types/db/follow-up";
 import { FollowUpDialog } from "./components/follow-up-dialog";
 import { FollowUpTable } from "./components/follow-up-table";
+import {
+  type SubmetricDefinitionForSelector,
+  SubmetricSelector,
+} from "./components/submetric-selector";
 import { UserAssigneeMultiSelector } from "./components/user-assignee-multi-selector";
 
 export default function FollowUpsPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const workspaceId = params.workspaceId as string;
+  const workspaceSlug = params.workspaceSlug as string;
   const { data: session } = useSession();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -89,6 +94,8 @@ export default function FollowUpsPage() {
     ? assigneeIdsParam.split(",").filter(Boolean)
     : [];
   const slideFilter = searchParams.get("slideId") || undefined;
+  const submetricFilter =
+    searchParams.get("submetricDefinitionId") || undefined;
   const searchQuery = searchParams.get("search") || "";
   const unassignedFilter = searchParams.get("unassigned") === "true";
 
@@ -121,9 +128,11 @@ export default function FollowUpsPage() {
         currentParams.set("page", "1");
       }
 
-      router.replace(`/${workspaceId}/follow-ups?${currentParams.toString()}`);
+      router.replace(
+        `/${workspaceSlug}/follow-ups?${currentParams.toString()}`,
+      );
     },
-    [router, workspaceId],
+    [router, workspaceSlug],
   );
 
   // Sync local search state with URL param on mount/change
@@ -153,6 +162,7 @@ export default function FollowUpsPage() {
       ...(priorityFilter && { priority: priorityFilter as FollowUpPriority }),
       ...(assigneeIds.length > 0 && { assigneeId: assigneeIds.join(",") }),
       ...(slideFilter && { slideId: slideFilter }),
+      ...(submetricFilter && { submetricDefinitionId: submetricFilter }),
       ...(searchQuery && { search: searchQuery }),
       ...(unassignedFilter && { unassigned: true }),
     }),
@@ -165,12 +175,21 @@ export default function FollowUpsPage() {
       priorityFilter,
       assigneeIds,
       slideFilter,
+      submetricFilter,
       searchQuery,
       unassignedFilter,
     ],
   );
 
-  // Fetch data with React Query
+  // Fetch workspaces list to find the current workspace by slug
+  // Uses normalizeSlug for consistent case-insensitive comparison
+  const { workspaces, loading: isLoadingWorkspaces } = useWorkspaces();
+  const currentWorkspace = workspaces.find(
+    (w) => normalizeSlug(w.slug) === normalizeSlug(workspaceSlug),
+  );
+  const workspaceId = currentWorkspace?.id ?? "";
+
+  // Fetch data with React Query (using workspace ID)
   const { data, isLoading: isLoadingFollowUps } = useFollowUps(
     workspaceId,
     queryParams,
@@ -185,7 +204,45 @@ export default function FollowUpsPage() {
   const followUps = data?.followUps || [];
   const pagination = data?.pagination;
   const slides = workspace?.slides || [];
-  const isLoading = isLoadingFollowUps || isLoadingUsers || isLoadingWorkspace;
+  const isLoading =
+    isLoadingFollowUps ||
+    isLoadingUsers ||
+    isLoadingWorkspace ||
+    isLoadingWorkspaces;
+
+  // Extract unique submetric definitions from all slides for filtering
+  const submetricDefinitions = useMemo<SubmetricDefinitionForSelector[]>(() => {
+    if (!slides.length) return [];
+
+    const definitions: SubmetricDefinitionForSelector[] = [];
+    const seenIds = new Set<string>();
+
+    for (const slide of slides) {
+      if (!slide.metrics || !Array.isArray(slide.metrics)) continue;
+
+      for (const metric of slide.metrics) {
+        if (!metric.submetrics || !Array.isArray(metric.submetrics)) continue;
+
+        for (const submetric of metric.submetrics) {
+          if (submetric.definition && !seenIds.has(submetric.definition.id)) {
+            seenIds.add(submetric.definition.id);
+            definitions.push({
+              ...submetric.definition,
+              slideTitle: slide.title,
+            });
+          }
+        }
+      }
+    }
+
+    // Sort by category then metric name
+    return definitions.sort((a, b) => {
+      const catA = a.category || "";
+      const catB = b.category || "";
+      if (catA !== catB) return catA.localeCompare(catB);
+      return (a.metricName || "").localeCompare(b.metricName || "");
+    });
+  }, [slides]);
 
   // Mutations
   const createMutation = useCreateFollowUp(workspaceId);
@@ -238,7 +295,7 @@ export default function FollowUpsPage() {
             label: "View",
             onClick: () => {
               router.push(
-                `/${workspaceId}/follow-ups?slideId=${
+                `/${workspaceSlug}/follow-ups?slideId=${
                   newFollowUp.slideId || ""
                 }`,
               );
@@ -296,8 +353,8 @@ export default function FollowUpsPage() {
     setMoreFiltersOpen(false);
 
     // Clear URL params - use replace to avoid adding to history
-    router.replace(`/${workspaceId}/follow-ups`);
-  }, [router, workspaceId]);
+    router.replace(`/${workspaceSlug}/follow-ups`);
+  }, [router, workspaceSlug]);
 
   // Assignee filter handlers
   const handleAssigneeChange = useCallback(
@@ -348,6 +405,7 @@ export default function FollowUpsPage() {
           priorityFilter ||
           assigneeIds.length > 0 ||
           slideFilter ||
+          submetricFilter ||
           searchQuery ||
           unassignedFilter,
       ),
@@ -356,6 +414,7 @@ export default function FollowUpsPage() {
       priorityFilter,
       assigneeIds.length,
       slideFilter,
+      submetricFilter,
       searchQuery,
       unassignedFilter,
     ],
@@ -367,9 +426,16 @@ export default function FollowUpsPage() {
       [
         priorityFilter,
         slideFilter,
+        submetricFilter,
         assigneeIds.length > 0 || unassignedFilter,
       ].filter(Boolean).length,
-    [priorityFilter, slideFilter, assigneeIds.length, unassignedFilter],
+    [
+      priorityFilter,
+      slideFilter,
+      submetricFilter,
+      assigneeIds.length,
+      unassignedFilter,
+    ],
   );
 
   return (
@@ -397,10 +463,10 @@ export default function FollowUpsPage() {
         </div>
 
         {/* Filters Bar */}
-        <div className="px-0 md:px-3 pb-2.5 sm:pb-4">
-          <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="px-0 md:px-3 pb-2.5 sm:pb-4 overflow-hidden">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap">
             {/* Search - always visible, responsive width */}
-            <div className="relative flex-1 sm:flex-none sm:w-[240px]">
+            <div className="relative flex-1 min-w-[120px] sm:flex-none sm:w-[200px] md:w-[240px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Search..."
@@ -423,7 +489,7 @@ export default function FollowUpsPage() {
                 })
               }
             >
-              <SelectTrigger className="w-[110px] sm:w-[140px] h-9 shrink-0">
+              <SelectTrigger className="w-[100px] sm:w-[130px] h-9 shrink-0">
                 <SelectValue placeholder="Status">
                   {statusFilter ? (
                     <div className="flex items-center gap-1.5 sm:gap-2">
@@ -483,7 +549,7 @@ export default function FollowUpsPage() {
                 })
               }
             >
-              <SelectTrigger className="w-[140px] h-9 shrink-0 hidden md:flex">
+              <SelectTrigger className="w-[120px] h-9 shrink-0 hidden md:flex">
                 <SelectValue placeholder="Priority">
                   {priorityFilter ? (
                     <div className="flex items-center gap-2">
@@ -543,7 +609,7 @@ export default function FollowUpsPage() {
               disabled={isLoadingWorkspace}
             >
               <SelectTrigger
-                className="w-[140px] h-9 shrink-0 hidden lg:flex"
+                className="w-[130px] h-9 shrink-0 hidden lg:flex"
                 data-testid="slide-filter"
               >
                 <SelectValue placeholder="All slides">
@@ -573,8 +639,24 @@ export default function FollowUpsPage() {
               </SelectContent>
             </Select>
 
-            {/* Assignee selector - hidden on mobile, visible on lg+ */}
-            <div className="hidden lg:block">
+            {/* Submetric filter - hidden on mobile, visible on xl+ */}
+            <div className="hidden xl:block shrink-0">
+              <SubmetricSelector
+                submetricDefinitions={submetricDefinitions}
+                value={submetricFilter || null}
+                onValueChange={(value) =>
+                  updateSearchParams({
+                    submetricDefinitionId: value || undefined,
+                  })
+                }
+                showAllOption
+                disabled={isLoadingWorkspace}
+                isLoading={isLoadingWorkspace}
+              />
+            </div>
+
+            {/* Assignee selector - hidden on mobile, visible on xl+ */}
+            <div className="hidden xl:block shrink-0">
               <UserAssigneeMultiSelector
                 users={users}
                 value={assigneeIds}
@@ -588,18 +670,18 @@ export default function FollowUpsPage() {
                 currentUserName={session?.user?.name ?? undefined}
                 currentUserEmail={session?.user?.email ?? undefined}
                 currentUserImage={session?.user?.image ?? undefined}
-                triggerWidth="w-[280px]"
+                triggerWidth="w-[200px]"
                 showRemoveButtons={false}
               />
             </div>
 
-            {/* More Filters button - visible on mobile/tablet, hidden on lg+ */}
+            {/* More Filters button - visible on mobile/tablet, hidden on xl+ */}
             <Popover open={moreFiltersOpen} onOpenChange={setMoreFiltersOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9 px-2.5 shrink-0 lg:hidden relative"
+                  className="h-9 px-2.5 shrink-0 xl:hidden relative"
                 >
                   <SlidersHorizontal className="h-4 w-4" />
                   {mobileHiddenFiltersCount > 0 && (
@@ -626,6 +708,7 @@ export default function FollowUpsPage() {
                           updateSearchParams({
                             priority: undefined,
                             slideId: undefined,
+                            submetricDefinitionId: undefined,
                             assigneeId: undefined,
                             unassigned: undefined,
                           });
@@ -706,8 +789,8 @@ export default function FollowUpsPage() {
                     </Select>
                   </div>
 
-                  {/* Slide filter in popover */}
-                  <div className="space-y-1.5">
+                  {/* Slide filter in popover - visible on mobile/tablet (lg screens hide this) */}
+                  <div className="space-y-1.5 lg:hidden">
                     <Label className="text-xs text-muted-foreground font-normal">
                       Slide
                     </Label>
@@ -747,6 +830,27 @@ export default function FollowUpsPage() {
                         )}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  {/* Submetric filter in popover */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground font-normal">
+                      Submetric
+                    </Label>
+                    <SubmetricSelector
+                      submetricDefinitions={submetricDefinitions}
+                      value={submetricFilter || null}
+                      onValueChange={(value) =>
+                        updateSearchParams({
+                          submetricDefinitionId: value || undefined,
+                        })
+                      }
+                      showAllOption
+                      disabled={isLoadingWorkspace}
+                      isLoading={isLoadingWorkspace}
+                      triggerWidth="w-full"
+                      triggerMaxWidth="max-w-full"
+                    />
                   </div>
 
                   {/* Assignee selector in popover */}
@@ -805,7 +909,7 @@ export default function FollowUpsPage() {
       <div className="flex-1 flex flex-col min-h-0">
         <FollowUpTable
           followUps={followUps}
-          workspaceId={workspaceId}
+          workspaceSlug={workspaceSlug}
           currentUserId={session?.user?.id}
           onEdit={handleEditClick}
           onDelete={handleDelete}
@@ -884,7 +988,6 @@ export default function FollowUpsPage() {
                     className="h-7 sm:h-8 px-1.5 sm:px-3"
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    <span className="hidden sm:inline ml-1">Previous</span>
                   </Button>
 
                   {/* Page numbers - show on larger screens */}
@@ -936,7 +1039,6 @@ export default function FollowUpsPage() {
                     disabled={!pagination.hasMore}
                     className="h-7 sm:h-8 px-1.5 sm:px-3"
                   >
-                    <span className="hidden sm:inline mr-1">Next</span>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>

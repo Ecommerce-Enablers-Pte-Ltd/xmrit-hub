@@ -15,29 +15,40 @@ import {
 import { useCreateFollowUp, useUsers, useWorkspace } from "@/lib/api";
 import { handleCloseAutoFocus } from "@/lib/ui/focus";
 import { getErrorMessage } from "@/lib/utils";
+import { parseSlideSlug } from "@/lib/validations/slide";
 import type { FollowUpPriority, FollowUpStatus } from "@/types/db/follow-up";
 import { FollowUpDialog } from "../follow-ups/components/follow-up-dialog";
 
 interface NavbarFollowUpButtonProps {
   workspaceId: string;
+  workspaceSlug: string;
 }
 
 export function NavbarFollowUpButton({
   workspaceId,
+  workspaceSlug,
 }: NavbarFollowUpButtonProps) {
   const pathname = usePathname();
   const params = useParams();
   const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  // Check if we're on a slide page
+  // Check if we're on a slide page and get the slide's ID
   const isSlidePage = pathname?.includes("/slide/");
-  const slideId = isSlidePage ? (params?.slideId as string) : undefined;
+  const slideSlug = isSlidePage ? (params?.slideSlug as string) : undefined;
+  // Parse the slide number from the slug for lookup
+  const slideNumber = slideSlug ? parseSlideSlug(slideSlug) : null;
 
   const { data: users = [] } = useUsers();
   const { workspace } = useWorkspace(workspaceId);
   const slides = workspace?.slides || [];
   const createMutation = useCreateFollowUp(workspaceId);
+
+  // Find the current slide by number to get its ID
+  const currentSlide = slideNumber
+    ? slides.find((s) => s.slideNumber === slideNumber)
+    : undefined;
+  const slideId = currentSlide?.id;
 
   // Don't show button if not on a slide page
   if (!isSlidePage) {
@@ -63,7 +74,7 @@ export function NavbarFollowUpButton({
           label: "View",
           onClick: () => {
             router.push(
-              `/${workspaceId}/follow-ups?slideId=${newFollowUp.slideId || ""}`,
+              `/${workspaceSlug}/follow-ups?slideId=${newFollowUp.slideId || ""}`,
             );
           },
         },
@@ -77,7 +88,7 @@ export function NavbarFollowUpButton({
   };
 
   const handleViewFollowUps = () => {
-    window.open(`/${workspaceId}/follow-ups?slideId=${slideId}`, "_blank");
+    window.open(`/${workspaceSlug}/follow-ups?slideId=${slideId}`, "_blank");
   };
 
   return (

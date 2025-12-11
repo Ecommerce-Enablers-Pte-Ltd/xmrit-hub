@@ -15,10 +15,10 @@ export interface SubmetricDefinition {
   workspaceId: string;
   metricKey: string;
   submetricKey: string;
-  category: string | null; // dimension/segment (e.g., "Brand A", "North America")
-  metricName: string | null; // the actual metric name (e.g., "% Completion Rate")
+  category: string | null; // dimension/segment (e.g., "Adidas", "North America")
+  metricName: string | null; // the actual metric name (e.g., "% of MCB Count")
   xaxis: string | null; // X-axis semantic label (e.g., "period", "tracked_week", "transaction_touched_at")
-  yaxis: string | null; // Y-axis semantic label / unit (e.g., "hours", "% completion", "complaints")
+  yaxis: string | null; // Y-axis semantic label / unit (e.g., "hours", "% of MCB", "complaints")
   unit: string | null; // Unit of measurement (%, $, count) - often same as yaxis
   preferredTrend: string | null;
   createdAt: Date;

@@ -13,7 +13,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { FollowUpDialog } from "@/app/[workspaceId]/follow-ups/components/follow-up-dialog";
+import { FollowUpDialog } from "@/app/[workspaceSlug]/follow-ups/components/follow-up-dialog";
 import {
   getPriorityIcon,
   getPriorityLabel,
@@ -53,7 +53,7 @@ import {
 import { useSubmetricFollowUps } from "@/lib/api/follow-ups";
 import { useUsers } from "@/lib/api/users";
 import { useWorkspace } from "@/lib/api/workspaces";
-import { cn, getErrorMessage } from "@/lib/utils";
+import { cn, generateSlideUrl, getErrorMessage } from "@/lib/utils";
 import type {
   FollowUpPriority,
   FollowUpStatus,
@@ -381,6 +381,7 @@ export function FollowUpTab({
                         followUp={followUp}
                         slideId={slideId}
                         workspaceId={workspaceId}
+                        workspaceSlug={workspace?.slug ?? ""}
                         isResolved={false}
                         currentUserId={session?.user?.id}
                         currentSlide={currentSlide}
@@ -418,6 +419,7 @@ export function FollowUpTab({
                         followUp={followUp}
                         slideId={slideId}
                         workspaceId={workspaceId}
+                        workspaceSlug={workspace?.slug ?? ""}
                         isResolved={true}
                         currentUserId={session?.user?.id}
                         currentSlide={currentSlide}
@@ -507,6 +509,7 @@ interface FollowUpCardProps {
   followUp: FollowUpWithDetails;
   slideId: string;
   workspaceId: string;
+  workspaceSlug: string;
   isResolved: boolean;
   currentUserId?: string;
   currentSlide?: Slide;
@@ -518,6 +521,7 @@ function FollowUpCard({
   followUp,
   slideId,
   workspaceId,
+  workspaceSlug,
   isResolved,
   currentUserId,
   currentSlide,
@@ -702,7 +706,7 @@ function FollowUpCard({
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap">
           <Link
-            href={`/${workspaceId}/follow-ups`}
+            href={`/${workspaceSlug}/follow-ups`}
             className="text-xs font-mono text-muted-foreground hover:text-primary"
           >
             {followUp.identifier}
@@ -842,7 +846,11 @@ function FollowUpCard({
               onClick={() =>
                 followUp.slide &&
                 window.open(
-                  `/${workspaceId}/slide/${followUp.slide.id}`,
+                  generateSlideUrl(
+                    workspaceSlug,
+                    followUp.slide.slideNumber,
+                    followUp.slide.title,
+                  ),
                   "_blank",
                 )
               }
@@ -861,7 +869,11 @@ function FollowUpCard({
               onClick={() =>
                 followUp.resolvedAtSlide &&
                 window.open(
-                  `/${workspaceId}/slide/${followUp.resolvedAtSlide.id}`,
+                  generateSlideUrl(
+                    workspaceSlug,
+                    followUp.resolvedAtSlide.slideNumber,
+                    followUp.resolvedAtSlide.title,
+                  ),
                   "_blank",
                 )
               }

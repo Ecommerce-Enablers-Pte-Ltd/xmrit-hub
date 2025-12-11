@@ -118,6 +118,7 @@ Top-level organization boundary. All metrics and comments are scoped to a worksp
 | ------------- | --------- | ----------------------------- | --------------------------------- |
 | `id`          | text      | Primary key (UUID)            | Auto-generated UUID               |
 | `name`        | text      | Workspace name (required)     | None (required)                   |
+| `slug`        | text      | URL-friendly slug (unique)    | None (required, auto-generated)   |
 | `description` | text      | Optional description          | `null`                            |
 | `settings`    | json      | Workspace-level configuration | `null`                            |
 | `isArchived`  | boolean   | Soft delete flag              | `false` (set in schema)           |
@@ -135,6 +136,7 @@ Top-level organization boundary. All metrics and comments are scoped to a worksp
 **Indexes:**
 
 - `workspace_name_idx` on `name`
+- `workspace_slug_idx` (unique) on `slug` - for URL routing and lookups
 - `workspace_updated_at_idx` on `updatedAt` (for ordering workspaces)
 - `workspace_is_archived_idx` on `isArchived` (for filtering archived workspaces)
 
@@ -146,6 +148,11 @@ Top-level organization boundary. All metrics and comments are scoped to a worksp
 
 **Key Concepts:**
 
+- **Slug vs ID**:
+  - `id`: UUID used in API endpoints (e.g., `/api/workspaces/[workspaceId]`)
+  - `slug`: URL-friendly identifier used in web URLs (e.g., `/my-workspace/slide/1-weekly-review`)
+  - Slugs are auto-generated from workspace name when created via API
+  - Slugs are immutable after creation (unique constraint)
 - **Public workspaces** (`isPublic: true`): Accessible to all authenticated users
 - **Private workspaces** (`isPublic: false`): Access control (future enhancement)
 - **Archived workspaces** (`isArchived: true`): Hidden from default views but data retained
@@ -154,19 +161,21 @@ Top-level organization boundary. All metrics and comments are scoped to a worksp
 
 Presentation containers representing a specific time period or reporting cycle. Replaces traditional "folder" concepts with date-aware organization.
 
-| Column        | Type      | Description                   |
-| ------------- | --------- | ----------------------------- |
-| `id`          | text      | Primary key (UUID)            |
-| `title`       | text      | Slide title (required)        |
-| `description` | text      | Optional description          |
-| `workspaceId` | text      | Foreign key to `workspace.id` |
-| `slideDate`   | date      | Date this slide represents    |
-| `createdAt`   | timestamp | Creation timestamp            |
-| `updatedAt`   | timestamp | Last update timestamp         |
+| Column        | Type      | Description                                                 |
+| ------------- | --------- | ----------------------------------------------------------- |
+| `id`          | text      | Primary key (UUID)                                          |
+| `title`       | text      | Slide title (required)                                      |
+| `slideNumber` | integer   | Per-workspace sequential number (Metabase-style, immutable) |
+| `description` | text      | Optional description                                        |
+| `workspaceId` | text      | Foreign key to `workspace.id`                               |
+| `slideDate`   | date      | Date this slide represents                                  |
+| `createdAt`   | timestamp | Creation timestamp                                          |
+| `updatedAt`   | timestamp | Last update timestamp                                       |
 
 **Indexes:**
 
 - `slide_workspace_id_idx` on `workspaceId`
+- `slide_workspace_slide_number_idx` (unique) on (`workspaceId`, `slideNumber`) - ensures unique slide numbers per workspace
 - `slide_date_idx` on `slideDate`
 - `slide_created_at_idx` on `createdAt` (for ordering recent slides)
 
@@ -182,6 +191,14 @@ Presentation containers representing a specific time period or reporting cycle. 
 
 **Key Concepts:**
 
+- **ID vs Slug**:
+  - `id`: UUID used in API endpoints (e.g., `/api/slides/[slideId]`)
+  - Slide slugs are not stored in the database - they're constructed from `slideNumber` + `title` for URLs
+  - URL format: `/{workspaceSlug}/slide/{slideNumber}-{slugified-title}` (e.g., `/my-workspace/slide/1-weekly-review`)
+- **Slide Number** (`slideNumber`): Per-workspace sequential number (1, 2, 3, ...), automatically assigned and immutable after creation
+  - Auto-increments: Each new slide gets MAX(slideNumber) + 1 for the workspace
+  - Numbers don't fill gaps: If slides are deleted, the next slide continues from the highest number (e.g., slides 1,2,5 → next slide is 6, not 3)
+  - This ensures stable URLs and prevents breaking links when slides are deleted
 - **Slide Date** (`slideDate`): Represents the reporting period (e.g., "2024-10-30" for weekly review)
 - **Ordering**: Slides are ordered by `slideDate` (primary) and `createdAt` (secondary), no manual sort order
 
@@ -904,9 +921,11 @@ The following defaults are set in `schema.ts` and automatically applied by the d
 
 The ingestion API (`POST /api/ingest/metrics`) creates/updates the entire hierarchy atomically:
 
+**Important:** The API uses UUIDs (`workspace_id`, `slide_id`), not slugs. URLs use slugs, but the API requires UUIDs.
+
 ```json
 {
-  "workspace_id": "uuid",
+  "workspace_id": "550e8400-e29b-41d4-a716-446655440000",
   "slide_title": "2024-10-30 Weekly Review",
   "slide_date": "2024-10-30",
   "metrics": [

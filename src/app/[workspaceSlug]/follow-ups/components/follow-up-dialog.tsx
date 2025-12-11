@@ -2,27 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import {
-  AlertCircle,
-  CalendarIcon,
-  Check,
-  ChevronsUpDown,
-  X,
-} from "lucide-react";
+import { AlertCircle, CalendarIcon, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { getPriorityIcon, getStatusIcon } from "@/components/config";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import {
   Dialog,
   DialogContent,
@@ -54,8 +40,11 @@ import type {
   FollowUpWithDetails,
 } from "@/types/db/follow-up";
 import type { SlideWithMetrics } from "@/types/db/slide";
-import type { SubmetricDefinition } from "@/types/db/submetric";
 import type { User } from "@/types/db/user";
+import {
+  type SubmetricDefinitionForSelector,
+  SubmetricSelector,
+} from "./submetric-selector";
 import { UserAssigneeMultiSelector } from "./user-assignee-multi-selector";
 
 // Form validation schema
@@ -145,7 +134,6 @@ export function FollowUpDialog({
   currentSlideId,
 }: FollowUpDialogProps) {
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [submetricOpen, setSubmetricOpen] = useState(false);
   const clearingDateRef = useRef(false);
   const previousOpenRef = useRef(false);
   const followUpIdRef = useRef<string | undefined>(undefined);
@@ -179,14 +167,9 @@ export function FollowUpDialog({
   // Watch the selected slideId to show submetric definitions
   const selectedSlideId = watch("slideId");
 
-  // Extended type to include category for display
-  type SubmetricDefinitionWithCategory = SubmetricDefinition & {
-    category: string | null;
-  };
-
   // Get submetric definitions for the selected slide
   const availableSubmetricDefinitions = useMemo<
-    SubmetricDefinitionWithCategory[]
+    SubmetricDefinitionForSelector[]
   >(() => {
     if (!selectedSlideId) return [];
     const slide = slides.find((s) => s.id === selectedSlideId);
@@ -201,7 +184,7 @@ export function FollowUpDialog({
     }
 
     // Extract unique submetric definitions from all metrics in the slide
-    const definitions: SubmetricDefinitionWithCategory[] = [];
+    const definitions: SubmetricDefinitionForSelector[] = [];
     const seenIds = new Set<string>();
 
     for (const metric of slide.metrics) {
@@ -277,7 +260,6 @@ export function FollowUpDialog({
       if (!previousOpenRef.current || isNewFollowUp) {
         // Reset popover states
         setCalendarOpen(false);
-        setSubmetricOpen(false);
 
         if (followUp) {
           // Edit mode - populate with existing data
@@ -317,7 +299,6 @@ export function FollowUpDialog({
     } else {
       // Reset popover states when dialog closes
       setCalendarOpen(false);
-      setSubmetricOpen(false);
       previousOpenRef.current = false;
       followUpIdRef.current = undefined;
     }
@@ -396,6 +377,34 @@ export function FollowUpDialog({
                 />
                 <FormError message={errors.title?.message} />
               </div>
+
+              {/* Assignees */}
+              <Controller
+                name="assigneeIds"
+                control={control}
+                render={({ field }) => (
+                  <div className="grid gap-1.5 sm:gap-2">
+                    <Label htmlFor="assignees" className="text-sm">
+                      Assignees
+                    </Label>
+                    <UserAssigneeMultiSelector
+                      users={users}
+                      value={field.value || []}
+                      onValueChange={(newValue) => {
+                        // Use setValue with shouldValidate to ensure the change persists
+                        setValue("assigneeIds", newValue, {
+                          shouldValidate: true,
+                          shouldDirty: true,
+                          shouldTouch: true,
+                        });
+                      }}
+                      placeholder="Assign to..."
+                      disabled={isLoading}
+                    />
+                    <FormError message={errors.assigneeIds?.message} />
+                  </div>
+                )}
+              />
 
               {/* Status, Priority, and Due Date Row - responsive grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
@@ -653,156 +662,32 @@ export function FollowUpDialog({
                 <Controller
                   name="submetricDefinitionId"
                   control={control}
-                  render={({ field }) => {
-                    const selectedDefinition =
-                      availableSubmetricDefinitions.find(
-                        (def) => def.id === field.value,
-                      );
-                    const displayText = selectedDefinition
-                      ? selectedDefinition.category
-                        ? `${selectedDefinition.category} - ${selectedDefinition.metricName}`
-                        : selectedDefinition.metricName || "Untitled"
-                      : "None";
-
-                    return (
-                      <div className="grid gap-1.5 sm:gap-2">
-                        <Label
-                          htmlFor="submetricDefinition"
-                          className="text-sm"
-                        >
-                          Related Submetric
-                        </Label>
-                        <Popover
-                          open={submetricOpen}
-                          onOpenChange={setSubmetricOpen}
-                          modal={true}
-                        >
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={submetricOpen}
-                              disabled={isLoading}
-                              className={cn(
-                                "w-full h-9 sm:h-10 justify-between font-normal overflow-hidden text-ellipsis whitespace-nowrap",
-                                !field.value && "text-muted-foreground",
-                                errors.submetricDefinitionId &&
-                                  "border-destructive",
-                              )}
-                            >
-                              <span className="truncate overflow-hidden text-ellipsis whitespace-nowrap block flex-1 text-left text-sm">
-                                {displayText}
-                              </span>
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent
-                            className="p-0"
-                            align="start"
-                            style={{
-                              width: "var(--radix-popover-trigger-width)",
-                            }}
-                            onOpenAutoFocus={(e) => e.preventDefault()}
-                          >
-                            <Command
-                              className="overflow-hidden"
-                              shouldFilter={true}
-                            >
-                              <CommandInput placeholder="Search submetrics..." />
-                              <CommandList className="max-h-[300px] overflow-y-auto">
-                                <CommandEmpty>No submetric found.</CommandEmpty>
-                                <CommandGroup>
-                                  <CommandItem
-                                    value="none"
-                                    onSelect={() => {
-                                      field.onChange(null);
-                                      setSubmetricOpen(false);
-                                    }}
-                                    className="overflow-hidden"
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4 shrink-0",
-                                        !field.value
-                                          ? "opacity-100"
-                                          : "opacity-0",
-                                      )}
-                                    />
-                                    <span className="text-muted-foreground truncate block flex-1 min-w-0">
-                                      None
-                                    </span>
-                                  </CommandItem>
-                                  {availableSubmetricDefinitions.map(
-                                    (definition) => {
-                                      const label = definition.category
-                                        ? `${definition.category} - ${definition.metricName}`
-                                        : definition.metricName || "Untitled";
-                                      return (
-                                        <CommandItem
-                                          key={definition.id}
-                                          value={label}
-                                          onSelect={() => {
-                                            field.onChange(definition.id);
-                                            setSubmetricOpen(false);
-                                          }}
-                                          className="overflow-hidden"
-                                        >
-                                          <Check
-                                            className={cn(
-                                              "mr-2 h-4 w-4 shrink-0",
-                                              field.value === definition.id
-                                                ? "opacity-100"
-                                                : "opacity-0",
-                                            )}
-                                          />
-                                          <span className="truncate block flex-1 min-w-0">
-                                            {label}
-                                          </span>
-                                        </CommandItem>
-                                      );
-                                    },
-                                  )}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                        <FormError
-                          message={errors.submetricDefinitionId?.message}
-                        />
-                      </div>
-                    );
-                  }}
+                  render={({ field }) => (
+                    <div className="grid gap-1.5 sm:gap-2">
+                      <Label htmlFor="submetricDefinition" className="text-sm">
+                        Related Submetric
+                      </Label>
+                      <SubmetricSelector
+                        submetricDefinitions={availableSubmetricDefinitions}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="None"
+                        showNoneOption
+                        disabled={isLoading}
+                        triggerWidth="w-full"
+                        triggerMaxWidth="max-w-full"
+                        className={cn(
+                          "h-9 sm:h-10",
+                          errors.submetricDefinitionId && "border-destructive",
+                        )}
+                      />
+                      <FormError
+                        message={errors.submetricDefinitionId?.message}
+                      />
+                    </div>
+                  )}
                 />
               )}
-
-              {/* Assignees */}
-              <Controller
-                name="assigneeIds"
-                control={control}
-                render={({ field }) => (
-                  <div className="grid gap-1.5 sm:gap-2">
-                    <Label htmlFor="assignees" className="text-sm">
-                      Assignees
-                    </Label>
-                    <UserAssigneeMultiSelector
-                      users={users}
-                      value={field.value || []}
-                      onValueChange={(newValue) => {
-                        // Use setValue with shouldValidate to ensure the change persists
-                        setValue("assigneeIds", newValue, {
-                          shouldValidate: true,
-                          shouldDirty: true,
-                          shouldTouch: true,
-                        });
-                      }}
-                      placeholder="Assign to..."
-                      disabled={isLoading}
-                    />
-                    <FormError message={errors.assigneeIds?.message} />
-                  </div>
-                )}
-              />
             </div>
           </div>
 

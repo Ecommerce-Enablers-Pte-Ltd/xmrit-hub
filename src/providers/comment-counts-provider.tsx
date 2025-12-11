@@ -178,8 +178,10 @@ export function CommentCountsProvider({
       }>;
     },
     enabled: definitionIds.length > 0,
-    staleTime: 1000 * 30, // Consider data fresh for 30 seconds
+    staleTime: 1000 * 15, // Consider data fresh for 15 seconds
     refetchOnWindowFocus: true, // Refetch when user comes back to tab
+    refetchInterval: 1000 * 30, // Poll every 30 seconds for cross-tab/session updates
+    refetchIntervalInBackground: false, // Don't poll when tab is not visible
     placeholderData: { counts: {} as CountsData }, // Provide empty data immediately on mount to avoid undefined
   });
 
@@ -280,13 +282,50 @@ export function useInvalidateCommentCounts() {
 
   const invalidateCounts = useCallback(
     (slideId: string) => {
-      // Invalidate all comment counts for this slide
+      // Invalidate all comment counts for this slide with immediate refetch
       queryClient.invalidateQueries({
         queryKey: commentCountsKeys.slide(slideId),
+        refetchType: "active", // Only refetch if the query is currently being used
       });
     },
     [queryClient],
   );
 
-  return { invalidateCounts };
+  // Optimistic update for immediate UI feedback
+  const updateCountOptimistically = useCallback(
+    (
+      slideId: string,
+      definitionId: string,
+      bucketType: TimeBucket,
+      bucketValue: string,
+      delta: number, // +1 for add, -1 for delete
+    ) => {
+      // Get all matching queries and update them optimistically
+      queryClient.setQueriesData<{ counts: CountsData }>(
+        { queryKey: commentCountsKeys.slide(slideId) },
+        (oldData) => {
+          if (!oldData?.counts) return oldData;
+
+          const key = `${definitionId}:${bucketType}`;
+          const currentBucketCounts = oldData.counts[key] || {};
+          const currentCount = currentBucketCounts[bucketValue] || 0;
+          const newCount = Math.max(0, currentCount + delta);
+
+          return {
+            ...oldData,
+            counts: {
+              ...oldData.counts,
+              [key]: {
+                ...currentBucketCounts,
+                [bucketValue]: newCount,
+              },
+            },
+          };
+        },
+      );
+    },
+    [queryClient],
+  );
+
+  return { invalidateCounts, updateCountOptimistically };
 }

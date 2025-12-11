@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, ChevronDown, ChevronUp, Link2, Search } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronUp } from "lucide-react";
 import {
   lazy,
   memo,
@@ -12,27 +12,28 @@ import {
   useState,
 } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { ChartInfo } from "@/lib/api/slides";
 import type { MetricWithSubmetrics } from "@/types/db/metric";
+import { useChartSearch } from "../../../../../providers/chart-search-provider";
 import { EditMetricDefinitionDialog } from "./edit-metric-definition-dialog";
 
 // Lazy load the SubmetricLineChart component for better performance
 const SubmetricLineChart = lazy(() =>
   import("./submetric-card").then((mod) => ({
     default: mod.SubmetricLineChart,
+  })),
+);
+
+// Lazy load ChartSearchDialog to improve initial load performance
+const ChartSearchDialog = lazy(() =>
+  import("./chart-search-dialog").then((mod) => ({
+    default: mod.ChartSearchDialog,
   })),
 );
 
@@ -61,14 +62,8 @@ export function generateChartSlug(
   return parts.join("-") || "chart";
 }
 
-// Skeleton loader for charts - shows chart info even when lazy loaded
-function ChartSkeleton({
-  category,
-  metricName,
-}: {
-  category?: string;
-  metricName?: string;
-}) {
+// Skeleton loader for charts - hides chart info until reached
+function ChartSkeleton() {
   return (
     <div className="w-full border rounded-lg overflow-visible">
       {/* Header Section */}
@@ -88,32 +83,17 @@ function ChartSkeleton({
           </div>
         </div>
 
-        {/* Title and Status Row */}
+        {/* Title and Status Row - always show skeleton placeholders until reached */}
         <div className="flex items-start justify-between mt-4">
           <div className="flex-1">
             <div className="flex items-center gap-3">
-              {category || metricName ? (
-                <>
-                  {category && (
-                    <span className="px-4 py-2 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-md text-sm font-bold uppercase tracking-wide whitespace-nowrap shrink-0">
-                      {category}
-                    </span>
-                  )}
-                  <h2 className="text-2xl font-semibold tracking-tight overflow-hidden text-ellipsis whitespace-nowrap">
-                    {metricName || "Untitled"}
-                  </h2>
-                </>
-              ) : (
-                <>
-                  <Skeleton className="h-9 w-24 rounded-md" />
-                  <Skeleton className="h-8 w-64" />
-                </>
-              )}
+              <Skeleton className="h-9 w-24 rounded-md" />
+              <Skeleton className="h-8 w-64" />
             </div>
           </div>
           {/* Traffic Light placeholder */}
-          <div className="flex flex-col items-end gap-2 mr-1">
-            <Skeleton className="h-10 w-10 rounded-full" />
+          <div className="flex flex-col items-end gap-2">
+            <Skeleton className="h-10 w-10 rounded-sm" />
           </div>
         </div>
       </div>
@@ -204,11 +184,20 @@ export const SlideContainer = memo(function SlideContainer({
     () => new Set([0, 1, 2]), // Initially render first 3 charts
   );
 
-  // Search dialog state
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const commandListRef = useRef<HTMLDivElement>(null);
-  const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
+  // Chart search context
+  const {
+    isOpen: isSearchOpen,
+    open: openSearch,
+    close: closeSearch,
+  } = useChartSearch();
+
+  // Track if dialog has been loaded to keep it mounted for close animation
+  const [hasDialogLoaded, setHasDialogLoaded] = useState(false);
+
+  // Mark dialog as loaded when first opened
+  if (isSearchOpen && !hasDialogLoaded) {
+    setHasDialogLoaded(true);
+  }
 
   // Flatten all submetrics into a single array for easier navigation
   const allCharts = useMemo(() => {
@@ -225,11 +214,24 @@ export const SlideContainer = memo(function SlideContainer({
     );
   }, [metrics]);
 
+  // Derive chart info for search dialog directly from allCharts
+  const chartInfoList: ChartInfo[] = useMemo(() => {
+    return allCharts.map((chart) => ({
+      id: chart.submetric.id,
+      metricId: chart.metricId,
+      metricName: chart.metricName || "",
+      category: chart.submetric.definition?.category || "",
+      name: chart.submetric.definition?.metricName || "Untitled",
+      slug: chart.slug,
+    }));
+  }, [allCharts]);
+
   const totalCharts = allCharts.length;
 
   // Scroll to chart with robust handling for lazy-loaded charts
+  // behavior: "smooth" for navigation (gives sense of direction), "instant" for hash links
   const scrollToChart = useCallback(
-    (index: number) => {
+    (index: number, behavior: "smooth" | "instant" = "smooth") => {
       // Add more charts to visibleCharts for smoother experience
       setVisibleCharts((prev) => {
         const next = new Set(prev);
@@ -246,20 +248,14 @@ export const SlideContainer = memo(function SlideContainer({
 
       // Helper to perform scroll with highlight effect
       const performScroll = (element: HTMLDivElement) => {
-        // Use instant scroll first to get close, then smooth scroll for polish
-        element.scrollIntoView({
-          behavior: "instant",
-          block: "center",
-        });
-
-        // Small delay then smooth scroll for final positioning
-        setTimeout(() => {
+        if (behavior === "instant") {
+          // Instant jump for hash links - no sense of direction needed
           element.scrollIntoView({
-            behavior: "smooth",
+            behavior: "instant",
             block: "center",
           });
 
-          // Add highlight effect
+          // Add highlight effect immediately
           element.classList.add(
             "ring-2",
             "ring-primary/40",
@@ -274,7 +270,31 @@ export const SlideContainer = memo(function SlideContainer({
               "ring-offset-background",
             );
           }, 1500);
-        }, 50);
+        } else {
+          // Smooth scroll for navigation - gives sense of direction
+          element.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+
+          // Add highlight effect after scroll completes
+          setTimeout(() => {
+            element.classList.add(
+              "ring-2",
+              "ring-primary/40",
+              "ring-offset-2",
+              "ring-offset-background",
+            );
+            setTimeout(() => {
+              element.classList.remove(
+                "ring-2",
+                "ring-primary/40",
+                "ring-offset-2",
+                "ring-offset-background",
+              );
+            }, 1500);
+          }, 300);
+        }
       };
 
       // Try to scroll with longer delays for far-away charts
@@ -303,6 +323,10 @@ export const SlideContainer = memo(function SlideContainer({
       currentIndexRef.current = newIndex;
       // Scroll happens IMMEDIATELY - no state updates, no re-renders
       scrollToChart(newIndex);
+      // Clear URL hash when navigating to prevent stale deep links
+      if (window.location.hash) {
+        window.history.replaceState(null, "", window.location.pathname);
+      }
     }
     // Remove focus to allow arrow key navigation
     if (document.activeElement instanceof HTMLElement) {
@@ -318,6 +342,10 @@ export const SlideContainer = memo(function SlideContainer({
       currentIndexRef.current = newIndex;
       // Scroll happens IMMEDIATELY - no state updates, no re-renders
       scrollToChart(newIndex);
+      // Clear URL hash when navigating to prevent stale deep links
+      if (window.location.hash) {
+        window.history.replaceState(null, "", window.location.pathname);
+      }
     }
     // Remove focus to allow arrow key navigation
     if (document.activeElement instanceof HTMLElement) {
@@ -399,80 +427,8 @@ export const SlideContainer = memo(function SlideContainer({
     };
   }, [totalCharts]); // Re-run when number of charts changes
 
-  // Handle chart selection from search
-  const handleChartSelect = useCallback(
-    (chartIndex: number) => {
-      setIsSearchOpen(false);
-      setSearchQuery("");
-      currentIndexRef.current = chartIndex;
-      scrollToChart(chartIndex);
-    },
-    [scrollToChart],
-  );
-
-  // Handle search dialog open/close
-  const handleSearchOpenChange = useCallback((open: boolean) => {
-    setIsSearchOpen(open);
-    if (open) {
-      setSearchQuery("");
-      // Reset scroll position when opening
-      requestAnimationFrame(() => {
-        if (commandListRef.current) {
-          commandListRef.current.scrollTop = 0;
-        }
-      });
-    }
-  }, []);
-
-  // Handle search query change - reset scroll to top
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchQuery(value);
-    // Reset scroll to top when filtering
-    requestAnimationFrame(() => {
-      if (commandListRef.current) {
-        commandListRef.current.scrollTop = 0;
-      }
-    });
-  }, []);
-
-  // Copy chart link from search dialog
-  const copyChartLink = useCallback(
-    async (slug: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-      const url = `${window.location.origin}${window.location.pathname}#${slug}`;
-      try {
-        await navigator.clipboard.writeText(url);
-        setCopiedSlug(slug);
-        setTimeout(() => setCopiedSlug(null), 1500);
-      } catch {
-        // Fallback for older browsers
-        const textArea = document.createElement("textarea");
-        textArea.value = url;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
-        setCopiedSlug(slug);
-        setTimeout(() => setCopiedSlug(null), 1500);
-      }
-    },
-    [],
-  );
-
-  // Search dialog keyboard shortcut (Cmd+F or Ctrl+F) - replaces browser find
-  useEffect(() => {
-    const handleSearchShortcut = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "f") {
-        e.preventDefault();
-        setIsSearchOpen((prev) => !prev);
-      }
-    };
-
-    window.addEventListener("keydown", handleSearchShortcut);
-    return () => window.removeEventListener("keydown", handleSearchShortcut);
-  }, []);
-
   // Scroll to chart from URL hash (for deep linking)
+  // Uses "instant" behavior - direct jump without scroll animation
   const scrollToHashTarget = useCallback(() => {
     const hash = window.location.hash;
     if (!hash) return;
@@ -487,7 +443,7 @@ export const SlideContainer = memo(function SlideContainer({
       );
       if (chartIndex !== -1) {
         currentIndexRef.current = chartIndex;
-        scrollToChart(chartIndex);
+        scrollToChart(chartIndex, "instant");
       }
       return;
     }
@@ -498,7 +454,7 @@ export const SlideContainer = memo(function SlideContainer({
       const chartIndex = allCharts.findIndex((c) => c.metricId === metricId);
       if (chartIndex !== -1) {
         currentIndexRef.current = chartIndex;
-        scrollToChart(chartIndex);
+        scrollToChart(chartIndex, "instant");
       }
       return;
     }
@@ -507,7 +463,7 @@ export const SlideContainer = memo(function SlideContainer({
     const chartIndex = allCharts.findIndex((c) => c.slug === slug);
     if (chartIndex !== -1) {
       currentIndexRef.current = chartIndex;
-      scrollToChart(chartIndex);
+      scrollToChart(chartIndex, "instant");
     }
   }, [allCharts, scrollToChart]);
 
@@ -566,6 +522,16 @@ export const SlideContainer = memo(function SlideContainer({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [navigatePrevious, navigateNext]);
 
+  // Handle chart selection from search - must be before early returns
+  // Uses "instant" behavior - direct jump for deliberate selection
+  const handleSearchSelect = useCallback(
+    (index: number) => {
+      currentIndexRef.current = index;
+      scrollToChart(index, "instant");
+    },
+    [scrollToChart],
+  );
+
   if (metrics.length === 0) {
     return (
       <div className="text-center py-12">
@@ -595,114 +561,75 @@ export const SlideContainer = memo(function SlideContainer({
 
   return (
     <>
-      {/* Search Dialog */}
-      <CommandDialog
-        open={isSearchOpen}
-        onOpenChange={handleSearchOpenChange}
-        title="Search Charts"
-        description="Search and jump to any chart by category or metric name"
-        className="sm:max-w-2xl"
-      >
-        <CommandInput
-          placeholder="Type chart # or search by category/metric name..."
-          value={searchQuery}
-          onValueChange={handleSearchChange}
-        />
-        <CommandList ref={commandListRef} className="max-h-[60vh]">
-          <CommandEmpty>No charts found.</CommandEmpty>
-          <CommandGroup heading="Charts">
-            {allCharts.map((chart, index) => {
-              const category = chart.submetric.definition?.category || "";
-              const metricName =
-                chart.submetric.definition?.metricName || "Untitled";
-              const parentMetric = chart.metricName || "";
-              // Combine all searchable text for better matching
-              const searchValue = `${
-                index + 1
-              } ${category} ${metricName} ${parentMetric}`;
-
-              return (
-                <CommandItem
-                  key={chart.submetric.id}
-                  value={searchValue}
-                  keywords={[
-                    category,
-                    metricName,
-                    parentMetric,
-                    String(index + 1),
-                  ].filter(Boolean)}
-                  onSelect={() => handleChartSelect(index)}
-                  className="flex items-center gap-3 py-3 cursor-pointer"
-                >
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
-                    {index + 1}
-                  </span>
-                  <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                    {category && (
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        {category}
-                      </span>
-                    )}
-                    <span className="text-sm font-medium truncate">
-                      {metricName}
-                    </span>
-                  </div>
-                  <Tooltip open={copiedSlug === chart.slug}>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => copyChartLink(chart.slug, e)}
-                        className="h-7 w-7 shrink-0 cursor-pointer"
-                        title="Copy link to this chart"
-                      >
-                        <Link2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">Copied!</TooltipContent>
-                  </Tooltip>
-                </CommandItem>
-              );
-            })}
-          </CommandGroup>
-        </CommandList>
-      </CommandDialog>
+      {/* Chart Search Dialog - Lazy loaded, kept mounted after first open for close animation */}
+      {hasDialogLoaded && (
+        <Suspense fallback={null}>
+          <ChartSearchDialog
+            open={isSearchOpen}
+            onOpenChange={(open) => (open ? openSearch() : closeSearch())}
+            charts={chartInfoList}
+            onChartSelect={handleSearchSelect}
+          />
+        </Suspense>
+      )}
 
       {/* Floating Navigation Controls */}
       {totalCharts > 1 && (
         <div
           ref={navigationRef}
-          className="fixed right-14 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 opacity-40 hover:opacity-100 transition-opacity duration-300"
+          className="fixed right-18 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 opacity-40 hover:opacity-100 transition-opacity duration-300"
         >
-          <Button
-            onClick={() => setIsSearchOpen(true)}
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 hover:border-border hover:bg-background/90 transition-all shadow-2xl"
-            title="Search charts (⌘F)"
-          >
-            <Search className="h-4 w-4" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={navigatePrevious}
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 hover:border-border hover:bg-background/90 transition-all shadow-2xl"
+              >
+                <ChevronUp className="h-5 w-5" />
+                <span className="sr-only">Previous chart</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              <span className="flex items-center gap-2">
+                Previous chart
+                <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                  ↑
+                </kbd>
+                <span className="text-muted-foreground">or</span>
+                <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                  K
+                </kbd>
+              </span>
+            </TooltipContent>
+          </Tooltip>
 
-          <Button
-            onClick={navigatePrevious}
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 hover:border-border hover:bg-background/90 transition-all shadow-2xl"
-            title="Previous chart (↑ or K)"
-          >
-            <ChevronUp className="h-5 w-5" />
-          </Button>
-
-          <Button
-            onClick={navigateNext}
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 hover:border-border hover:bg-background/90 transition-all shadow-2xl"
-            title="Next chart (↓ or J)"
-          >
-            <ChevronDown className="h-5 w-5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={navigateNext}
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 hover:border-border hover:bg-background/90 transition-all shadow-2xl"
+              >
+                <ChevronDown className="h-5 w-5" />
+                <span className="sr-only">Next chart</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              <span className="flex items-center gap-2">
+                Next chart
+                <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                  ↓
+                </kbd>
+                <span className="text-muted-foreground">or</span>
+                <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                  J
+                </kbd>
+              </span>
+            </TooltipContent>
+          </Tooltip>
         </div>
       )}
 
@@ -781,18 +708,7 @@ export const SlideContainer = memo(function SlideContainer({
                       }}
                     >
                       {shouldRender ? (
-                        <Suspense
-                          fallback={
-                            <ChartSkeleton
-                              category={
-                                submetric.definition?.category ?? undefined
-                              }
-                              metricName={
-                                submetric.definition?.metricName ?? undefined
-                              }
-                            />
-                          }
-                        >
+                        <Suspense fallback={<ChartSkeleton />}>
                           <SubmetricLineChart
                             submetric={submetric}
                             slideId={slideId}
@@ -800,12 +716,7 @@ export const SlideContainer = memo(function SlideContainer({
                           />
                         </Suspense>
                       ) : (
-                        <ChartSkeleton
-                          category={submetric.definition?.category ?? undefined}
-                          metricName={
-                            submetric.definition?.metricName ?? undefined
-                          }
-                        />
+                        <ChartSkeleton />
                       )}
                       {totalCharts > 1 && (
                         <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm border border-border/50 rounded-full px-3 py-1.5 text-xs font-semibold opacity-60">

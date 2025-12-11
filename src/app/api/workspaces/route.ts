@@ -58,13 +58,39 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    // Validate request body with Zod
+    // Validate and normalize request body with Zod
+    // Note: slug is automatically normalized to lowercase by the schema
     const validatedData = createWorkspaceSchema.parse(body);
+
+    // Check if slug already exists (slug is already normalized by schema)
+    const existingWorkspace = await db
+      .select({ id: workspaces.id })
+      .from(workspaces)
+      .where(eq(workspaces.slug, validatedData.slug))
+      .limit(1);
+
+    if (existingWorkspace.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Slug already taken",
+          code: "SLUG_TAKEN",
+          details: [
+            {
+              field: "slug",
+              message:
+                "This slug is already in use. Please choose a different one.",
+            },
+          ],
+        },
+        { status: 400 },
+      );
+    }
 
     const newWorkspace = await db
       .insert(workspaces)
       .values({
         name: validatedData.name,
+        slug: validatedData.slug,
         description: validatedData.description,
         settings: validatedData.settings,
         isArchived: validatedData.isArchived,
@@ -82,6 +108,24 @@ export async function POST(request: Request) {
             field: e.path.join("."),
             message: e.message,
           })),
+        },
+        { status: 400 },
+      );
+    }
+
+    // Handle unique constraint violation (race condition fallback)
+    if (error instanceof Error && error.message.includes("unique constraint")) {
+      return NextResponse.json(
+        {
+          error: "Slug already taken",
+          code: "SLUG_TAKEN",
+          details: [
+            {
+              field: "slug",
+              message:
+                "This slug is already in use. Please choose a different one.",
+            },
+          ],
         },
         { status: 400 },
       );

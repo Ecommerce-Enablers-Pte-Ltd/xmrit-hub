@@ -1,7 +1,8 @@
 "use client";
 
-import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,7 +13,21 @@ import {
 } from "@/components/ui/card";
 
 export default function SignIn() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect authenticated users to workspace selector
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      router.push("/");
+    }
+  }, [status, session, router]);
+
+  // Don't render sign-in form if already authenticated or session is loading
+  if (status === "authenticated" || status === "loading") {
+    return null;
+  }
 
   const handleSignIn = async () => {
     setIsLoading(true);

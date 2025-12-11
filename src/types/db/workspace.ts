@@ -7,6 +7,7 @@ import type { SlideWithMetrics } from "@/types/db/slide";
 export interface Workspace {
   id: string;
   name: string;
+  slug: string; // URL-friendly slug, immutable after creation
   description: string | null;
   settings: any; // JSON object for workspace-level settings
   isArchived: boolean | null;

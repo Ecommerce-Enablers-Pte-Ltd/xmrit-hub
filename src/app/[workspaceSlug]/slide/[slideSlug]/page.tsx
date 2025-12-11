@@ -1,17 +1,20 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getAuthSession } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { slides, workspaces } from "@/lib/db/schema";
+import { getWorkspaceBySlug as getWorkspaceBySlugQuery } from "@/lib/db/queries";
+import { slides } from "@/lib/db/schema";
+import { normalizeSlug } from "@/lib/utils";
+import { parseSlideSlug } from "@/lib/validations/slide";
 import type { SlideWithMetrics } from "@/types/db/slide";
 import type { Workspace } from "@/types/db/workspace";
 import { SlideClient } from "./components/slide-client";
 
 interface SlidePageProps {
   params: Promise<{
-    workspaceId: string;
-    slideId: string;
+    workspaceSlug: string;
+    slideSlug: string;
   }>;
 }
 
@@ -19,14 +22,31 @@ interface SlidePageProps {
 export const revalidate = 300; // Revalidate cached data every 5 minutes (ISR)
 // Note: We use ISR instead of full static generation due to auth requirements
 
-// Server-side data fetching with optimized caching
-// This data is cached server-side (ISR) + client-side (React Query)
-async function getSlideData(slideId: string): Promise<SlideWithMetrics | null> {
+// Get workspace by slug with auth check
+async function getWorkspaceBySlugWithAuth(
+  workspaceSlug: string,
+): Promise<Workspace | null> {
+  const session = await getAuthSession();
+  if (!session) return null;
+
+  // Uses centralized helper that handles slug normalization
+  const workspace = await getWorkspaceBySlugQuery(workspaceSlug);
+  return workspace || null;
+}
+
+// Get slide by workspace ID and slide number
+async function getSlideByNumber(
+  workspaceId: string,
+  slideNumber: number,
+): Promise<SlideWithMetrics | null> {
   const session = await getAuthSession();
   if (!session) return null;
 
   const slide = await db.query.slides.findFirst({
-    where: eq(slides.id, slideId),
+    where: and(
+      eq(slides.workspaceId, workspaceId),
+      eq(slides.slideNumber, slideNumber),
+    ),
     with: {
       metrics: {
         orderBy: (metrics, { asc }) => [asc(metrics.ranking)],
@@ -77,41 +97,33 @@ async function getSlideData(slideId: string): Promise<SlideWithMetrics | null> {
   return slide as SlideWithMetrics | null;
 }
 
-async function getWorkspaceData(
-  workspaceId: string,
-): Promise<Workspace | null> {
-  const session = await getAuthSession();
-  if (!session) return null;
-
-  const workspace = await db.query.workspaces.findFirst({
-    where: eq(workspaces.id, workspaceId),
-  });
-
-  return workspace || null;
-}
-
 // Metadata generation
 export async function generateMetadata({
   params,
 }: SlidePageProps): Promise<Metadata> {
-  const { workspaceId, slideId } = await params;
+  const { workspaceSlug, slideSlug } = await params;
 
-  const [slide, workspace] = await Promise.all([
-    getSlideData(slideId),
-    getWorkspaceData(workspaceId),
-  ]);
-
-  if (!slide || !workspace) {
+  // Parse the slide number from the slug (e.g., "1-my-slide" -> 1)
+  const slideNumber = parseSlideSlug(slideSlug);
+  if (!slideNumber) {
     return {
-      title: "Not Found - Xmrit Hub",
+      title: "Slide - Xmrit Hub",
       description: "Statistical Process Control and XMR Chart Analysis",
     };
   }
 
-  // Verify slide belongs to workspace
-  if (slide.workspaceId !== workspace.id) {
+  const workspace = await getWorkspaceBySlugWithAuth(workspaceSlug);
+  if (!workspace) {
     return {
-      title: "Not Found - Xmrit Hub",
+      title: "Slide - Xmrit Hub",
+      description: "Statistical Process Control and XMR Chart Analysis",
+    };
+  }
+
+  const slide = await getSlideByNumber(workspace.id, slideNumber);
+  if (!slide) {
+    return {
+      title: "Slide - Xmrit Hub",
       description: "Statistical Process Control and XMR Chart Analysis",
     };
   }
@@ -139,22 +151,33 @@ export async function generateMetadata({
 }
 
 export default async function SlidePage({ params }: SlidePageProps) {
-  const { workspaceId, slideId } = await params;
+  const { workspaceSlug, slideSlug } = await params;
 
-  // Parallel data fetching for maximum speed
-  const [slide, workspace] = await Promise.all([
-    getSlideData(slideId),
-    getWorkspaceData(workspaceId),
-  ]);
+  // URL Normalization is handled by the parent layout (client-side router.replace)
+  // Use normalized slug for database queries
+  const normalizedSlug = normalizeSlug(workspaceSlug);
 
-  if (!slide || !workspace) {
+  // Parse the slide number from the slug (e.g., "1-my-slide" -> 1)
+  const slideNumber = parseSlideSlug(slideSlug);
+  if (!slideNumber) {
     notFound();
   }
 
-  // Verify slide belongs to workspace
-  if (slide.workspaceId !== workspace.id) {
+  // Fetch workspace by normalized slug
+  const workspace = await getWorkspaceBySlugWithAuth(normalizedSlug);
+  if (!workspace) {
     notFound();
   }
+
+  // Fetch slide by workspace ID and slide number
+  const slide = await getSlideByNumber(workspace.id, slideNumber);
+  if (!slide) {
+    notFound();
+  }
+
+  // No redirect needed - slideNumber is the identifier
+  // The title part of the URL slug is purely for SEO/readability
+  // Client-side will handle URL mutation if title changes (like navbar title)
 
   return <SlideClient slide={slide} workspace={workspace} />;
 }

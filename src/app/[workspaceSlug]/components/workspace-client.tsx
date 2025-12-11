@@ -1,8 +1,10 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -22,36 +24,82 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useDeleteSlide, useWorkspace } from "@/lib/api";
+import { useDeleteSlide, workspaceKeys } from "@/lib/api";
 import { cn, getErrorMessage } from "@/lib/utils";
-import type { SlideWithMetrics } from "@/types/db/slide";
-import type { WorkspaceWithSlides } from "@/types/db/workspace";
 import { EditSlideNameDialog } from "./edit-slide-name-dialog";
 import { SlideTable } from "./slide-table";
 
+// Lightweight slide type for listing (matches server query)
+export interface SlideListItem {
+  id: string;
+  title: string;
+  slideNumber: number;
+  description: string | null;
+  workspaceId: string;
+  slideDate: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  metricsCount: number;
+  submetricsCount: number;
+}
+
+export interface WorkspaceListData {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  settings: unknown;
+  isArchived: boolean | null;
+  isPublic: boolean | null;
+  createdAt: Date;
+  updatedAt: Date;
+  slides: SlideListItem[];
+  totalSlides: number;
+}
+
 interface WorkspaceClientProps {
-  workspace: WorkspaceWithSlides;
+  workspace: WorkspaceListData;
+  pagination: {
+    page: number;
+    limit: number;
+    totalSlides: number;
+  };
 }
 
 export function WorkspaceClient({
   workspace: initialWorkspace,
+  pagination,
 }: WorkspaceClientProps) {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const workspaceId = params.workspaceId as string;
+  const queryClient = useQueryClient();
+  const workspaceSlug = params.workspaceSlug as string;
 
-  // Hybrid approach: hydrate React Query with server data, then use client cache
-  const { workspace, loading } = useWorkspace(workspaceId, initialWorkspace);
+  // Initialize React Query cache with server data on mount (only once)
+  // This follows the same pattern as slide-client.tsx
+  const hasInitialized = useRef(false);
+
+  useEffect(() => {
+    if (!hasInitialized.current) {
+      // Seed the cache with server-rendered data (use ID for cache key)
+      queryClient.setQueryData(
+        workspaceKeys.detail(initialWorkspace.id),
+        initialWorkspace,
+      );
+      hasInitialized.current = true;
+    }
+  }, [queryClient, initialWorkspace]);
+
+  // Use server data directly - React Query cache is seeded for mutations/invalidations
+  const workspace = initialWorkspace;
+
   const deleteSlide = useDeleteSlide();
 
-  // Use the live workspace data from React Query (hydrated with SSR data)
-  const currentWorkspace = workspace || initialWorkspace;
-
-  // Pagination state from URL
-  const page = Number(searchParams.get("page")) || 1;
-  const limit = Number(searchParams.get("limit")) || 20;
+  // Pagination from server
+  const { page, limit, totalSlides } = pagination;
+  const totalPages = Math.ceil(totalSlides / limit);
+  const hasMore = page < totalPages;
 
   // Alert dialog state
   const [alertOpen, setAlertOpen] = React.useState(false);
@@ -59,11 +107,11 @@ export function WorkspaceClient({
 
   // Edit slide dialog state
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
-  const [slideToEdit, setSlideToEdit] = React.useState<SlideWithMetrics | null>(
+  const [slideToEdit, setSlideToEdit] = React.useState<SlideListItem | null>(
     null,
   );
 
-  // Update URL with pagination params
+  // Update URL with pagination params - triggers server navigation for new data
   const updateSearchParams = React.useCallback(
     (updates: { page?: number; limit?: number }) => {
       const newParams = new URLSearchParams(searchParams.toString());
@@ -76,20 +124,12 @@ export function WorkspaceClient({
         }
       });
 
-      router.replace(`/${workspaceId}?${newParams.toString()}`);
+      router.push(`/${workspaceSlug}?${newParams.toString()}`);
     },
-    [searchParams, router, workspaceId],
+    [searchParams, router, workspaceSlug],
   );
 
-  // Calculate pagination
-  const totalSlides = currentWorkspace.slides.length;
-  const totalPages = Math.ceil(totalSlides / limit);
-  const startIndex = (page - 1) * limit;
-  const endIndex = startIndex + limit;
-  const paginatedSlides = currentWorkspace.slides.slice(startIndex, endIndex);
-  const hasMore = endIndex < totalSlides;
-
-  const handleEditSlide = React.useCallback((slide: SlideWithMetrics) => {
+  const handleEditSlide = React.useCallback((slide: SlideListItem) => {
     setSlideToEdit(slide);
     setEditDialogOpen(true);
   }, []);
@@ -106,11 +146,10 @@ export function WorkspaceClient({
       // Show loading toast
       const loadingToast = toast.loading("Deleting slide...");
 
-      // Call the mutation - React Query will automatically invalidate the cache
-      // and update both the page and sidebar!
+      // Call the mutation - React Query will invalidate caches automatically
       await deleteSlide.mutateAsync({
         slideId: slideToDelete,
-        workspaceId: currentWorkspace.id,
+        workspaceId: workspace.id,
       });
 
       // Dismiss loading toast and show success
@@ -118,6 +157,17 @@ export function WorkspaceClient({
       toast.success("Slide deleted successfully", {
         description: "All metrics and data points have been removed.",
       });
+
+      // Invalidate workspace cache so sidebar updates
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.detail(workspace.id),
+      });
+      queryClient.invalidateQueries({
+        queryKey: workspaceKeys.slidesList(workspace.id),
+      });
+
+      // Refresh the page to get updated server data
+      router.refresh();
     } catch (error) {
       console.error("Error deleting slide:", error);
       const errorMessage = getErrorMessage(
@@ -131,7 +181,7 @@ export function WorkspaceClient({
       setAlertOpen(false);
       setSlideToDelete(null);
     }
-  }, [slideToDelete, deleteSlide, currentWorkspace.id]);
+  }, [slideToDelete, deleteSlide, workspace.id, router, queryClient]);
 
   return (
     <div className="flex flex-col h-full">
@@ -139,22 +189,13 @@ export function WorkspaceClient({
       <div className="bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
         <div className="flex items-center justify-between px-0 md:px-3 py-2.5 sm:py-4">
           <div className="flex-1 min-w-0">
-            {loading ? (
-              <>
-                <Skeleton className="h-7 sm:h-8 w-48 sm:w-64" />
-                <Skeleton className="h-4 w-64 sm:w-96 mt-1 hidden sm:block" />
-              </>
-            ) : (
-              <>
-                <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">
-                  {currentWorkspace.name}
-                </h1>
-                {currentWorkspace.description && (
-                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 hidden sm:block">
-                    {currentWorkspace.description}
-                  </p>
-                )}
-              </>
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">
+              {workspace.name}
+            </h1>
+            {workspace.description && (
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 hidden sm:block">
+                {workspace.description}
+              </p>
             )}
           </div>
         </div>
@@ -163,33 +204,28 @@ export function WorkspaceClient({
       {/* Table */}
       <div className="flex-1 flex flex-col min-h-0">
         <SlideTable
-          currentWorkspace={currentWorkspace}
-          slides={paginatedSlides}
+          currentWorkspace={workspace}
+          slides={workspace.slides}
           onEditSlide={handleEditSlide}
           onDeleteSlide={handleDeleteSlide}
-          isLoading={loading}
         />
       </div>
 
       {/* Footer with Pagination */}
-      {(loading || totalSlides > 0) && (
+      {totalSlides > 0 && (
         <div className="border-t bg-background px-0 md:px-3 py-2 sm:py-3">
           <div className="flex items-center justify-between gap-2 sm:gap-4">
             {/* Left side - Total count and results info */}
             <div className="flex items-center gap-2 sm:gap-4">
               <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
-                {loading ? (
-                  <Skeleton className="h-4 w-20 sm:w-32" />
-                ) : (
-                  <span>
-                    {totalSlides} total slide
-                    {totalSlides !== 1 ? "s" : ""}
-                  </span>
-                )}
+                <span>
+                  {totalSlides} total slide
+                  {totalSlides !== 1 ? "s" : ""}
+                </span>
               </div>
 
               {/* Items per page selector - only show if we have multiple pages or enough items, hidden on mobile */}
-              {totalSlides > 10 && !loading && (
+              {totalSlides > 10 && (
                 <Select
                   value={String(limit)}
                   onValueChange={(value) =>
@@ -210,7 +246,7 @@ export function WorkspaceClient({
             </div>
 
             {/* Right side - Pagination controls */}
-            {totalPages > 1 && !loading && (
+            {totalPages > 1 && (
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="text-sm text-muted-foreground hidden sm:inline">
                   Page {page} of {totalPages}
@@ -292,7 +328,7 @@ export function WorkspaceClient({
             }
           }}
           slide={slideToEdit}
-          workspaceId={currentWorkspace.id}
+          workspaceId={workspace.id}
         />
       )}
 

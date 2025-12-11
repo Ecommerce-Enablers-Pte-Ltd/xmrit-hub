@@ -27,7 +27,9 @@ export class FollowUpApiClient extends BaseApiClient {
     }
 
     const queryString = searchParams.toString();
-    const url = `/workspaces/${workspaceId}/follow-ups${queryString ? `?${queryString}` : ""}`;
+    const url = `/workspaces/${workspaceId}/follow-ups${
+      queryString ? `?${queryString}` : ""
+    }`;
 
     return await this.get<PaginatedFollowUpsResponse>(url);
   }
@@ -91,7 +93,9 @@ export class FollowUpApiClient extends BaseApiClient {
     resolvedCount?: number;
     unresolvedCount?: number;
   }> {
-    const url = `/submetrics/definitions/${definitionId}/follow-ups${slideId ? `?slideId=${slideId}` : ""}`;
+    const url = `/submetrics/definitions/${definitionId}/follow-ups${
+      slideId ? `?slideId=${slideId}` : ""
+    }`;
     return await this.get(url);
   }
 }
@@ -130,9 +134,11 @@ export function useFollowUps(
     queryKey: followUpKeys.workspace(workspaceId, params),
     queryFn: () =>
       followUpApiClient.getFollowUpsByWorkspace(workspaceId, params),
-    staleTime: 30 * 1000, // 30 seconds - follow-ups change frequently with status updates
+    staleTime: 15 * 1000, // 15 seconds - follow-ups change frequently with status updates
     gcTime: 5 * 60 * 1000, // 5 minutes cache
     refetchOnWindowFocus: true, // Refetch on window focus to ensure fresh data
+    refetchInterval: 30 * 1000, // Poll every 30 seconds for cross-tab/session updates
+    refetchIntervalInBackground: false, // Don't poll when tab is not visible
   });
 }
 
@@ -280,9 +286,11 @@ export function useSubmetricFollowUps(
       );
     },
     enabled: !!definitionId,
-    staleTime: 30 * 1000, // 30 seconds - follow-ups change frequently with status updates
+    staleTime: 15 * 1000, // 15 seconds - follow-ups change frequently with status updates
     gcTime: 5 * 60 * 1000, // 5 minutes cache
     refetchOnWindowFocus: true, // Refetch on window focus to ensure fresh data
+    refetchInterval: 30 * 1000, // Poll every 30 seconds for cross-tab/session updates
+    refetchIntervalInBackground: false, // Don't poll when tab is not visible
   });
 }
 
@@ -293,9 +301,44 @@ export function useSubmetricFollowUpsCount(
   definitionId: string | undefined,
   slideId?: string,
 ) {
-  const { data, isLoading } = useSubmetricFollowUps(definitionId, slideId);
+  const { data, isLoading, dataUpdatedAt } = useSubmetricFollowUps(
+    definitionId,
+    slideId,
+  );
   // Return unresolved count if slideId is provided and breakdown is available
   // Otherwise return total count for backward compatibility
   const count = data?.unresolvedCount ?? data?.count ?? 0;
-  return { count, isLoading };
+  // dataUpdatedAt helps track when the data was last refreshed
+  return { count, isLoading, dataUpdatedAt };
+}
+
+/**
+ * Hook to invalidate follow-up counts for a submetric definition
+ * Use this after mutations to ensure the count badge updates
+ */
+export function useInvalidateFollowUpCounts() {
+  const queryClient = useQueryClient();
+
+  const invalidateCounts = (definitionId: string, slideId?: string) => {
+    // Invalidate the specific submetric definition query
+    queryClient.invalidateQueries({
+      queryKey: followUpKeys.submetricDefinition(definitionId, slideId),
+      refetchType: "active",
+    });
+  };
+
+  const invalidateAllForWorkspace = (workspaceId: string) => {
+    // Invalidate all workspace follow-ups
+    queryClient.invalidateQueries({
+      queryKey: ["follow-ups", "workspace", workspaceId],
+      refetchType: "active",
+    });
+    // Invalidate all submetric definition follow-ups
+    queryClient.invalidateQueries({
+      queryKey: ["follow-ups", "submetric-definition"],
+      refetchType: "active",
+    });
+  };
+
+  return { invalidateCounts, invalidateAllForWorkspace };
 }

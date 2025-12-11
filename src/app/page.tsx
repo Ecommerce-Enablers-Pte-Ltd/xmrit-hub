@@ -61,9 +61,9 @@ export default async function Home() {
     );
   }
   //
-  // If only one workspace, redirect directly to it
+  // If only one workspace, redirect directly to it using its slug
   if (allWorkspaces.length === 1) {
-    redirect(`/${allWorkspaces[0].id}`);
+    redirect(`/${allWorkspaces[0].slug}`);
   }
 
   // Show workspace selector for multiple workspaces
@@ -81,7 +81,7 @@ export default async function Home() {
             {allWorkspaces.map((workspace) => (
               <Link
                 key={workspace.id}
-                href={`/${workspace.id}`}
+                href={`/${workspace.slug}`}
                 className="block"
               >
                 <Button

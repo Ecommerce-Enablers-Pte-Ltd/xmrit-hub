@@ -78,7 +78,8 @@ export function CommentsTab({
 }: CommentsTabProps) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
-  const { invalidateCounts } = useInvalidateCommentCounts();
+  const { invalidateCounts, updateCountOptimistically } =
+    useInvalidateCommentCounts();
   const [newCommentBody, setNewCommentBody] = useState("");
   const [replyToId, setReplyToId] = useState<string | null>(null);
   const [replyToThreadId, setReplyToThreadId] = useState<string | null>(null);
@@ -125,9 +126,11 @@ export function CommentsTab({
       return response.json() as Promise<CommentThreadResponse>;
     },
     enabled: !!definitionId && !isShowingAll && !!bucketValue,
-    staleTime: 1 * 60 * 1000, // 1 minute - comments update frequently when active
+    staleTime: 15 * 1000, // 15 seconds - comments update frequently when active
     gcTime: 5 * 60 * 1000, // 5 minutes cache
-    refetchOnWindowFocus: false, // Don't auto-refetch on focus
+    refetchOnWindowFocus: true, // Refetch on window focus
+    refetchInterval: 30 * 1000, // Poll every 30 seconds for cross-tab/session updates
+    refetchIntervalInBackground: false, // Don't poll when tab is not visible
   });
 
   // Fetch all comments for the chart using React Query
@@ -145,9 +148,11 @@ export function CommentsTab({
       return response.json() as Promise<{ threads: CommentThreadResponse[] }>;
     },
     enabled: !!definitionId,
-    staleTime: 1 * 60 * 1000, // 1 minute - comments update frequently when active
+    staleTime: 15 * 1000, // 15 seconds - comments update frequently when active
     gcTime: 5 * 60 * 1000, // 5 minutes cache
-    refetchOnWindowFocus: false, // Don't auto-refetch on focus
+    refetchOnWindowFocus: true, // Refetch on window focus
+    refetchInterval: 30 * 1000, // Poll every 30 seconds for cross-tab/session updates
+    refetchIntervalInBackground: false, // Don't poll when tab is not visible
   });
 
   const loading = isShowingAll ? isLoadingAll : isLoadingPoint;
@@ -194,6 +199,19 @@ export function CommentsTab({
 
       return response.json();
     },
+    onMutate: async (variables) => {
+      // Optimistically update comment count for immediate UI feedback
+      // Only increment for new root comments (not replies)
+      if (!variables.parentId) {
+        updateCountOptimistically(
+          slideId,
+          definitionId,
+          variables.bucketType,
+          variables.bucketValue,
+          1, // +1 for new comment
+        );
+      }
+    },
     onSuccess: (_, variables) => {
       // Only invalidate the specific point query for the bucket we commented on
       queryClient.invalidateQueries({
@@ -204,16 +222,18 @@ export function CommentsTab({
           variables.bucketType,
           variables.bucketValue,
         ],
+        refetchType: "active",
       });
 
       // If we're viewing "all comments", also invalidate that
       if (isShowingAll) {
         queryClient.invalidateQueries({
           queryKey: ["comments", "all", definitionId],
+          refetchType: "active",
         });
       }
 
-      // Invalidate comment counts to update indicators on charts
+      // Invalidate comment counts to ensure server state is in sync
       invalidateCounts(slideId);
 
       // Clear form
@@ -234,12 +254,23 @@ export function CommentsTab({
 
       // Notify parent component to invalidate cache
       if (onCommentAdded) {
-        onCommentAdded(bucketValue);
+        onCommentAdded(variables.bucketValue);
       }
     },
-    onError: (error) => {
+    onError: (error, variables) => {
       console.error("Error submitting comment:", error);
       toast.error(getErrorMessage(error, "Failed to post comment"));
+
+      // Rollback optimistic update on error
+      if (!variables.parentId) {
+        updateCountOptimistically(
+          slideId,
+          definitionId,
+          variables.bucketType,
+          variables.bucketValue,
+          -1, // -1 to rollback
+        );
+      }
     },
   });
 
@@ -372,12 +403,14 @@ export function CommentsTab({
       // Only invalidate the specific point query for the bucket we're viewing
       queryClient.invalidateQueries({
         queryKey: ["comments", "point", definitionId, bucketType, bucketValue],
+        refetchType: "active",
       });
 
       // If we're viewing "all comments", also invalidate that
       if (isShowingAll) {
         queryClient.invalidateQueries({
           queryKey: ["comments", "all", definitionId],
+          refetchType: "active",
         });
       }
 
@@ -427,12 +460,14 @@ export function CommentsTab({
       // Only invalidate the specific point query for the bucket we're viewing
       queryClient.invalidateQueries({
         queryKey: ["comments", "point", definitionId, bucketType, bucketValue],
+        refetchType: "active",
       });
 
       // If we're viewing "all comments", also invalidate that
       if (isShowingAll) {
         queryClient.invalidateQueries({
           queryKey: ["comments", "all", definitionId],
+          refetchType: "active",
         });
       }
 

@@ -684,9 +684,9 @@ export const SubmetricLineChart = memo(
     }, [chartSlug]);
 
     return (
-      <div className="w-full border rounded-lg overflow-visible">
+      <div className="w-full border overflow-hidden rounded-2xl ">
         {/* Header Section */}
-        <div className="px-6 py-4">
+        <div className="px-6 pt-4 pb-0">
           {/* Chart Toolbar */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -868,7 +868,6 @@ export const SubmetricLineChart = memo(
                 onClick={copyChartLink}
                 className="flex items-center gap-3 text-left group cursor-pointer"
                 style={{ maxWidth: titleMaxWidth }}
-                title="Click to copy link"
                 type="button"
               >
                 {category && (
@@ -898,7 +897,7 @@ export const SubmetricLineChart = memo(
         </div>
 
         {/* Content Section */}
-        <div className="px-6 pb-6 pt-6">
+        <div className="px-6 pb-4">
           {hasData ? (
             <div
               className="grid grid-cols-1 lg:grid-cols-2 transform-gpu overflow-visible"
