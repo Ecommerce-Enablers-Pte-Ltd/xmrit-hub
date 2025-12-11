@@ -44,7 +44,18 @@ interface UserAssigneeMultiSelectorProps {
   popoverWidth?: string;
   /** Whether to show remove buttons on badges */
   showRemoveButtons?: boolean;
+  /** Maximum number of items to show before "+n more" (default: 3) */
+  maxShownItems?: number;
+  /** Stack mode: allows wrapping and shows full names (for dialogs/forms) */
+  stackMode?: boolean;
 }
+
+// Estimated width for each badge (avatar + name + gap) in pixels
+const BADGE_WIDTH_ESTIMATE = 85;
+// Estimated width for "+n more" badge in pixels
+const MORE_BADGE_WIDTH = 65;
+// Minimum padding/margin for chevron icon and spacing
+const TRIGGER_PADDING = 40;
 
 export function UserAssigneeMultiSelector({
   users,
@@ -64,16 +75,36 @@ export function UserAssigneeMultiSelector({
   triggerWidth,
   popoverWidth = "300px",
   showRemoveButtons = true,
+  maxShownItems = 3,
+  stackMode = false,
 }: UserAssigneeMultiSelectorProps) {
   const [open, setOpen] = React.useState(false);
-  const [expanded, setExpanded] = React.useState(false);
+  const [containerWidth, setContainerWidth] = React.useState(0);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+
+  // Measure container width on mount and resize
+  React.useEffect(() => {
+    const element = triggerRef.current;
+    if (!element) return;
+
+    const updateWidth = () => {
+      setContainerWidth(element.offsetWidth);
+    };
+
+    updateWidth();
+
+    const resizeObserver = new ResizeObserver(updateWidth);
+    resizeObserver.observe(element);
+
+    return () => resizeObserver.disconnect();
+  }, []);
 
   const selectedUsers = React.useMemo(
     () =>
       Array.isArray(users)
         ? users.filter((user) => value.includes(user.id))
         : [],
-    [users, value],
+    [users, value]
   );
 
   const toggleSelection = React.useCallback(
@@ -87,7 +118,7 @@ export function UserAssigneeMultiSelector({
         : [...value, userId];
       onValueChange(newValue);
     },
-    [onUnassignedChange, unassigned, value, onValueChange],
+    [onUnassignedChange, unassigned, value, onValueChange]
   );
 
   const handleUnassignedToggle = React.useCallback(() => {
@@ -108,14 +139,37 @@ export function UserAssigneeMultiSelector({
       }
       onValueChange(value.filter((id) => id !== userId));
     },
-    [onValueChange, value],
+    [onValueChange, value]
   );
 
-  // Define maxShownItems before using visibleItems
-  const maxShownItems = 2;
+  // Calculate max items that can fit based on container width (only used when not in stackMode)
+  const calculatedMaxItems = React.useMemo(() => {
+    if (stackMode) return selectedUsers.length; // In stack mode, show all
+    if (containerWidth === 0) return maxShownItems;
+
+    const availableWidth = containerWidth - TRIGGER_PADDING - MORE_BADGE_WIDTH;
+    const fittingItems = Math.floor(availableWidth / BADGE_WIDTH_ESTIMATE);
+
+    // Use the smaller of calculated items or maxShownItems prop
+    return Math.max(1, Math.min(fittingItems, maxShownItems));
+  }, [containerWidth, maxShownItems, stackMode, selectedUsers.length]);
+
+  // Show calculatedMaxItems - 1 to leave room for the "+n more" badge (not in stackMode)
+  // Always show at least 1 user when there are selections
+  const actualMaxShown = React.useMemo(() => {
+    if (stackMode) return selectedUsers.length;
+    if (selectedUsers.length > calculatedMaxItems) {
+      // Leave room for "+n more" badge, but always show at least 1
+      return Math.max(1, calculatedMaxItems - 1);
+    }
+    return calculatedMaxItems;
+  }, [stackMode, selectedUsers.length, calculatedMaxItems]);
+
+  // In stackMode: show all users
+  // In non-stackMode: show limited users based on available space
   const visibleUsers = React.useMemo(
-    () => (expanded ? selectedUsers : selectedUsers.slice(0, maxShownItems)),
-    [expanded, selectedUsers],
+    () => (stackMode ? selectedUsers : selectedUsers.slice(0, actualMaxShown)),
+    [stackMode, selectedUsers, actualMaxShown]
   );
   const hiddenCount = selectedUsers.length - visibleUsers.length;
 
@@ -125,7 +179,7 @@ export function UserAssigneeMultiSelector({
       showMyTasksOption && currentUserId
         ? users.filter((user) => user.id !== currentUserId)
         : users,
-    [showMyTasksOption, currentUserId, users],
+    [showMyTasksOption, currentUserId, users]
   );
 
   // Render trigger content based on selection state
@@ -148,7 +202,10 @@ export function UserAssigneeMultiSelector({
             <Badge
               key={user.id}
               variant="outline"
-              className="rounded-sm px-1.5 py-0.5 gap-1 shrink-0 max-w-[90px]"
+              className={cn(
+                "rounded-sm px-1.5 py-0.5 gap-1 shrink-0",
+                !stackMode && "max-w-[90px]"
+              )}
             >
               <Avatar className="h-4 w-4 shrink-0">
                 <AvatarImage src={user.image || undefined} />
@@ -156,8 +213,10 @@ export function UserAssigneeMultiSelector({
                   {getInitials(user.name)}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-xs truncate">
-                {user.name?.split(" ")[0] || user.email}
+              <span className={cn("text-xs", !stackMode && "truncate")}>
+                {stackMode
+                  ? user.name || user.email
+                  : user.name?.split(" ")[0] || user.email}
               </span>
               {showRemoveButtons && (
                 <Button
@@ -177,18 +236,15 @@ export function UserAssigneeMultiSelector({
               )}
             </Badge>
           ))}
-          {hiddenCount > 0 || expanded ? (
+          {/* In non-stackMode, show a static "+n more" badge (not clickable) */}
+          {!stackMode && hiddenCount > 0 && (
             <Badge
               variant="outline"
-              onClick={(e) => {
-                e.stopPropagation();
-                setExpanded((prev) => !prev);
-              }}
-              className="rounded-sm cursor-pointer hover:bg-accent shrink-0"
+              className="rounded-sm shrink-0 text-muted-foreground"
             >
-              {expanded ? "Show Less" : `+${hiddenCount} more`}
+              +{hiddenCount} more
             </Badge>
-          ) : null}
+          )}
         </>
       );
     }
@@ -200,20 +256,28 @@ export function UserAssigneeMultiSelector({
     <Popover open={open} onOpenChange={setOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
+          ref={triggerRef}
           variant="outline"
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            "h-auto min-h-9 justify-between hover:bg-transparent font-normal",
+            "justify-between hover:bg-transparent font-normal",
+            // stackMode: auto height for wrapping; non-stackMode: fixed h-9 to match selects
+            stackMode ? "h-auto min-h-9" : "h-9",
             selectedUsers.length === 0 &&
               !unassigned &&
               "text-muted-foreground",
             triggerWidth ? triggerWidth : "w-full",
-            className,
+            className
           )}
         >
-          <div className="flex flex-wrap items-center gap-1 pr-2.5 overflow-hidden min-w-0">
+          <div
+            className={cn(
+              "flex items-center gap-1 pr-2.5 overflow-hidden min-w-0",
+              stackMode ? "flex-wrap" : "flex-wrap sm:flex-nowrap"
+            )}
+          >
             {renderTriggerContent()}
           </div>
           <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />

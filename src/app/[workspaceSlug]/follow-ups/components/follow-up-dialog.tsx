@@ -42,8 +42,8 @@ import type {
 import type { SlideWithMetrics } from "@/types/db/slide";
 import type { User } from "@/types/db/user";
 import {
-  type SubmetricDefinitionForSelector,
   SubmetricSelector,
+  type SubmetricDefinitionForSelector,
 } from "./submetric-selector";
 import { UserAssigneeMultiSelector } from "./user-assignee-multi-selector";
 
@@ -237,7 +237,7 @@ export function FollowUpDialog({
       // Only clear if the current submetric definition is not in the available ones for this slide
       if (currentSubmetricId) {
         const isValidForSlide = availableSubmetricDefinitions.some(
-          (def) => def.id === currentSubmetricId,
+          (def) => def.id === currentSubmetricId
         );
 
         // Clear if not valid for the new slide
@@ -347,8 +347,8 @@ export function FollowUpDialog({
             {isResolved
               ? "This follow-up is resolved. You can edit details but cannot change the status. Reopen to change status."
               : followUp
-                ? "Update the follow-up details below."
-                : "Track action items, issues, and tasks."}
+              ? "Update the follow-up details below."
+              : "Track action items, issues, and tasks."}
           </DialogDescription>
         </DialogHeader>
 
@@ -370,7 +370,7 @@ export function FollowUpDialog({
                   className={cn(
                     "h-9 sm:h-10",
                     errors.title &&
-                      "border-destructive focus-visible:ring-destructive",
+                      "border-destructive focus-visible:ring-destructive"
                   )}
                   autoFocus
                   disabled={isLoading}
@@ -400,6 +400,7 @@ export function FollowUpDialog({
                       }}
                       placeholder="Assign to..."
                       disabled={isLoading}
+                      stackMode
                     />
                     <FormError message={errors.assigneeIds?.message} />
                   </div>
@@ -426,7 +427,7 @@ export function FollowUpDialog({
                           className={cn(
                             "w-full h-9 sm:h-10",
                             errors.status && "border-destructive",
-                            isResolved && "opacity-60 cursor-not-allowed",
+                            isResolved && "opacity-60 cursor-not-allowed"
                           )}
                         >
                           <SelectValue>
@@ -434,7 +435,7 @@ export function FollowUpDialog({
                               {getStatusIcon(field.value)}
                               <span className="truncate text-sm">
                                 {STATUS_OPTIONS_WITH_RESOLVED.find(
-                                  (opt) => opt.value === field.value,
+                                  (opt) => opt.value === field.value
                                 )?.label || field.value}
                               </span>
                             </div>
@@ -473,7 +474,7 @@ export function FollowUpDialog({
                           id="priority"
                           className={cn(
                             "w-full h-9 sm:h-10",
-                            errors.priority && "border-destructive",
+                            errors.priority && "border-destructive"
                           )}
                         >
                           <SelectValue>
@@ -481,7 +482,7 @@ export function FollowUpDialog({
                               {getPriorityIcon(field.value, "h-4 w-4")}
                               <span className="truncate text-sm">
                                 {PRIORITY_OPTIONS.find(
-                                  (opt) => opt.value === field.value,
+                                  (opt) => opt.value === field.value
                                 )?.label || "No Priority"}
                               </span>
                             </div>
@@ -530,7 +531,7 @@ export function FollowUpDialog({
                             className={cn(
                               "w-full h-9 sm:h-10 justify-start text-left font-normal min-w-0",
                               !field.value && "text-muted-foreground",
-                              errors.dueDate && "border-destructive",
+                              errors.dueDate && "border-destructive"
                             )}
                           >
                             <CalendarIcon className="mr-1.5 sm:mr-2 h-4 w-4 shrink-0" />
@@ -609,7 +610,7 @@ export function FollowUpDialog({
                   className={cn(
                     "resize-none text-sm min-h-[80px] sm:min-h-[100px]",
                     errors.description &&
-                      "border-destructive focus-visible:ring-destructive",
+                      "border-destructive focus-visible:ring-destructive"
                   )}
                   disabled={isLoading}
                 />
@@ -636,7 +637,7 @@ export function FollowUpDialog({
                         id="slide"
                         className={cn(
                           "h-9 sm:h-10",
-                          errors.slideId && "border-destructive",
+                          errors.slideId && "border-destructive"
                         )}
                       >
                         <SelectValue placeholder="None" />
@@ -678,7 +679,7 @@ export function FollowUpDialog({
                         triggerMaxWidth="max-w-full"
                         className={cn(
                           "h-9 sm:h-10",
-                          errors.submetricDefinitionId && "border-destructive",
+                          errors.submetricDefinitionId && "border-destructive"
                         )}
                       />
                       <FormError

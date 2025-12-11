@@ -16,7 +16,27 @@ const optionalUuidField = (message: string) =>
       (val) => val === undefined || z.string().uuid().safeParse(val).success,
       {
         message,
+      }
+    );
+
+/**
+ * Helper to create an optional comma-separated UUID field that treats empty strings as undefined
+ * Validates that all values in the comma-separated list are valid UUIDs
+ */
+const optionalCommaSeparatedUuidField = (message: string) =>
+  z
+    .string()
+    .transform((val) => (val === "" ? undefined : val))
+    .optional()
+    .refine(
+      (val) => {
+        if (val === undefined) return true;
+        const ids = val.split(",").filter(Boolean);
+        return ids.every((id) => z.string().uuid().safeParse(id).success);
       },
+      {
+        message,
+      }
     );
 
 /**
@@ -46,7 +66,7 @@ export const createFollowUpSchema = z.object({
     .optional(),
   slideId: optionalUuidField("Invalid slide ID format"),
   submetricDefinitionId: optionalUuidField(
-    "Invalid submetric definition ID format",
+    "Invalid submetric definition ID format"
   ),
   threadId: optionalUuidField("Invalid thread ID format"),
   status: z
@@ -58,7 +78,7 @@ export const createFollowUpSchema = z.object({
   assigneeIds: z.array(z.string().uuid("Invalid user ID format")).optional(),
   dueDate: optionalDateField(
     /^\d{4}-\d{2}-\d{2}$/,
-    "Due date must be in YYYY-MM-DD format",
+    "Due date must be in YYYY-MM-DD format"
   ),
   workspaceId: optionalUuidField("Invalid workspace ID format"),
 });
@@ -79,7 +99,7 @@ export const updateFollowUpSchema = z.object({
     .optional(),
   slideId: optionalUuidField("Invalid slide ID format"),
   submetricDefinitionId: optionalUuidField(
-    "Invalid submetric definition ID format",
+    "Invalid submetric definition ID format"
   ),
   threadId: optionalUuidField("Invalid thread ID format"),
   resolvedAtSlideId: z
@@ -94,7 +114,7 @@ export const updateFollowUpSchema = z.object({
         z.string().uuid().safeParse(val).success,
       {
         message: "Invalid slide ID format",
-      },
+      }
     ),
   status: z
     .enum(["todo", "in_progress", "done", "cancelled", "resolved"])
@@ -105,7 +125,7 @@ export const updateFollowUpSchema = z.object({
   assigneeIds: z.array(z.string().uuid("Invalid user ID format")).optional(),
   dueDate: optionalDateField(
     /^\d{4}-\d{2}-\d{2}$/,
-    "Due date must be in YYYY-MM-DD format",
+    "Due date must be in YYYY-MM-DD format"
   ),
 });
 
@@ -145,10 +165,10 @@ export const followUpQuerySchema = z.object({
   priority: z
     .enum(["no_priority", "urgent", "high", "medium", "low"])
     .optional(),
-  assigneeId: optionalUuidField("Invalid user ID format"),
+  assigneeId: optionalCommaSeparatedUuidField("Invalid user ID format"),
   slideId: optionalUuidField("Invalid slide ID format"),
   submetricDefinitionId: optionalUuidField(
-    "Invalid submetric definition ID format",
+    "Invalid submetric definition ID format"
   ),
   search: z.string().max(200).optional(),
 
