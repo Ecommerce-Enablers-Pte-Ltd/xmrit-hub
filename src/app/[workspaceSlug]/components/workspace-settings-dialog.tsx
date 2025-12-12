@@ -427,8 +427,8 @@ export function WorkspaceSettingsDialog({
               our servers.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel className="hidden sm:inline-flex w-full sm:w-auto mt-0">
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="w-full sm:w-auto">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

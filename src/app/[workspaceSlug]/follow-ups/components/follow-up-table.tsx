@@ -12,11 +12,9 @@ import {
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import {
-  getPriorityIcon,
   getStatusBadgeColor,
   getStatusIcon,
   getStatusLabel,
-  PRIORITY_LABELS,
   STATUS_LABELS,
 } from "@/components/config";
 import {
@@ -58,7 +56,7 @@ import { getInitials } from "@/lib/formatting";
 import { cn, generateSlideUrl } from "@/lib/utils";
 import type { FollowUpWithDetails } from "@/types/db/follow-up";
 
-type SortField = "identifier" | "title" | "status" | "priority" | "createdAt";
+type SortField = "identifier" | "title" | "status" | "createdAt";
 
 interface FollowUpTableProps {
   followUps: FollowUpWithDetails[];
@@ -182,66 +180,66 @@ export function FollowUpTable({
 
   if (isLoading) {
     return (
-      <div className="px-0 md:px-2 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
-        <Table className="table-fixed min-w-[600px] lg:min-w-[870px]">
+      <div className="@container px-0 md:px-3 flex-1 overflow-auto border-t">
+        <Table className="w-full border-collapse table-fixed">
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow className="hover:bg-transparent">
-              <TableHead className="h-10 w-[70px] lg:w-[80px] font-medium text-xs">
+              <TableHead className="h-10 w-[60px] @sm:w-[70px] @lg:w-[80px] font-medium text-xs">
                 ID
               </TableHead>
-              <TableHead className="h-10 w-[200px] sm:w-[280px] lg:w-[350px] font-medium text-xs">
-                Title
+              <TableHead className="h-10 font-medium text-xs">
+                <span className="@6xl:hidden">Details</span>
+                <span className="hidden @6xl:inline">Title</span>
               </TableHead>
-              <TableHead className="h-10 w-[90px] lg:w-[100px] font-medium text-xs">
+              <TableHead className="h-10 w-[50px] @sm:w-[60px] @lg:w-[90px] @6xl:w-[100px] font-medium text-xs">
                 Status
               </TableHead>
-              <TableHead className="h-10 w-[90px] lg:w-[100px] font-medium text-xs hidden sm:table-cell">
-                Priority
-              </TableHead>
-              <TableHead className="h-10 w-[100px] lg:w-[120px] font-medium text-xs hidden md:table-cell">
+              <TableHead className="h-10 w-[90px] font-medium text-xs hidden @6xl:table-cell">
                 Assignees
               </TableHead>
-              <TableHead className="h-10 w-[160px] lg:w-[180px] font-medium text-xs hidden lg:table-cell">
+              <TableHead className="h-10 w-[240px] @6xl:w-[300px] font-medium text-xs hidden @6xl:table-cell">
                 Submetric
               </TableHead>
-              <TableHead className="h-10 w-[48px]"></TableHead>
+              <TableHead className="h-10 w-[40px] @sm:w-[44px] px-0"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {[0, 1, 2, 3, 4].map((rowNum) => (
               <TableRow key={`skeleton-followup-${rowNum}`}>
-                <TableCell className="w-[70px] lg:w-[80px] py-3">
-                  <Skeleton className="h-4 w-14" />
+                <TableCell className="py-2 @sm:py-3">
+                  <Skeleton className="h-4 w-8 @lg:w-12" />
                 </TableCell>
-                <TableCell className="w-[200px] sm:w-[280px] lg:w-[350px] py-3">
-                  <div className="flex flex-col gap-1">
+                <TableCell className="py-2 @sm:py-3">
+                  <div className="flex flex-col gap-1 min-w-0">
                     <Skeleton className="h-4 w-3/4" />
                     <Skeleton className="h-3 w-1/2" />
+                    {/* Mobile-only skeleton for extra info (below @6xl) */}
+                    <div className="flex flex-col gap-1.5 mt-1.5 @6xl:hidden">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-5 w-5 rounded-full" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                      <Skeleton className="h-3 w-32" />
+                    </div>
                   </div>
                 </TableCell>
-                <TableCell className="w-[90px] lg:w-[100px] py-3">
-                  <Skeleton className="h-5 w-16 rounded-full" />
+                <TableCell className="py-2 @sm:py-3">
+                  <Skeleton className="h-5 w-8 @3xl:w-16" />
                 </TableCell>
-                <TableCell className="w-[90px] lg:w-[100px] py-3 hidden sm:table-cell">
-                  <div className="flex items-center gap-1.5">
-                    <Skeleton className="h-4 w-4" />
-                    <Skeleton className="h-4 w-12" />
-                  </div>
-                </TableCell>
-                <TableCell className="w-[100px] lg:w-[120px] py-3 hidden md:table-cell">
+                <TableCell className="py-2 @sm:py-3 hidden @6xl:table-cell">
                   <div className="flex -space-x-2">
                     <Skeleton className="h-6 w-6 rounded-full" />
                     <Skeleton className="h-6 w-6 rounded-full" />
                   </div>
                 </TableCell>
-                <TableCell className="w-[160px] lg:w-[180px] py-3 hidden lg:table-cell">
+                <TableCell className="py-2 @sm:py-3 hidden @6xl:table-cell">
                   <div className="flex flex-col gap-1">
                     <Skeleton className="h-3 w-16" />
                     <Skeleton className="h-4 w-28" />
                   </div>
                 </TableCell>
-                <TableCell className="w-[48px] py-3">
-                  <Skeleton className="h-8 w-8" />
+                <TableCell className="py-2 @sm:py-3 px-0 text-right pr-1">
+                  <Skeleton className="h-7 w-7 @sm:h-8 @sm:w-8 inline-block" />
                 </TableCell>
               </TableRow>
             ))}
@@ -253,14 +251,14 @@ export function FollowUpTable({
 
   if (followUps.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 sm:py-16 px-3 sm:px-6 text-center border-t">
-        <div className="rounded-full bg-muted p-3 sm:p-4 mb-3 sm:mb-4">
-          <Circle className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+      <div className="@container flex flex-col items-center justify-center py-12 @sm:py-16 px-0 md:px-3 text-center border-t">
+        <div className="rounded-full bg-muted p-3 @sm:p-4 mb-3 @sm:mb-4">
+          <Circle className="h-6 w-6 @sm:h-8 @sm:w-8 text-muted-foreground" />
         </div>
-        <h3 className="text-base sm:text-lg font-semibold mb-1">
+        <h3 className="text-base @sm:text-lg font-semibold mb-1">
           No follow-ups found
         </h3>
-        <p className="text-xs sm:text-sm text-muted-foreground max-w-sm">
+        <p className="text-xs @sm:text-sm text-muted-foreground max-w-sm">
           Create your first follow-up to start tracking tasks and issues in your
           workspace.
         </p>
@@ -270,13 +268,13 @@ export function FollowUpTable({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="px-0 md:px-2 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
-        <Table className="table-fixed min-w-[600px] lg:min-w-[870px]">
+      <div className="@container px-0 md:px-3 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
+        <Table className="w-full border-collapse table-fixed">
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow className="hover:bg-transparent">
               <SortableHeader
                 field="identifier"
-                className="w-[70px] lg:w-[80px]"
+                className="w-[60px] @sm:w-[70px] @lg:w-[80px]"
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={onSort}
@@ -285,38 +283,29 @@ export function FollowUpTable({
               </SortableHeader>
               <SortableHeader
                 field="title"
-                className="w-[200px] sm:w-[280px] lg:w-[350px]"
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={onSort}
               >
-                Title
+                <span className="@6xl:hidden">Details</span>
+                <span className="hidden @6xl:inline">Title</span>
               </SortableHeader>
               <SortableHeader
                 field="status"
-                className="w-[90px] lg:w-[100px]"
+                className="w-[50px] @sm:w-[60px] @lg:w-[90px] @6xl:w-[100px]"
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={onSort}
               >
                 Status
               </SortableHeader>
-              <SortableHeader
-                field="priority"
-                className="w-[90px] lg:w-[100px] hidden sm:table-cell"
-                sortBy={sortBy}
-                sortOrder={sortOrder}
-                onSort={onSort}
-              >
-                Priority
-              </SortableHeader>
-              <TableHead className="h-10 w-[100px] lg:w-[120px] font-medium text-xs hidden md:table-cell">
+              <TableHead className="h-10 w-[90px] font-medium text-xs hidden @6xl:table-cell">
                 Assignees
               </TableHead>
-              <TableHead className="h-10 w-[160px] lg:w-[180px] font-medium text-xs hidden lg:table-cell">
+              <TableHead className="h-10 w-[240px] @6xl:w-[300px] font-medium text-xs hidden @6xl:table-cell">
                 Submetric
               </TableHead>
-              <TableHead className="h-10 w-[48px]"></TableHead>
+              <TableHead className="h-10 w-[40px] @sm:w-[44px] px-0"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -333,11 +322,16 @@ export function FollowUpTable({
                   onClick={() => onEdit(followUp)}
                   title="Click to edit"
                 >
-                  <TableCell className="w-[70px] lg:w-[80px] py-3 font-mono text-xs text-muted-foreground">
-                    {followUp.identifier}
+                  <TableCell className="py-2 @sm:py-3 font-mono text-xs text-muted-foreground">
+                    <span className="@lg:hidden truncate">
+                      {followUp.identifier.split("-").pop()}
+                    </span>
+                    <span className="hidden @lg:inline truncate">
+                      {followUp.identifier}
+                    </span>
                   </TableCell>
-                  <TableCell className="w-[200px] sm:w-[280px] lg:w-[350px] py-3">
-                    <div className="flex flex-col gap-1">
+                  <TableCell className="py-2 @sm:py-3">
+                    <div className="flex flex-col gap-1 min-w-0">
                       <div className="font-medium text-sm leading-none truncate">
                         {followUp.title}
                       </div>
@@ -346,21 +340,103 @@ export function FollowUpTable({
                           {followUp.description}
                         </div>
                       )}
+                      {/* Mobile-only: Show assignees (below @6xl) and submetric (below @6xl) */}
+                      <div className="flex flex-col gap-1 @sm:gap-1.5 mt-1.5 @sm:mt-2 @6xl:hidden">
+                        {/* Assignees - visible below @6xl only */}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 @6xl:hidden">
+                          <div className="flex items-center gap-1.5">
+                            {followUp.assignees &&
+                            followUp.assignees.length > 0 ? (
+                              <div className="flex items-center gap-1">
+                                <div className="flex -space-x-1.5">
+                                  {followUp.assignees
+                                    .slice(0, 2)
+                                    .map((assignee) => (
+                                      <Avatar
+                                        key={assignee.id}
+                                        className="h-5 w-5 border border-background"
+                                      >
+                                        <AvatarImage
+                                          src={assignee.user.image || undefined}
+                                        />
+                                        <AvatarFallback className="text-[8px]">
+                                          {getInitials(assignee.user.name)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    ))}
+                                  {followUp.assignees.length > 2 && (
+                                    <span className="flex items-center justify-center h-5 w-5 rounded-full border border-background bg-muted text-[8px] text-muted-foreground font-medium">
+                                      +{followUp.assignees.length - 2}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-xs text-muted-foreground truncate max-w-[120px] @sm:max-w-[160px]">
+                                  {followUp.assignees.length === 1
+                                    ? followUp.assignees[0].user.name ||
+                                      followUp.assignees[0].user.email
+                                    : `${followUp.assignees.length} assignees`}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                Unassigned
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {/* Submetric - visible below @xl only */}
+                        {followUp.submetricDefinition && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground min-w-0">
+                            {followUp.submetricDefinition.category && (
+                              <>
+                                <span className="opacity-75 truncate shrink-0 max-w-[40%]">
+                                  {followUp.submetricDefinition.category}
+                                </span>
+                                <span className="opacity-50 shrink-0">•</span>
+                              </>
+                            )}
+                            <span className="truncate min-w-0">
+                              {followUp.submetricDefinition.metricName ||
+                                followUp.submetricDefinition.submetricKey}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell className="w-[90px] lg:w-[100px] py-3">
+                  <TableCell className="py-2 @sm:py-3">
                     {followUp.status === "resolved" ? (
                       // Show non-interactive badge when resolved
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-xs font-normal opacity-60 cursor-not-allowed",
-                          getStatusBadgeColor(followUp.status),
-                        )}
-                        title="Reopen to change status"
-                      >
-                        {getStatusLabel(followUp.status)}
-                      </Badge>
+                      <>
+                        {/* Small (below 768px): Icon only */}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div
+                              className={cn(
+                                "@3xl:hidden flex items-center justify-center w-7 h-7 rounded-full opacity-60 cursor-not-allowed",
+                                getStatusBadgeColor(followUp.status),
+                              )}
+                              title="Reopen to change status"
+                            >
+                              {getStatusIcon(followUp.status, "h-3.5 w-3.5")}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">
+                            {getStatusLabel(followUp.status)}
+                          </TooltipContent>
+                        </Tooltip>
+                        {/* 768px and up: Badge with text */}
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "hidden @3xl:inline-flex text-xs font-normal opacity-60 cursor-not-allowed whitespace-nowrap",
+                            getStatusBadgeColor(followUp.status),
+                          )}
+                          title="Reopen to change status"
+                        >
+                          {getStatusLabel(followUp.status)}
+                        </Badge>
+                      </>
                     ) : (
                       // Show dropdown menu for active statuses
                       <DropdownMenu>
@@ -370,10 +446,30 @@ export function FollowUpTable({
                             onClick={(e) => e.stopPropagation()}
                             className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded transition-all hover:scale-105"
                           >
+                            {/* Small (below 768px): Icon only */}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div
+                                  className={cn(
+                                    "@3xl:hidden flex items-center justify-center w-7 h-7 rounded-full cursor-pointer",
+                                    getStatusBadgeColor(followUp.status),
+                                  )}
+                                >
+                                  {getStatusIcon(
+                                    followUp.status,
+                                    "h-3.5 w-3.5",
+                                  )}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="text-xs">
+                                {getStatusLabel(followUp.status)}
+                              </TooltipContent>
+                            </Tooltip>
+                            {/* 768px and up: Badge with text */}
                             <Badge
                               variant="outline"
                               className={cn(
-                                "text-xs font-normal cursor-pointer",
+                                "hidden @3xl:inline-flex text-xs font-normal cursor-pointer whitespace-nowrap",
                                 getStatusBadgeColor(followUp.status),
                               )}
                             >
@@ -405,15 +501,7 @@ export function FollowUpTable({
                       </DropdownMenu>
                     )}
                   </TableCell>
-                  <TableCell className="w-[90px] lg:w-[100px] py-3 hidden sm:table-cell">
-                    <div className="flex items-center gap-1.5">
-                      {getPriorityIcon(followUp.priority, "h-4 w-4")}
-                      <span className="text-xs text-muted-foreground">
-                        {PRIORITY_LABELS[followUp.priority]}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="w-[100px] lg:w-[120px] py-3 hidden md:table-cell">
+                  <TableCell className="py-2 @sm:py-3 hidden @6xl:table-cell">
                     {followUp.assignees && followUp.assignees.length > 0 ? (
                       <div className="flex -space-x-2">
                         {followUp.assignees.slice(0, 3).map((assignee) => {
@@ -492,12 +580,12 @@ export function FollowUpTable({
                         )}
                       </div>
                     ) : (
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         Unassigned
                       </span>
                     )}
                   </TableCell>
-                  <TableCell className="w-[160px] lg:w-[180px] py-3 hidden lg:table-cell">
+                  <TableCell className="py-2 @sm:py-3 hidden @6xl:table-cell">
                     {followUp.submetricDefinition ? (
                       <Link
                         href={
@@ -537,13 +625,13 @@ export function FollowUpTable({
                       <span className="text-sm text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  <TableCell className="w-[48px] py-3">
+                  <TableCell className="py-2 @sm:py-3 px-0">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0 hover:bg-muted"
+                          className="h-7 w-7 @sm:h-8 @sm:w-8 p-0 hover:bg-muted"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <MoreVertical className="h-4 w-4" />
@@ -607,10 +695,7 @@ export function FollowUpTable({
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel
-                onClick={handleDeleteCancel}
-                className="hidden sm:inline-flex"
-              >
+              <AlertDialogCancel onClick={handleDeleteCancel}>
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction

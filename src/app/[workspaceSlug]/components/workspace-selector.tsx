@@ -30,9 +30,21 @@ export function WorkspaceSelector({
   const { isMobile, setOpenMobile } = useSidebar();
 
   const handleWorkspaceSelect = (workspace: Workspace) => {
-    onWorkspaceChange(workspace);
+    // Don't navigate if clicking on the current workspace
+    if (workspace.id === currentWorkspace.id) {
+      return;
+    }
+
+    // Close sidebar first on mobile and delay navigation to allow animation to complete
     if (isMobile) {
       setOpenMobile(false);
+      // Small delay to allow sidebar close animation to complete
+      setTimeout(() => {
+        onWorkspaceChange(workspace);
+      }, 150);
+    } else {
+      // Navigate immediately on desktop
+      onWorkspaceChange(workspace);
     }
   };
 

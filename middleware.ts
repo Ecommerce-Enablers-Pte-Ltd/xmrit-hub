@@ -34,17 +34,6 @@ export default auth((req) => {
     response = NextResponse.next();
   }
 
-  // Add headers to prevent search engine indexing and crawling
-  response.headers.set(
-    "X-Robots-Tag",
-    "noindex, nofollow, noarchive, nosnippet, noimageindex",
-  );
-
-  // Additional security headers to prevent metadata exposure
-  response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("X-Frame-Options", "DENY");
-  response.headers.set("Referrer-Policy", "no-referrer");
-
   return response;
 });
 

@@ -104,7 +104,7 @@ export function UserAssigneeMultiSelector({
       Array.isArray(users)
         ? users.filter((user) => value.includes(user.id))
         : [],
-    [users, value]
+    [users, value],
   );
 
   const toggleSelection = React.useCallback(
@@ -118,7 +118,7 @@ export function UserAssigneeMultiSelector({
         : [...value, userId];
       onValueChange(newValue);
     },
-    [onUnassignedChange, unassigned, value, onValueChange]
+    [onUnassignedChange, unassigned, value, onValueChange],
   );
 
   const handleUnassignedToggle = React.useCallback(() => {
@@ -139,7 +139,7 @@ export function UserAssigneeMultiSelector({
       }
       onValueChange(value.filter((id) => id !== userId));
     },
-    [onValueChange, value]
+    [onValueChange, value],
   );
 
   // Calculate max items that can fit based on container width (only used when not in stackMode)
@@ -169,7 +169,7 @@ export function UserAssigneeMultiSelector({
   // In non-stackMode: show limited users based on available space
   const visibleUsers = React.useMemo(
     () => (stackMode ? selectedUsers : selectedUsers.slice(0, actualMaxShown)),
-    [stackMode, selectedUsers, actualMaxShown]
+    [stackMode, selectedUsers, actualMaxShown],
   );
   const hiddenCount = selectedUsers.length - visibleUsers.length;
 
@@ -179,7 +179,7 @@ export function UserAssigneeMultiSelector({
       showMyTasksOption && currentUserId
         ? users.filter((user) => user.id !== currentUserId)
         : users,
-    [showMyTasksOption, currentUserId, users]
+    [showMyTasksOption, currentUserId, users],
   );
 
   // Render trigger content based on selection state
@@ -204,7 +204,7 @@ export function UserAssigneeMultiSelector({
               variant="outline"
               className={cn(
                 "rounded-sm px-1.5 py-0.5 gap-1 shrink-0",
-                !stackMode && "max-w-[90px]"
+                !stackMode && "max-w-[90px]",
               )}
             >
               <Avatar className="h-4 w-4 shrink-0">
@@ -269,13 +269,13 @@ export function UserAssigneeMultiSelector({
               !unassigned &&
               "text-muted-foreground",
             triggerWidth ? triggerWidth : "w-full",
-            className
+            className,
           )}
         >
           <div
             className={cn(
               "flex items-center gap-1 pr-2.5 overflow-hidden min-w-0",
-              stackMode ? "flex-wrap" : "flex-wrap sm:flex-nowrap"
+              stackMode ? "flex-wrap" : "flex-wrap sm:flex-nowrap",
             )}
           >
             {renderTriggerContent()}
