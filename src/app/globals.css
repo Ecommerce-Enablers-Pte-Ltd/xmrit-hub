@@ -146,49 +146,23 @@
       color var(--theme-transition-duration) var(--theme-transition-timing);
   }
 
-  /* Disable hover and focus states on touch devices after interaction */
+  /*
+   * Touch device optimizations for removing sticky hover/focus states.
+   * On touch devices, hover states can get "stuck" after tapping,
+   * and focus rings persist unnecessarily. This media query targets
+   * devices without hover capability (touch-only devices).
+   */
   @media (hover: none) and (pointer: coarse) {
-    /* Remove sticky hover states on buttons and interactive elements */
-    button:hover,
-    [role="button"]:hover,
-    a:hover,
-    [data-slot="button"]:hover {
-      /* biome-ignore lint/complexity/noImportantStyles: Required to override Tailwind utility classes on touch devices */
-      background-color: unset !important;
-    }
-
-    /* Preserve the intended background for specific button variants */
-    button[class*="bg-primary"]:not(:active),
-    [data-slot="button"][class*="bg-primary"]:not(:active) {
-      /* biome-ignore lint/complexity/noImportantStyles: Required to override Tailwind utility classes on touch devices */
-      background-color: var(--primary) !important;
-    }
-
-    button[class*="bg-destructive"]:not(:active),
-    [data-slot="button"][class*="bg-destructive"]:not(:active) {
-      /* biome-ignore lint/complexity/noImportantStyles: Required to override Tailwind utility classes on touch devices */
-      background-color: var(--destructive) !important;
-    }
-
-    button[class*="bg-secondary"]:not(:active),
-    [data-slot="button"][class*="bg-secondary"]:not(:active) {
-      /* biome-ignore lint/complexity/noImportantStyles: Required to override Tailwind utility classes on touch devices */
-      background-color: var(--secondary) !important;
-    }
-
     /* Remove focus ring after touch interaction - blur immediately */
-    button:focus:not(:focus-visible),
-    [role="button"]:focus:not(:focus-visible),
-    a:focus:not(:focus-visible),
-    [data-slot="button"]:focus:not(:focus-visible) {
+    :where(button, [role="button"], a, [data-slot="button"]):focus:not(
+        :focus-visible
+      ) {
       outline: none;
       box-shadow: none;
     }
 
     /* Ensure active states still work for touch feedback */
-    button:active,
-    [role="button"]:active,
-    [data-slot="button"]:active {
+    :where(button, [role="button"], [data-slot="button"]):active {
       opacity: 0.8;
     }
   }

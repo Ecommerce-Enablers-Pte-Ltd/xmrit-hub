@@ -444,7 +444,7 @@ export function FollowUpTable({
                           <button
                             type="button"
                             onClick={(e) => e.stopPropagation()}
-                            className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded transition-all hover:scale-105"
+                            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded transition-all hover:scale-105"
                           >
                             {/* Small (below 768px): Icon only */}
                             <Tooltip>

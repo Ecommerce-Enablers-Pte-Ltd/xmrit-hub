@@ -75,7 +75,7 @@ export function DashboardLayout({
             <header className="flex h-14 items-center gap-4 border-b bg-background px-4 md:px-6">
               <SidebarTrigger
                 onClick={handleSidebarTriggerClick}
-                className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded"
+                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
               />
               <BreadcrumbNav workspace={currentWorkspace} slides={slides} />
               <div className="flex-1" />

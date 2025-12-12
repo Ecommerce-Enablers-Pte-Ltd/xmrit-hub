@@ -717,7 +717,7 @@ function FollowUpCard({
                 type="button"
                 disabled={isResolved}
                 className={cn(
-                  "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded transition-all",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded transition-all",
                   !isResolved && "hover:scale-105",
                 )}
               >
