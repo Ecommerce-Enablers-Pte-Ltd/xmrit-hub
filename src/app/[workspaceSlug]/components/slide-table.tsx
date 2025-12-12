@@ -45,21 +45,21 @@ export function SlideTable({
   const handleRowClick = (slide: SlideListItem) => {
     window.open(
       generateSlideUrl(currentWorkspace.slug, slide.slideNumber, slide.title),
-      "_blank"
+      "_blank",
     );
   };
 
   return (
     <div className="@container px-0 md:px-2 pb-6 flex-1 overflow-auto border-t **:data-[slot=table-container]:overflow-visible">
       {slides.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 @sm:py-16 px-3 @sm:px-6 text-center">
+        <div className="flex flex-col items-center justify-center min-h-[72vh] sm:min-h-0 sm:py-12 @sm:py-16 px-3 @sm:px-6 text-center">
           <div className="rounded-full bg-muted p-3 @sm:p-4 mb-3 @sm:mb-4">
             <BarChart3 className="h-6 w-6 @sm:h-8 @sm:w-8 text-muted-foreground" />
           </div>
           <h3 className="text-base @sm:text-lg font-semibold mb-1">
             No slides found
           </h3>
-          <p className="text-xs @sm:text-sm text-muted-foreground max-w-sm">
+          <p className="text-xs @sm:text-sm text-muted-foreground max-w-sm px-6 @sm:px-0">
             Create your first slide to start building your metrics dashboard and
             tracking performance.
           </p>
@@ -121,7 +121,7 @@ export function SlideTable({
                                   month: "short",
                                   day: "numeric",
                                   year: "numeric",
-                                }
+                                },
                               )}
                             </span>
                           </>
@@ -158,7 +158,7 @@ export function SlideTable({
                               month: "short",
                               day: "numeric",
                               year: "numeric",
-                            }
+                            },
                           )}
                         </span>
                       </>

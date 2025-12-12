@@ -56,8 +56,8 @@ import type {
 import { FollowUpDialog } from "./components/follow-up-dialog";
 import { FollowUpTable } from "./components/follow-up-table";
 import {
-  SubmetricSelector,
   type SubmetricDefinitionForSelector,
+  SubmetricSelector,
 } from "./components/submetric-selector";
 import { UserAssigneeMultiSelector } from "./components/user-assignee-multi-selector";
 
@@ -129,10 +129,10 @@ export default function FollowUpsPage() {
       }
 
       router.replace(
-        `/${workspaceSlug}/follow-ups?${currentParams.toString()}`
+        `/${workspaceSlug}/follow-ups?${currentParams.toString()}`,
       );
     },
-    [router, workspaceSlug]
+    [router, workspaceSlug],
   );
 
   // Sync local search state with URL param on mount/change
@@ -178,21 +178,21 @@ export default function FollowUpsPage() {
       submetricFilter,
       searchQuery,
       unassignedFilter,
-    ]
+    ],
   );
 
   // Fetch workspaces list to find the current workspace by slug
   // Uses normalizeSlug for consistent case-insensitive comparison
   const { workspaces, loading: isLoadingWorkspaces } = useWorkspaces();
   const currentWorkspace = workspaces.find(
-    (w) => normalizeSlug(w.slug) === normalizeSlug(workspaceSlug)
+    (w) => normalizeSlug(w.slug) === normalizeSlug(workspaceSlug),
   );
   const workspaceId = currentWorkspace?.id ?? "";
 
   // Fetch data with React Query (using workspace ID)
   const { data, isLoading: isLoadingFollowUps } = useFollowUps(
     workspaceId,
-    queryParams
+    queryParams,
   );
   const { data: users = [], isLoading: isLoadingUsers } = useUsers();
   const {
@@ -297,7 +297,7 @@ export default function FollowUpsPage() {
               router.push(
                 `/${workspaceSlug}/follow-ups?slideId=${
                   newFollowUp.slideId || ""
-                }`
+                }`,
               );
             },
           },
@@ -312,8 +312,8 @@ export default function FollowUpsPage() {
           error,
           editingFollowUp
             ? "Failed to update follow-up"
-            : "Failed to create follow-up"
-        )
+            : "Failed to create follow-up",
+        ),
       );
     }
   };
@@ -365,7 +365,7 @@ export default function FollowUpsPage() {
         unassigned: undefined,
       });
     },
-    [updateSearchParams]
+    [updateSearchParams],
   );
 
   const handleUnassignedChange = useCallback(
@@ -375,7 +375,7 @@ export default function FollowUpsPage() {
         assigneeId: undefined,
       });
     },
-    [updateSearchParams]
+    [updateSearchParams],
   );
 
   const handleSort = useCallback(
@@ -395,7 +395,7 @@ export default function FollowUpsPage() {
         setSortOrder("desc");
       }
     },
-    [sortBy, sortOrder]
+    [sortBy, sortOrder],
   );
 
   const hasActiveFilters = useMemo(
@@ -407,7 +407,7 @@ export default function FollowUpsPage() {
           slideFilter ||
           submetricFilter ||
           searchQuery ||
-          unassignedFilter
+          unassignedFilter,
       ),
     [
       statusFilter,
@@ -417,7 +417,7 @@ export default function FollowUpsPage() {
       submetricFilter,
       searchQuery,
       unassignedFilter,
-    ]
+    ],
   );
 
   // Count filters that are hidden on mobile (for badge)
@@ -435,7 +435,7 @@ export default function FollowUpsPage() {
       submetricFilter,
       assigneeIds.length,
       unassignedFilter,
-    ]
+    ],
   );
 
   return (
@@ -741,11 +741,11 @@ export default function FollowUpsPage() {
                           {priorityFilter ? (
                             <div className="flex items-center gap-2">
                               {getPriorityIcon(
-                                priorityFilter as FollowUpPriority
+                                priorityFilter as FollowUpPriority,
                               )}
                               <span>
                                 {getPriorityLabel(
-                                  priorityFilter as FollowUpPriority
+                                  priorityFilter as FollowUpPriority,
                                 )}
                               </span>
                             </div>
@@ -1007,13 +1007,13 @@ export default function FollowUpsPage() {
                             }
                             className={cn(
                               "h-8 w-8 p-0",
-                              page === pageNum && "pointer-events-none"
+                              page === pageNum && "pointer-events-none",
                             )}
                           >
                             {pageNum}
                           </Button>
                         );
-                      }
+                      },
                     )}
                   </div>
 

@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
 import { db } from "@/lib/db";

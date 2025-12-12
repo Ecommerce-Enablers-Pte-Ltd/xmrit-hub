@@ -72,7 +72,7 @@ export function DashboardLayout({
             onOpenSettings={handleOpenSettings}
           />
           <div className="flex-1 flex flex-col overflow-hidden">
-            <header className="flex h-14 items-center gap-4 border-b bg-background px-6">
+            <header className="flex h-14 items-center gap-4 border-b bg-background px-4 md:px-6">
               <SidebarTrigger
                 onClick={handleSidebarTriggerClick}
                 className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded"
@@ -88,7 +88,9 @@ export function DashboardLayout({
               </div>
               <UserNav session={session} />
             </header>
-            <main className="flex-1 overflow-auto p-6">{children}</main>
+            <main className="flex-1 overflow-auto px-6 pt-2 pb-6 md:p-6">
+              {children}
+            </main>
           </div>
         </div>
         <CreateWorkspaceDialog

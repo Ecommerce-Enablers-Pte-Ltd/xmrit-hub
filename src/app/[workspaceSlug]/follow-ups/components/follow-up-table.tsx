@@ -251,14 +251,14 @@ export function FollowUpTable({
 
   if (followUps.length === 0) {
     return (
-      <div className="@container flex flex-col items-center justify-center py-12 @sm:py-16 px-0 md:px-3 text-center border-t">
+      <div className="@container flex flex-col items-center justify-center min-h-[60vh] sm:min-h-0 sm:py-12 @sm:py-16 px-0 md:px-3 text-center border-t">
         <div className="rounded-full bg-muted p-3 @sm:p-4 mb-3 @sm:mb-4">
           <Circle className="h-6 w-6 @sm:h-8 @sm:w-8 text-muted-foreground" />
         </div>
         <h3 className="text-base @sm:text-lg font-semibold mb-1">
           No follow-ups found
         </h3>
-        <p className="text-xs @sm:text-sm text-muted-foreground max-w-sm">
+        <p className="text-xs @sm:text-sm text-muted-foreground max-w-sm px-6 @sm:px-0">
           Create your first follow-up to start tracking tasks and issues in your
           workspace.
         </p>

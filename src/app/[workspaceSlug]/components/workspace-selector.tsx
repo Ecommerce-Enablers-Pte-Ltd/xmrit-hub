@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -28,6 +29,7 @@ export function WorkspaceSelector({
   onCreateWorkspace,
 }: WorkspaceSelectorProps) {
   const { isMobile, setOpenMobile } = useSidebar();
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleWorkspaceSelect = (workspace: Workspace) => {
     // Don't navigate if clicking on the current workspace
@@ -35,13 +37,18 @@ export function WorkspaceSelector({
       return;
     }
 
+    // Clear any pending navigation
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current);
+    }
+
     // Close sidebar first on mobile and delay navigation to allow animation to complete
     if (isMobile) {
       setOpenMobile(false);
-      // Small delay to allow sidebar close animation to complete
-      setTimeout(() => {
+      // Wait for sidebar close animation (300ms) + small buffer
+      navigationTimeoutRef.current = setTimeout(() => {
         onWorkspaceChange(workspace);
-      }, 150);
+      }, 350);
     } else {
       // Navigate immediately on desktop
       onWorkspaceChange(workspace);

@@ -9,7 +9,8 @@ import {
   Settings,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -54,15 +55,29 @@ export function DashboardSidebar({
   onOpenSettings,
 }: DashboardSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const prefetchSlide = usePrefetchSlide();
   const { isMobile, setOpenMobile } = useSidebar();
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Close sidebar on mobile when navigating
-  const handleNavClick = () => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-  };
+  // Close sidebar on mobile when navigating with smooth animation
+  const handleNavClick = useCallback(
+    (e: React.MouseEvent, href?: string) => {
+      if (isMobile && href) {
+        e.preventDefault();
+        // Clear any pending navigation
+        if (navigationTimeoutRef.current) {
+          clearTimeout(navigationTimeoutRef.current);
+        }
+        setOpenMobile(false);
+        // Wait for sidebar close animation (300ms) + small buffer
+        navigationTimeoutRef.current = setTimeout(() => {
+          router.push(href);
+        }, 350);
+      }
+    },
+    [isMobile, setOpenMobile, router],
+  );
 
   const navigationItems: NavigationItem[] = [
     {
@@ -106,7 +121,9 @@ export function DashboardSidebar({
                 onClick={
                   !item.href
                     ? () => {
-                        handleNavClick();
+                        if (isMobile) {
+                          setOpenMobile(false);
+                        }
                         item.onClick?.();
                       }
                     : undefined
@@ -114,7 +131,10 @@ export function DashboardSidebar({
                 className="cursor-pointer"
               >
                 {item.href ? (
-                  <Link href={item.href} onClick={handleNavClick}>
+                  <Link
+                    href={item.href}
+                    onClick={(e) => handleNavClick(e, item.href)}
+                  >
                     <item.icon className="h-4 w-4" />
                     <span>{item.label}</span>
                   </Link>

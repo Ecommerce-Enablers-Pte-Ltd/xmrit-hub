@@ -3,9 +3,13 @@ import * as React from "react";
 const MOBILE_BREAKPOINT = 768;
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(
-    undefined,
-  );
+  const [isMobile, setIsMobile] = React.useState<boolean>(() => {
+    // Initialize with actual value on client, false on server
+    if (typeof window !== "undefined") {
+      return window.innerWidth < MOBILE_BREAKPOINT;
+    }
+    return false;
+  });
 
   React.useEffect(() => {
     const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
@@ -13,9 +17,10 @@ export function useIsMobile() {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
     };
     mql.addEventListener("change", onChange);
+    // Sync state in case it changed between SSR and hydration
     setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
     return () => mql.removeEventListener("change", onChange);
   }, []);
 
-  return !!isMobile;
+  return isMobile;
 }
