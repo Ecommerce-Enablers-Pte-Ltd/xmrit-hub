@@ -191,7 +191,7 @@ export function FollowUpTable({
                 <span className="@6xl:hidden">Details</span>
                 <span className="hidden @6xl:inline">Title</span>
               </TableHead>
-              <TableHead className="h-10 w-[50px] @sm:w-[60px] @lg:w-[90px] @6xl:w-[100px] font-medium text-xs">
+              <TableHead className="h-10 w-[50px] @sm:w-[60px] @md:w-[90px] @lg:w-[100px] @6xl:w-[110px] font-medium text-xs">
                 Status
               </TableHead>
               <TableHead className="h-10 w-[90px] font-medium text-xs hidden @6xl:table-cell">
@@ -292,7 +292,7 @@ export function FollowUpTable({
               </SortableHeader>
               <SortableHeader
                 field="status"
-                className="w-[50px] @sm:w-[60px] @lg:w-[90px] @6xl:w-[100px]"
+                className="w-[50px] @sm:w-[60px] @md:w-[90px] @lg:w-[100px] @6xl:w-[110px]"
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={onSort}
@@ -451,7 +451,7 @@ export function FollowUpTable({
                               <TooltipTrigger asChild>
                                 <div
                                   className={cn(
-                                    "@3xl:hidden flex items-center justify-center w-7 h-7 rounded-full cursor-pointer",
+                                    "@md:hidden flex items-center justify-center w-7 h-7 rounded-full cursor-pointer",
                                     getStatusBadgeColor(followUp.status),
                                   )}
                                 >
@@ -469,7 +469,7 @@ export function FollowUpTable({
                             <Badge
                               variant="outline"
                               className={cn(
-                                "hidden @3xl:inline-flex text-xs font-normal cursor-pointer whitespace-nowrap",
+                                "hidden @md:inline-flex text-xs font-normal cursor-pointer whitespace-nowrap",
                                 getStatusBadgeColor(followUp.status),
                               )}
                             >
