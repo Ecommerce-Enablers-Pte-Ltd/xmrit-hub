@@ -14,12 +14,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  getPriorityIcon,
-  getPriorityLabel,
-  getStatusIcon,
-  getStatusLabel,
-} from "@/components/config";
+import { getStatusIcon, getStatusLabel } from "@/components/config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -87,7 +82,6 @@ export default function FollowUpsPage() {
   const page = Number(searchParams.get("page")) || 1;
   const limit = Number(searchParams.get("limit")) || 20;
   const statusFilter = searchParams.get("status") || undefined;
-  const priorityFilter = searchParams.get("priority") || undefined;
   // Support both assigneeId (singular) for API and assigneeIds for display
   const assigneeIdsParam = searchParams.get("assigneeId") || undefined;
   const assigneeIds = assigneeIdsParam
@@ -129,10 +123,10 @@ export default function FollowUpsPage() {
       }
 
       router.replace(
-        `/${workspaceSlug}/follow-ups?${currentParams.toString()}`,
+        `/${workspaceSlug}/follow-ups?${currentParams.toString()}`
       );
     },
-    [router, workspaceSlug],
+    [router, workspaceSlug]
   );
 
   // Sync local search state with URL param on mount/change
@@ -159,7 +153,6 @@ export default function FollowUpsPage() {
       sortBy,
       sortOrder,
       ...(statusFilter && { status: statusFilter as FollowUpStatus }),
-      ...(priorityFilter && { priority: priorityFilter as FollowUpPriority }),
       ...(assigneeIds.length > 0 && { assigneeId: assigneeIds.join(",") }),
       ...(slideFilter && { slideId: slideFilter }),
       ...(submetricFilter && { submetricDefinitionId: submetricFilter }),
@@ -172,27 +165,26 @@ export default function FollowUpsPage() {
       sortBy,
       sortOrder,
       statusFilter,
-      priorityFilter,
       assigneeIds,
       slideFilter,
       submetricFilter,
       searchQuery,
       unassignedFilter,
-    ],
+    ]
   );
 
   // Fetch workspaces list to find the current workspace by slug
   // Uses normalizeSlug for consistent case-insensitive comparison
   const { workspaces, loading: isLoadingWorkspaces } = useWorkspaces();
   const currentWorkspace = workspaces.find(
-    (w) => normalizeSlug(w.slug) === normalizeSlug(workspaceSlug),
+    (w) => normalizeSlug(w.slug) === normalizeSlug(workspaceSlug)
   );
   const workspaceId = currentWorkspace?.id ?? "";
 
   // Fetch data with React Query (using workspace ID)
   const { data, isLoading: isLoadingFollowUps } = useFollowUps(
     workspaceId,
-    queryParams,
+    queryParams
   );
   const { data: users = [], isLoading: isLoadingUsers } = useUsers();
   const {
@@ -297,7 +289,7 @@ export default function FollowUpsPage() {
               router.push(
                 `/${workspaceSlug}/follow-ups?slideId=${
                   newFollowUp.slideId || ""
-                }`,
+                }`
               );
             },
           },
@@ -312,8 +304,8 @@ export default function FollowUpsPage() {
           error,
           editingFollowUp
             ? "Failed to update follow-up"
-            : "Failed to create follow-up",
-        ),
+            : "Failed to create follow-up"
+        )
       );
     }
   };
@@ -365,7 +357,7 @@ export default function FollowUpsPage() {
         unassigned: undefined,
       });
     },
-    [updateSearchParams],
+    [updateSearchParams]
   );
 
   const handleUnassignedChange = useCallback(
@@ -375,7 +367,7 @@ export default function FollowUpsPage() {
         assigneeId: undefined,
       });
     },
-    [updateSearchParams],
+    [updateSearchParams]
   );
 
   const handleSort = useCallback(
@@ -395,47 +387,38 @@ export default function FollowUpsPage() {
         setSortOrder("desc");
       }
     },
-    [sortBy, sortOrder],
+    [sortBy, sortOrder]
   );
 
   const hasActiveFilters = useMemo(
     () =>
       Boolean(
         statusFilter ||
-          priorityFilter ||
           assigneeIds.length > 0 ||
           slideFilter ||
           submetricFilter ||
           searchQuery ||
-          unassignedFilter,
+          unassignedFilter
       ),
     [
       statusFilter,
-      priorityFilter,
       assigneeIds.length,
       slideFilter,
       submetricFilter,
       searchQuery,
       unassignedFilter,
-    ],
+    ]
   );
 
   // Count filters that are hidden on mobile (for badge)
   const mobileHiddenFiltersCount = useMemo(
     () =>
       [
-        priorityFilter,
         slideFilter,
         submetricFilter,
         assigneeIds.length > 0 || unassignedFilter,
       ].filter(Boolean).length,
-    [
-      priorityFilter,
-      slideFilter,
-      submetricFilter,
-      assigneeIds.length,
-      unassignedFilter,
-    ],
+    [slideFilter, submetricFilter, assigneeIds.length, unassignedFilter]
   );
 
   return (
@@ -463,16 +446,16 @@ export default function FollowUpsPage() {
         </div>
 
         {/* Filters Bar */}
-        <div className="px-0 md:px-3 pb-2.5 sm:pb-4 overflow-hidden">
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap">
+        <div className="px-0 md:px-3 pb-2.5 sm:pb-4">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap min-w-0">
             {/* Search - always visible, responsive width */}
-            <div className="relative flex-1 min-w-[120px] sm:flex-none sm:w-[200px] md:w-[240px]">
+            <div className="relative flex-1 min-w-0 sm:flex-none sm:min-w-[200px] md:min-w-[240px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Search..."
                 value={localSearchQuery}
                 onChange={(e) => setLocalSearchQuery(e.target.value)}
-                className="pl-9 pr-9 h-9 bg-background w-full text-sm md:text-base"
+                className="pl-9 pr-9 h-9 bg-background w-full text-sm"
               />
               {isSearchPending && (
                 <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
@@ -489,19 +472,17 @@ export default function FollowUpsPage() {
                 })
               }
             >
-              <SelectTrigger className="w-[100px] sm:w-[130px] h-9 shrink-0">
+              <SelectTrigger className="min-w-[90px] max-w-[130px] h-9 shrink-0">
                 <SelectValue placeholder="Status">
-                  {statusFilter ? (
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      {getStatusIcon(statusFilter as FollowUpStatus)}
-                      <span className="hidden sm:inline">
-                        {getStatusLabel(statusFilter as FollowUpStatus)}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="hidden sm:inline">All statuses</span>
-                  )}
-                  {!statusFilter && <span className="sm:hidden">Status</span>}
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {statusFilter &&
+                      getStatusIcon(statusFilter as FollowUpStatus)}
+                    <span className="truncate">
+                      {statusFilter
+                        ? getStatusLabel(statusFilter as FollowUpStatus)
+                        : "Status"}
+                    </span>
+                  </div>
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -534,65 +515,6 @@ export default function FollowUpsPage() {
                   <div className="flex items-center gap-2.5">
                     {getStatusIcon("resolved")}
                     Resolved
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Priority filter - hidden on mobile, visible on md+ */}
-            <Select
-              value={priorityFilter || "all"}
-              onValueChange={(value) =>
-                updateSearchParams({
-                  priority:
-                    value === "all" ? undefined : (value as FollowUpPriority),
-                })
-              }
-            >
-              <SelectTrigger className="w-[120px] h-9 shrink-0 hidden md:flex">
-                <SelectValue placeholder="Priority">
-                  {priorityFilter ? (
-                    <div className="flex items-center gap-2">
-                      {getPriorityIcon(priorityFilter as FollowUpPriority)}
-                      <span>
-                        {getPriorityLabel(priorityFilter as FollowUpPriority)}
-                      </span>
-                    </div>
-                  ) : (
-                    "All priorities"
-                  )}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All priorities</SelectItem>
-                <SelectItem value="no_priority">
-                  <div className="flex items-center gap-2.5">
-                    {getPriorityIcon("no_priority")}
-                    No Priority
-                  </div>
-                </SelectItem>
-                <SelectItem value="urgent">
-                  <div className="flex items-center gap-2.5">
-                    {getPriorityIcon("urgent")}
-                    Urgent
-                  </div>
-                </SelectItem>
-                <SelectItem value="high">
-                  <div className="flex items-center gap-2.5">
-                    {getPriorityIcon("high")}
-                    High
-                  </div>
-                </SelectItem>
-                <SelectItem value="medium">
-                  <div className="flex items-center gap-2.5">
-                    {getPriorityIcon("medium")}
-                    Medium
-                  </div>
-                </SelectItem>
-                <SelectItem value="low">
-                  <div className="flex items-center gap-2.5">
-                    {getPriorityIcon("low")}
-                    Low
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -650,8 +572,12 @@ export default function FollowUpsPage() {
                   })
                 }
                 showAllOption
-                disabled={isLoadingWorkspace}
-                isLoading={isLoadingWorkspace}
+                disabled={
+                  isLoadingWorkspace || isLoadingWorkspaces || !workspaceId
+                }
+                isLoading={
+                  isLoadingWorkspace || isLoadingWorkspaces || !workspaceId
+                }
               />
             </div>
 
@@ -707,7 +633,6 @@ export default function FollowUpsPage() {
                         className="h-7 px-2 text-xs"
                         onClick={() => {
                           updateSearchParams({
-                            priority: undefined,
                             slideId: undefined,
                             submetricDefinitionId: undefined,
                             assigneeId: undefined,
@@ -718,76 +643,6 @@ export default function FollowUpsPage() {
                         Clear
                       </Button>
                     )}
-                  </div>
-
-                  {/* Priority filter in popover - visible only on mobile (hidden md+) */}
-                  <div className="space-y-1.5 md:hidden">
-                    <Label className="text-xs text-muted-foreground font-normal">
-                      Priority
-                    </Label>
-                    <Select
-                      value={priorityFilter || "all"}
-                      onValueChange={(value) =>
-                        updateSearchParams({
-                          priority:
-                            value === "all"
-                              ? undefined
-                              : (value as FollowUpPriority),
-                        })
-                      }
-                    >
-                      <SelectTrigger className="w-full h-9">
-                        <SelectValue placeholder="Priority">
-                          {priorityFilter ? (
-                            <div className="flex items-center gap-2">
-                              {getPriorityIcon(
-                                priorityFilter as FollowUpPriority,
-                              )}
-                              <span>
-                                {getPriorityLabel(
-                                  priorityFilter as FollowUpPriority,
-                                )}
-                              </span>
-                            </div>
-                          ) : (
-                            "All priorities"
-                          )}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All priorities</SelectItem>
-                        <SelectItem value="no_priority">
-                          <div className="flex items-center gap-2.5">
-                            {getPriorityIcon("no_priority")}
-                            No Priority
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="urgent">
-                          <div className="flex items-center gap-2.5">
-                            {getPriorityIcon("urgent")}
-                            Urgent
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="high">
-                          <div className="flex items-center gap-2.5">
-                            {getPriorityIcon("high")}
-                            High
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="medium">
-                          <div className="flex items-center gap-2.5">
-                            {getPriorityIcon("medium")}
-                            Medium
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="low">
-                          <div className="flex items-center gap-2.5">
-                            {getPriorityIcon("low")}
-                            Low
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
 
                   {/* Slide filter in popover - visible on mobile/tablet (lg screens hide this) */}
@@ -847,8 +702,16 @@ export default function FollowUpsPage() {
                         })
                       }
                       showAllOption
-                      disabled={isLoadingWorkspace}
-                      isLoading={isLoadingWorkspace}
+                      disabled={
+                        isLoadingWorkspace ||
+                        isLoadingWorkspaces ||
+                        !workspaceId
+                      }
+                      isLoading={
+                        isLoadingWorkspace ||
+                        isLoadingWorkspaces ||
+                        !workspaceId
+                      }
                       triggerWidth="w-full"
                       triggerMaxWidth="max-w-full"
                     />
@@ -1007,13 +870,13 @@ export default function FollowUpsPage() {
                             }
                             className={cn(
                               "h-8 w-8 p-0",
-                              page === pageNum && "pointer-events-none",
+                              page === pageNum && "pointer-events-none"
                             )}
                           >
                             {pageNum}
                           </Button>
                         );
-                      },
+                      }
                     )}
                   </div>
 
