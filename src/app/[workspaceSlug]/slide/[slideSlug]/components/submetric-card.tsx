@@ -7,12 +7,20 @@ import {
   Lock,
   LockOpen,
   MessageSquare,
+  MoreHorizontal,
   TrendingUp,
   X,
 } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useSidebar } from "@/components/ui/sidebar";
 import {
   Tooltip,
@@ -20,7 +28,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useSubmetricFollowUpsCount } from "@/lib/api/follow-ups";
-import { detectBucketType } from "@/lib/time-buckets";
+import { detectBucketType, parseTimestamp } from "@/lib/time-buckets";
+import { generateChartSlug } from "@/lib/utils";
 import {
   applySeasonalFactors,
   calculateLimitsWithOutlierRemoval,
@@ -39,7 +48,6 @@ import {
   type XMRLimits,
 } from "@/lib/xmr-calculations";
 import type { Submetric } from "@/types/db/submetric";
-import { generateChartSlug } from "./slide-container";
 import { type DataPoint as CommentDataPoint, SlideSheet } from "./slide-sheet";
 import { SubmetricLockLimitsDialog } from "./submetric-lock-limits-dialog";
 import { SubmetricMRChart } from "./submetric-mr-chart";
@@ -53,28 +61,6 @@ interface SubmetricLineChartProps {
   slideId: string;
   workspaceId: string;
 }
-
-// Helper function to parse timestamps in various formats
-const parseTimestamp = (timestamp: string): Date => {
-  // Check if timestamp is in YYYYMM format (e.g., "202301", "202412")
-  if (/^\d{6}$/.test(timestamp)) {
-    const year = timestamp.substring(0, 4);
-    const month = timestamp.substring(4, 6);
-    // Create date string in YYYY-MM-DD format (use first day of month)
-    return new Date(`${year}-${month}-01`);
-  }
-
-  // Check if timestamp is in YYYYMMDD format (e.g., "20230115")
-  if (/^\d{8}$/.test(timestamp)) {
-    const year = timestamp.substring(0, 4);
-    const month = timestamp.substring(4, 6);
-    const day = timestamp.substring(6, 8);
-    return new Date(`${year}-${month}-${day}`);
-  }
-
-  // Otherwise, use standard Date constructor for ISO strings and other formats
-  return new Date(timestamp);
-};
 
 // Memoize the entire component to prevent unnecessary re-renders
 // Only re-render when submetric data or slideId actually changes
@@ -686,9 +672,9 @@ export const SubmetricLineChart = memo(
     return (
       <div className="w-full border overflow-hidden rounded-2xl ">
         {/* Header Section */}
-        <div className="px-6 pt-4 pb-0">
+        <div className="px-3 sm:px-4 md:px-6 pt-4 pb-0">
           {/* Chart Toolbar */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Tooltip open={linkCopied}>
                 <TooltipTrigger asChild>
@@ -706,167 +692,330 @@ export const SubmetricLineChart = memo(
               </Tooltip>
               {preferredTrend && (
                 <span className="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                  <span>{preferredTrend.toUpperCase()} PREFERRED</span>
+                  <span className="hidden sm:inline">
+                    {preferredTrend.toUpperCase()} PREFERRED
+                  </span>
+                  <span className="sm:hidden">
+                    {preferredTrend.toUpperCase()[0]}
+                  </span>
                 </span>
               )}
             </div>
             {hasData && (
-              <div className="flex items-center gap-2">
-                {/* Removal buttons beside the action buttons */}
-                {isLimitsLocked && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleUnlockLimits}
-                    className="gap-2 text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950"
-                  >
-                    <LockOpen className="h-4 w-4" />
-                    Unlock Limits
-                  </Button>
-                )}
-                {trendActive && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleRemoveTrend}
-                    className="gap-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
-                  >
-                    <X className="h-4 w-4" />
-                    Remove Trend
-                  </Button>
-                )}
-                {seasonalityActive && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleRemoveSeasonality}
-                    className="gap-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
-                  >
-                    <X className="h-4 w-4" />
-                    Remove Deseasonalisation
-                  </Button>
-                )}
-
-                {/* Separator between removal and action buttons */}
-                {(isLimitsLocked || trendActive || seasonalityActive) && (
-                  <div className="h-6 w-px bg-border mx-1" />
-                )}
-
-                {/* Action buttons */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsLockLimitsDialogOpen(true)}
-                  disabled={trendActive}
-                  className={`gap-2 ${
-                    isLimitsLocked
-                      ? "bg-green-50 text-green-600 border-green-600 hover:bg-green-100 dark:bg-green-950 dark:hover:bg-green-900"
-                      : ""
-                  }`}
-                >
-                  <Lock className="h-4 w-4" />
-                  {isLimitsLocked
-                    ? autoLocked
-                      ? `Auto-Locked${
-                          outlierIndices.length > 0
-                            ? ` (${outlierIndices.length} outlier${
-                                outlierIndices.length !== 1 ? "s" : ""
-                              })`
-                            : ""
-                        }`
-                      : "Limits Locked"
-                    : "Lock Limits"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsTrendDialogOpen(true)}
-                  disabled={isLimitsLocked || seasonalityActive}
-                  className={`gap-2 ${
-                    trendActive
-                      ? "bg-green-50 text-green-600 border-green-600 hover:bg-green-100 dark:bg-green-950 dark:hover:bg-green-900"
-                      : ""
-                  }`}
-                >
-                  <TrendingUp className="h-4 w-4" />
-                  {trendActive ? "Trend Active" : "Trend Limits"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsSeasonalityDialogOpen(true)}
-                  disabled={trendActive}
-                  className={`gap-2 ${
-                    seasonalityActive
-                      ? "bg-green-50 text-green-600 border-green-600 hover:bg-green-100 dark:bg-green-950 dark:hover:bg-green-900"
-                      : ""
-                  }`}
-                >
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <title>Deseasonalise icon</title>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                    />
-                  </svg>
-                  {seasonalityActive ? "Deseasonalised" : "Deseasonalise"}
-                </Button>
-
-                {/* Separator before follow-ups/comments */}
-                <div className="h-6 w-px bg-border mx-1" />
-
-                {/* Comments button */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsAllCommentsSheetOpen(true)}
-                  className="gap-2"
-                  title="View all comments on this chart"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                </Button>
-
-                {/* Follow-ups button */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsFollowUpsSheetOpen(true)}
-                  className="gap-2 relative"
-                  title="View follow-ups for this chart"
-                >
-                  <ListTodo className="h-4 w-4" />
-                  {isFollowUpsLoading ? (
-                    <div className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center">
-                      <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
-                    </div>
-                  ) : (
-                    followUpsCount > 0 && (
-                      <Badge
-                        variant="default"
-                        className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-xs bg-blue-600 text-white"
-                      >
-                        {followUpsCount}
-                      </Badge>
-                    )
+              <div className="flex items-center gap-1 sm:gap-2">
+                {/* Desktop: Full toolbar (hidden on mobile) */}
+                <div className="hidden lg:flex items-center gap-2">
+                  {/* Removal buttons beside the action buttons */}
+                  {isLimitsLocked && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleUnlockLimits}
+                      className="gap-2 text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950"
+                    >
+                      <LockOpen className="h-4 w-4" />
+                      <span className="hidden xl:inline">Unlock Limits</span>
+                    </Button>
                   )}
-                </Button>
+                  {trendActive && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveTrend}
+                      className="gap-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
+                    >
+                      <X className="h-4 w-4" />
+                      <span className="hidden xl:inline">Remove Trend</span>
+                    </Button>
+                  )}
+                  {seasonalityActive && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveSeasonality}
+                      className="gap-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
+                    >
+                      <X className="h-4 w-4" />
+                      <span className="hidden xl:inline">
+                        Remove Deseasonalisation
+                      </span>
+                    </Button>
+                  )}
+
+                  {/* Separator between removal and action buttons */}
+                  {(isLimitsLocked || trendActive || seasonalityActive) && (
+                    <div className="h-6 w-px bg-border mx-1" />
+                  )}
+
+                  {/* Action buttons */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsLockLimitsDialogOpen(true)}
+                        disabled={trendActive}
+                        className={`gap-2 ${
+                          isLimitsLocked
+                            ? "bg-green-50 text-green-600 border-green-600 hover:bg-green-100 dark:bg-green-950 dark:hover:bg-green-900"
+                            : ""
+                        }`}
+                      >
+                        <Lock className="h-4 w-4" />
+                        <span className="hidden xl:inline">
+                          {isLimitsLocked
+                            ? autoLocked
+                              ? `Auto-Locked${
+                                  outlierIndices.length > 0
+                                    ? ` (${outlierIndices.length} outlier${
+                                        outlierIndices.length !== 1 ? "s" : ""
+                                      })`
+                                    : ""
+                                }`
+                              : "Limits Locked"
+                            : "Lock Limits"}
+                        </span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="xl:hidden">
+                      {isLimitsLocked
+                        ? autoLocked
+                          ? `Auto-Locked${
+                              outlierIndices.length > 0
+                                ? ` (${outlierIndices.length} outlier${
+                                    outlierIndices.length !== 1 ? "s" : ""
+                                  })`
+                                : ""
+                            }`
+                          : "Limits Locked"
+                        : "Lock Limits"}
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsTrendDialogOpen(true)}
+                        disabled={isLimitsLocked || seasonalityActive}
+                        className={`gap-2 ${
+                          trendActive
+                            ? "bg-green-50 text-green-600 border-green-600 hover:bg-green-100 dark:bg-green-950 dark:hover:bg-green-900"
+                            : ""
+                        }`}
+                      >
+                        <TrendingUp className="h-4 w-4" />
+                        <span className="hidden xl:inline">
+                          {trendActive ? "Trend Active" : "Trend Limits"}
+                        </span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="xl:hidden">
+                      {trendActive ? "Trend Active" : "Trend Limits"}
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsSeasonalityDialogOpen(true)}
+                        disabled={trendActive}
+                        className={`gap-2 ${
+                          seasonalityActive
+                            ? "bg-green-50 text-green-600 border-green-600 hover:bg-green-100 dark:bg-green-950 dark:hover:bg-green-900"
+                            : ""
+                        }`}
+                      >
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <title>Deseasonalise icon</title>
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                          />
+                        </svg>
+                        <span className="hidden xl:inline">
+                          {seasonalityActive
+                            ? "Deseasonalised"
+                            : "Deseasonalise"}
+                        </span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="xl:hidden">
+                      {seasonalityActive ? "Deseasonalised" : "Deseasonalise"}
+                    </TooltipContent>
+                  </Tooltip>
+
+                  {/* Separator before follow-ups/comments */}
+                  <div className="h-6 w-px bg-border mx-1" />
+                </div>
+
+                {/* Mobile/Tablet: Dropdown menu for actions (shown on smaller screens) */}
+                <div className="lg:hidden">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1 relative"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                        {(isLimitsLocked ||
+                          trendActive ||
+                          seasonalityActive) && (
+                          <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500" />
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      {/* Active state removal actions */}
+                      {isLimitsLocked && (
+                        <DropdownMenuItem
+                          onClick={handleUnlockLimits}
+                          className="text-amber-600 focus:text-amber-700"
+                        >
+                          <LockOpen className="h-4 w-4 mr-2 text-amber-600" />
+                          Unlock Limits
+                        </DropdownMenuItem>
+                      )}
+                      {trendActive && (
+                        <DropdownMenuItem
+                          onClick={handleRemoveTrend}
+                          className="text-red-600 focus:text-red-700"
+                        >
+                          <X className="h-4 w-4 mr-2 text-red-600" />
+                          Remove Trend
+                        </DropdownMenuItem>
+                      )}
+                      {seasonalityActive && (
+                        <DropdownMenuItem
+                          onClick={handleRemoveSeasonality}
+                          className="text-red-600 focus:text-red-700"
+                        >
+                          <X className="h-4 w-4 mr-2 text-red-600" />
+                          Remove Deseasonalisation
+                        </DropdownMenuItem>
+                      )}
+                      {(isLimitsLocked || trendActive || seasonalityActive) && (
+                        <DropdownMenuSeparator />
+                      )}
+
+                      {/* Action items */}
+                      <DropdownMenuItem
+                        onClick={() => setIsLockLimitsDialogOpen(true)}
+                        disabled={trendActive}
+                        className={isLimitsLocked ? "text-green-600" : ""}
+                      >
+                        <Lock
+                          className={`h-4 w-4 mr-2 ${
+                            isLimitsLocked ? "text-green-600" : ""
+                          }`}
+                        />
+                        {isLimitsLocked
+                          ? autoLocked
+                            ? `Auto-Locked${
+                                outlierIndices.length > 0
+                                  ? ` (${outlierIndices.length})`
+                                  : ""
+                              }`
+                            : "Limits Locked"
+                          : "Lock Limits"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setIsTrendDialogOpen(true)}
+                        disabled={isLimitsLocked || seasonalityActive}
+                        className={trendActive ? "text-green-600" : ""}
+                      >
+                        <TrendingUp className="h-4 w-4 mr-2" />
+                        {trendActive ? "Trend Active" : "Trend Limits"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setIsSeasonalityDialogOpen(true)}
+                        disabled={trendActive}
+                        className={seasonalityActive ? "text-green-600" : ""}
+                      >
+                        <svg
+                          className="h-4 w-4 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <title>Deseasonalise icon</title>
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                          />
+                        </svg>
+                        {seasonalityActive ? "Deseasonalised" : "Deseasonalise"}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                {/* Comments button - always visible */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsAllCommentsSheetOpen(true)}
+                      className="gap-2"
+                      title="View all comments on this chart"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Comments</TooltipContent>
+                </Tooltip>
+
+                {/* Follow-ups button - always visible */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsFollowUpsSheetOpen(true)}
+                      className="gap-2 relative"
+                      title="View follow-ups for this chart"
+                    >
+                      <ListTodo className="h-4 w-4" />
+                      {isFollowUpsLoading ? (
+                        <div className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center">
+                          <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+                        </div>
+                      ) : (
+                        followUpsCount > 0 && (
+                          <Badge
+                            variant="default"
+                            className="absolute -top-2 -right-2 h-5 min-w-5 flex items-center justify-center px-1 text-xs bg-blue-600 text-white"
+                          >
+                            {followUpsCount}
+                          </Badge>
+                        )
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Follow-ups</TooltipContent>
+                </Tooltip>
               </div>
             )}
           </div>
 
           {/* Title and Status Row */}
-          <div className="flex items-start justify-between mt-4">
-            <div className="flex-1">
+          <div className="flex items-start justify-between gap-3 mt-4">
+            <div className="flex-1 min-w-0">
               <button
                 onClick={copyChartLink}
-                className="flex items-center gap-3 text-left group cursor-pointer"
+                className="flex items-center gap-3 text-left group cursor-pointer max-w-full"
                 style={{ maxWidth: titleMaxWidth }}
                 type="button"
               >
@@ -884,7 +1033,7 @@ export const SubmetricLineChart = memo(
               </button>
             </div>
             {hasData && (
-              <div className="flex flex-col items-end gap-2 mr-1">
+              <div className="flex flex-col items-end gap-2 shrink-0">
                 {/* Traffic Light Control Indicator - isolated component to prevent chart re-render */}
                 <TrafficLightIndicator
                   submetricId={submetric.id}
@@ -897,7 +1046,7 @@ export const SubmetricLineChart = memo(
         </div>
 
         {/* Content Section */}
-        <div className="px-6 pb-4">
+        <div className="px-2 md:px-6 pb-4">
           {hasData ? (
             <div
               className="grid grid-cols-1 lg:grid-cols-2 transform-gpu overflow-visible"

@@ -48,10 +48,10 @@ export async function PUT(
     }
 
     // Check if the workspace is public or user has access
-    if (
-      existingMetric.slide?.workspace &&
-      (existingMetric.slide.workspace as any).isPublic === false
-    ) {
+    const metricWorkspace = existingMetric.slide?.workspace as
+      | { isPublic?: boolean | null }
+      | undefined;
+    if (metricWorkspace && metricWorkspace.isPublic === false) {
       // Private workspace - should check user ownership before allowing modification
       return NextResponse.json(
         {
@@ -151,10 +151,10 @@ export async function GET(
     }
 
     // Check if the workspace is public or user has access
-    if (
-      metric.slide?.workspace &&
-      (metric.slide.workspace as any).isPublic === false
-    ) {
+    const slideWorkspace = metric.slide?.workspace as
+      | { isPublic?: boolean | null }
+      | undefined;
+    if (slideWorkspace && slideWorkspace.isPublic === false) {
       return NextResponse.json(
         { error: "Access denied - metric belongs to a private workspace" },
         { status: 403 },
@@ -209,10 +209,10 @@ export async function DELETE(
     }
 
     // Check if the workspace is public or user has access
-    if (
-      existingMetric.slide?.workspace &&
-      (existingMetric.slide.workspace as any).isPublic === false
-    ) {
+    const existingMetricWorkspace = existingMetric.slide?.workspace as
+      | { isPublic?: boolean | null }
+      | undefined;
+    if (existingMetricWorkspace && existingMetricWorkspace.isPublic === false) {
       return NextResponse.json(
         {
           error: "Access denied - cannot delete metric from private workspace",

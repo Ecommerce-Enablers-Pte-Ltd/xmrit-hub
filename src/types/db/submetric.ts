@@ -35,7 +35,7 @@ export interface Submetric {
   aggregationType: string | null;
   color: string | null;
   trafficLightColor: TrafficLightColor | null; // Slide-specific traffic light status
-  metadata: any; // JSON object for additional metadata
+  metadata: Record<string, unknown> | null; // JSON object for additional metadata
   dataPoints: DataPointJson[] | null; // Data points stored as JSON array
   createdAt: Date;
   updatedAt: Date;

@@ -481,9 +481,9 @@ The recent point has extra protection (Z-Score > 2.2 required). If it's still ex
 ## Related Documentation
 
 - [Lock Limit](./LOCK_LIMIT.md) - Manual limit locking and customization
-- [Controller Logic](./CONTROLLER_TRAFFIC_LIGHT.md) - How locked limits affect process control status
 - [Trend Lines](./TREND_LINES.md) - Alternative approach for data with trends
 - [Seasonality](./DESEASONALISATION.md) - Remove seasonal patterns before applying auto-lock
+- [Database Schema](./SCHEMA.md) - Schema reference including traffic light status
 
 ## References
 

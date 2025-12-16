@@ -24,6 +24,17 @@ import {
   YAxis,
 } from "recharts";
 import { useChartTheme } from "@/hooks/use-chart-theme";
+import {
+  AXIS_LINE_CONFIG,
+  formatTickValue,
+  getActiveDotStyling,
+  getDotStyling,
+  getViolationTextColor,
+  TICK_CONFIG,
+  TICK_LINE_CONFIG,
+  VIOLATION_COLORS,
+  VIOLATION_METADATA,
+} from "@/lib/chart-utils";
 import { formatNumber } from "@/lib/formatting";
 import {
   detectBucketType,
@@ -32,6 +43,16 @@ import {
 } from "@/lib/time-buckets";
 import type { TrendLimits, XMRLimits } from "@/lib/xmr-calculations";
 import { useDefinitionCommentCounts } from "@/providers/comment-counts-provider";
+import type {
+  ChartDataPoint,
+  CommentCacheEntry,
+  CommentIndicatorDotProps,
+  CustomLabelProps,
+  RechartsDotProps,
+  RechartsLabelProps,
+  RechartsPayloadItem,
+  XAxisTickProps,
+} from "@/types/chart";
 import type { Submetric } from "@/types/db/submetric";
 import { type DataPoint, SlideSheet } from "./slide-sheet";
 
@@ -82,7 +103,7 @@ const DialogManager = memo(
 DialogManager.displayName = "DialogManager";
 
 interface SubmetricXChartProps {
-  chartData: any[];
+  chartData: ChartDataPoint[];
   xmrLimits: XMRLimits;
   submetric: Submetric;
   yAxisDomain: number[];
@@ -102,35 +123,22 @@ export interface SubmetricXChartHandle {
 }
 
 // Memoized custom label component
-const CustomLabel = memo((props: any) => {
+const CustomLabel = memo((props: CustomLabelProps) => {
   const { x, y, value, index, chartData } = props;
 
   // Use the index to look up the data point from chartData
-  const dataPoint = chartData?.[index];
+  const dataPoint = index != null ? chartData?.[index] : undefined;
   const highestPriorityViolation = dataPoint?.highestPriorityViolation;
+  const textColor = getViolationTextColor(highestPriorityViolation);
 
-  // Determine color based on highest priority violation
-  // Default to foreground color if no violation
-  let textColor = "currentColor";
+  const numericValue = typeof value === "number" ? value : undefined;
+  const text = formatNumber(numericValue);
 
-  if (highestPriorityViolation === "rule1") {
-    textColor = "#ef4444"; // red
-  } else if (highestPriorityViolation === "rule4") {
-    textColor = "#f97316"; // orange
-  } else if (highestPriorityViolation === "rule3") {
-    textColor = "#f59e0b"; // amber
-  } else if (highestPriorityViolation === "rule2") {
-    textColor = "#3b82f6"; // blue
-  } else if (highestPriorityViolation === "rule5") {
-    textColor = "#10b981"; // green
-  }
-
-  const text = formatNumber(value);
-
+  const yNum = typeof y === "number" ? y : 0;
   return (
     <text
       x={x}
-      y={y - 16}
+      y={yNum - 16}
       textAnchor="middle"
       dominantBaseline="middle"
       className="recharts-label"
@@ -148,24 +156,17 @@ const CustomLabel = memo((props: any) => {
 CustomLabel.displayName = "CustomLabel";
 
 // Custom Y-axis label component that properly rotates text
-const YAxisLabel = memo((props: any) => {
+const YAxisLabel = memo((props: RechartsLabelProps & { value?: string }) => {
   const { value, x, y, viewBox } = props;
 
   // Recharts provides x, y coordinates and viewBox
   // For Y-axis labels, we want to center vertically and rotate -90 degrees
-  let labelX = x;
-  let labelY = y;
+  let labelX = typeof x === "number" ? x : 0;
+  let labelY = typeof y === "number" ? y : 250; // Approximate center for 500px height chart
 
   // If viewBox is available, use it to center vertically
   if (viewBox?.height) {
     labelY = viewBox.y + viewBox.height / 2;
-  }
-
-  // Ensure we have valid coordinates
-  if (labelX == null || labelY == null) {
-    // Fallback: use provided coordinates or defaults
-    labelX = x || 0;
-    labelY = y || 250; // Approximate center for 500px height chart
   }
 
   // Offset to the right (increase X) to position the rotated label better
@@ -192,35 +193,7 @@ YAxisLabel.displayName = "YAxisLabel";
 
 // Custom X-axis tick component (simplified - comment indicators are rendered separately)
 const XAxisTick = memo(
-  ({
-    x,
-    y,
-    payload,
-    chartData,
-  }: {
-    x: number;
-    y: number;
-    payload: any;
-    chartData?: any[];
-  }) => {
-    // Try to get fullTimestamp from the chart data using payload.index
-    const dataPoint = chartData?.[payload?.index];
-    const fullTimestamp = dataPoint?.fullTimestamp;
-
-    if (!fullTimestamp) {
-      // Fallback: render just the label without indicator
-      return (
-        <text
-          x={x}
-          y={y + 16}
-          textAnchor="middle"
-          style={{ fontSize: "12px", fill: "#888" }}
-        >
-          {payload.value}
-        </text>
-      );
-    }
-
+  ({ x, y, payload }: XAxisTickProps) => {
     // Just render the tick label - comment indicators are rendered separately
     return (
       <text
@@ -250,17 +223,10 @@ XAxisTick.displayName = "XAxisTick";
 const CommentIndicatorDot = memo(
   ({
     cx,
-    cy: _cy,
     payload,
     bucketType,
     bucketsWithComments,
-  }: {
-    cx: number;
-    cy: number;
-    payload: any;
-    bucketType: TimeBucket;
-    bucketsWithComments: Record<string, number>;
-  }) => {
+  }: CommentIndicatorDotProps) => {
     const fullTimestamp = payload?.fullTimestamp;
 
     if (!fullTimestamp) return null;
@@ -312,10 +278,10 @@ const ChartTooltip = memo(
     onFetchComments,
   }: {
     active: boolean;
-    payload: any;
+    payload: RechartsPayloadItem[] | null;
     submetric: Submetric;
     bucketType: TimeBucket;
-    commentsDataRef: React.MutableRefObject<{ [key: string]: any }>;
+    commentsDataRef: React.MutableRefObject<Record<string, CommentCacheEntry>>;
     fetchingRef: React.MutableRefObject<Set<string>>;
     onFetchComments: (timestamp: string) => void;
   }) => {
@@ -331,7 +297,7 @@ const ChartTooltip = memo(
       }
 
       const valuePayload =
-        payload.find((p: any) => p.dataKey === "value") || payload[0];
+        payload.find((p) => p.dataKey === "value") || payload[0];
       if (!valuePayload) return;
 
       const data = valuePayload.payload;
@@ -367,7 +333,7 @@ const ChartTooltip = memo(
     }
 
     const valuePayload =
-      payload.find((p: any) => p.dataKey === "value") || payload[0];
+      payload.find((p) => p.dataKey === "value") || payload[0];
     if (!valuePayload) return null;
 
     const data = valuePayload.payload;
@@ -391,57 +357,25 @@ const ChartTooltip = memo(
     // Get the actual value
     const displayValue = valuePayload.value ?? data?.value;
 
-    // Violation display configuration
-    const violationConfig: Record<
-      string,
-      {
-        color: string;
-        lightColor: string;
-        emoji: string;
-        title: string;
-        description: string;
-      }
-    > = {
-      rule1: {
-        color: "text-red-600",
-        lightColor: "text-red-500",
-        emoji: "🔴",
-        title: "Outside Control Limits",
-        description: "Rule 1: Point beyond 3σ",
-      },
-      rule4: {
-        color: "text-orange-600",
-        lightColor: "text-orange-500",
-        emoji: "🟠",
-        title: "2 of 3 Beyond 2σ",
-        description: "Rule 4: Clustering near limits",
-      },
-      rule3: {
-        color: "text-amber-600",
-        lightColor: "text-amber-500",
-        emoji: "🟡",
-        title: "4 Near Limit Pattern",
-        description: "Rule 3: 3 of 4 in extreme quartiles",
-      },
-      rule2: {
-        color: "text-blue-600",
-        lightColor: "text-blue-500",
-        emoji: "🔵",
-        title: "Running Point Pattern",
-        description: "Rule 2: 8+ points on one side",
-      },
-      rule5: {
-        color: "text-green-600",
-        lightColor: "text-green-500",
-        emoji: "🟢",
-        title: "Low Variation",
-        description: "Rule 5: 15+ points within 1σ",
-      },
-    };
-
-    const violation = highestPriorityViolation
-      ? violationConfig[highestPriorityViolation]
+    // Get violation display info from shared config
+    const violationKey =
+      highestPriorityViolation as keyof typeof VIOLATION_COLORS;
+    const violationColors = violationKey
+      ? VIOLATION_COLORS[violationKey]
       : null;
+    const violationMeta = violationKey
+      ? VIOLATION_METADATA[violationKey]
+      : null;
+    const violation =
+      violationColors && violationMeta
+        ? {
+            color: violationColors.text,
+            lightColor: violationColors.lightText,
+            emoji: violationMeta.emoji,
+            title: violationMeta.title,
+            description: violationMeta.description,
+          }
+        : null;
 
     return (
       <div className="bg-popover/95 backdrop-blur-sm border border-border rounded-lg p-4 shadow-lg shadow-black/10 dark:shadow-black/50 max-w-xs text-popover-foreground">
@@ -527,7 +461,7 @@ const ChartTooltip = memo(
               </div>
             ) : pointComments?.comments && pointComments.comments.length > 0 ? (
               <div className="space-y-2 max-w-[14vw]">
-                {pointComments.comments.slice(0, 2).map((comment: any) => (
+                {pointComments.comments.slice(0, 2).map((comment) => (
                   <div
                     key={comment.id}
                     className="text-xs bg-muted/50 rounded p-2"
@@ -596,7 +530,7 @@ const SubmetricXChartInternal = memo(
       const isDark = useChartTheme();
 
       // Comments cache for hover tooltips - using refs to avoid parent re-renders
-      const commentsDataRef = useRef<{ [key: string]: any }>({});
+      const commentsDataRef = useRef<Record<string, CommentCacheEntry>>({});
       const fetchingRef = useRef<Set<string>>(new Set());
 
       // Simple batch size - render many charts immediately for instant display
@@ -718,7 +652,7 @@ const SubmetricXChartInternal = memo(
 
       // Memoize custom label wrapper - pass chartData for violation lookup
       const renderCustomLabel = useCallback(
-        (props: any) => {
+        (props: CustomLabelProps) => {
           return <CustomLabel {...props} chartData={chartData} />;
         },
         [chartData], // Re-render when chartData changes to get latest violations
@@ -774,9 +708,14 @@ const SubmetricXChartInternal = memo(
       // Tooltip wrapper that uses the separate ChartTooltip component
       // This prevents parent re-renders from affecting the chart labels
       const CustomTooltip = useCallback(
-        (props: any) => (
+        (props: {
+          active?: boolean;
+          payload?: RechartsPayloadItem[];
+          label?: string;
+        }) => (
           <ChartTooltip
-            {...props}
+            active={props.active ?? false}
+            payload={props.payload ?? null}
             submetric={submetric}
             bucketType={bucketType}
             commentsDataRef={commentsDataRef}
@@ -789,51 +728,14 @@ const SubmetricXChartInternal = memo(
 
       // Memoize dot renderer
       const renderDot = useCallback(
-        (props: any) => {
+        (props: RechartsDotProps) => {
           const { cx, cy, payload, index } = props;
-          const highestPriorityViolation = payload?.highestPriorityViolation;
-          // Use theme-based colors
-          const dotStroke = isDark ? "#2a2a2a" : "#ffffff";
-
-          // Determine color and size based on highest priority violation
-          let fillColor = submetric.color || "#3b82f6";
-          let strokeColor = dotStroke;
-          let radius = 4;
-          let strokeWidth = 2;
-          let hasViolation = false;
-
-          // Map violation to colors and sizes (matching priority system)
-          if (highestPriorityViolation === "rule1") {
-            fillColor = "#ef4444"; // red
-            strokeColor = "#dc2626";
-            radius = 6;
-            strokeWidth = 3;
-            hasViolation = true;
-          } else if (highestPriorityViolation === "rule4") {
-            fillColor = "#f97316"; // orange
-            strokeColor = "#ea580c";
-            radius = 5.5;
-            strokeWidth = 2.5;
-            hasViolation = true;
-          } else if (highestPriorityViolation === "rule3") {
-            fillColor = "#f59e0b"; // amber
-            strokeColor = "#d97706";
-            radius = 5;
-            strokeWidth = 2.5;
-            hasViolation = true;
-          } else if (highestPriorityViolation === "rule2") {
-            fillColor = "#3b82f6"; // blue
-            strokeColor = "#2563eb";
-            radius = 5;
-            strokeWidth = 2.5;
-            hasViolation = true;
-          } else if (highestPriorityViolation === "rule5") {
-            fillColor = "#10b981"; // green
-            strokeColor = "#059669";
-            radius = 4.5;
-            strokeWidth = 2;
-            hasViolation = true;
-          }
+          const { fillColor, strokeColor, radius, strokeWidth, hasViolation } =
+            getDotStyling(
+              payload?.highestPriorityViolation,
+              submetric.color || "#3b82f6",
+              isDark,
+            );
 
           return (
             <circle
@@ -852,13 +754,13 @@ const SubmetricXChartInternal = memo(
             />
           );
         },
-        [isDark, submetric.color], // Depends on theme and submetric color
+        [isDark, submetric.color],
       );
 
       // Handle point click
       const handlePointClick = useCallback(
-        (data: any) => {
-          if (!submetric.definitionId || !onPointClick) return;
+        (data: ChartDataPoint | undefined) => {
+          if (!submetric.definitionId || !onPointClick || !data) return;
 
           const timestamp = data.fullTimestamp; // YYYY-MM-DD format
           const bucketValue = normalizeToBucket(timestamp, bucketType);
@@ -873,34 +775,13 @@ const SubmetricXChartInternal = memo(
 
       // Memoize active dot renderer
       const renderActiveDot = useCallback(
-        (props: any) => {
+        (props: RechartsDotProps) => {
           const { cx, cy, payload } = props;
-          const highestPriorityViolation = payload?.highestPriorityViolation;
-
-          // Use theme-based colors
-          const dotStroke = isDark ? "#2a2a2a" : "#ffffff";
-
-          // Determine colors based on highest priority violation
-          let fillColor = dotStroke;
-          let strokeColor = submetric.color || "#3b82f6";
-
-          // Map violation to colors (matching priority system)
-          if (highestPriorityViolation === "rule1") {
-            fillColor = "#ef4444"; // red
-            strokeColor = "#dc2626"; // darker red
-          } else if (highestPriorityViolation === "rule4") {
-            fillColor = "#f97316"; // orange
-            strokeColor = "#ea580c"; // darker orange
-          } else if (highestPriorityViolation === "rule3") {
-            fillColor = "#f59e0b"; // amber
-            strokeColor = "#d97706"; // darker amber
-          } else if (highestPriorityViolation === "rule2") {
-            fillColor = "#3b82f6"; // blue
-            strokeColor = "#2563eb"; // darker blue
-          } else if (highestPriorityViolation === "rule5") {
-            fillColor = "#10b981"; // green
-            strokeColor = "#059669"; // darker green
-          }
+          const { fillColor, strokeColor } = getActiveDotStyling(
+            payload?.highestPriorityViolation,
+            submetric.color || "#3b82f6",
+            isDark,
+          );
 
           return (
             // biome-ignore lint/a11y/useSemanticElements: Chart library requires SVG circle element for rendering
@@ -927,31 +808,25 @@ const SubmetricXChartInternal = memo(
             />
           );
         },
-        [isDark, submetric.color, handlePointClick], // Depends on theme, color, and click handler
-      );
-
-      // Memoize tick formatter
-      const tickFormatter = useCallback(
-        (value: number) => Number(value).toFixed(1),
-        [],
+        [isDark, submetric.color, handlePointClick],
       );
 
       // Memoize custom X-axis tick renderer (simplified - no comment indicators)
-      // Use chartData instead of mergedChartData to avoid unnecessary re-renders from trend changes
       const renderXAxisTick = useCallback(
-        (props: any) => <XAxisTick {...props} chartData={chartData} />,
-        [chartData],
+        (props: XAxisTickProps) => <XAxisTick {...props} />,
+        [],
       );
 
       // Memoize comment indicator dot renderer - renders for ALL data points
       const renderCommentIndicator = useCallback(
-        (props: any) => {
+        (props: RechartsDotProps) => {
           // Extract key to avoid React warning about spreading key prop
           const { key, ...rest } = props;
           return (
             <CommentIndicatorDot
               key={key}
-              {...rest}
+              cx={rest.cx ?? 0}
+              payload={rest.payload}
               bucketType={bucketType}
               bucketsWithComments={bucketsWithComments}
             />
@@ -959,17 +834,6 @@ const SubmetricXChartInternal = memo(
         },
         [bucketType, bucketsWithComments],
       );
-
-      // Memoize static axis configurations
-      const axisLineConfig = useMemo(
-        () => ({ stroke: "currentColor", strokeWidth: 1 }),
-        [],
-      );
-      const tickLineConfig = useMemo(
-        () => ({ stroke: "currentColor", strokeWidth: 1 }),
-        [],
-      );
-      const tickConfig = useMemo(() => ({ fontSize: 12 }), []);
 
       // Memoize reference line labels
       const avgLabel = useMemo(
@@ -1035,8 +899,8 @@ const SubmetricXChartInternal = memo(
                 <XAxis
                   dataKey="timestamp"
                   className="text-sm fill-foreground"
-                  axisLine={axisLineConfig}
-                  tickLine={tickLineConfig}
+                  axisLine={AXIS_LINE_CONFIG}
+                  tickLine={TICK_LINE_CONFIG}
                   tick={renderXAxisTick}
                   height={60}
                 >
@@ -1051,27 +915,33 @@ const SubmetricXChartInternal = memo(
                 </XAxis>
                 <YAxis
                   className="text-sm fill-foreground"
-                  axisLine={axisLineConfig}
-                  tickLine={tickLineConfig}
-                  tick={tickConfig}
-                  tickFormatter={tickFormatter}
+                  axisLine={AXIS_LINE_CONFIG}
+                  tickLine={TICK_LINE_CONFIG}
+                  tick={TICK_CONFIG}
+                  tickFormatter={formatTickValue}
                   domain={yAxisDomain}
                   width={60}
                 >
                   {submetric.definition?.yaxis && (
                     <Label
-                      content={(props: any) => (
-                        <YAxisLabel
-                          {...props}
-                          value={submetric.definition?.yaxis || ""}
-                        />
-                      )}
+                      content={
+                        ((props: RechartsLabelProps) => (
+                          <YAxisLabel
+                            {...props}
+                            value={submetric.definition?.yaxis || ""}
+                          />
+                          // biome-ignore lint/suspicious/noExplicitAny: Recharts Label content types are complex
+                        )) as any
+                      }
                       position="left"
                     />
                   )}
                 </YAxis>
 
-                <Tooltip content={CustomTooltip} />
+                <Tooltip
+                  // biome-ignore lint/suspicious/noExplicitAny: Recharts Tooltip content types are complex
+                  content={CustomTooltip as any}
+                />
 
                 {/* Control Limit Lines - Use trend lines if active, otherwise use reference lines */}
                 {trendActive && trendLines ? (
@@ -1179,8 +1049,10 @@ const SubmetricXChartInternal = memo(
                   dataKey="value"
                   stroke={submetric.color || "#3b82f6"}
                   strokeWidth={3}
-                  dot={renderDot}
-                  activeDot={renderActiveDot}
+                  // biome-ignore lint/suspicious/noExplicitAny: Recharts dot/activeDot types are complex
+                  dot={renderDot as any}
+                  // biome-ignore lint/suspicious/noExplicitAny: Recharts dot/activeDot types are complex
+                  activeDot={renderActiveDot as any}
                   connectNulls={false}
                 />
 
@@ -1194,7 +1066,10 @@ const SubmetricXChartInternal = memo(
                   activeDot={false}
                   connectNulls={false}
                 >
-                  <LabelList content={renderCustomLabel} />
+                  <LabelList
+                    // biome-ignore lint/suspicious/noExplicitAny: Recharts LabelList content types are complex
+                    content={renderCustomLabel as any}
+                  />
                 </Line>
 
                 {/* Render comment indicators for ALL data points (independent of tick visibility) */}
@@ -1203,7 +1078,8 @@ const SubmetricXChartInternal = memo(
                   dataKey="value"
                   stroke="transparent"
                   strokeWidth={0}
-                  dot={renderCommentIndicator}
+                  // biome-ignore lint/suspicious/noExplicitAny: Recharts dot types are complex
+                  dot={renderCommentIndicator as any}
                   activeDot={false}
                   connectNulls={false}
                   isAnimationActive={false}

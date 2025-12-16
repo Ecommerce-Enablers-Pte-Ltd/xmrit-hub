@@ -2,9 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CreateFollowUpInput,
   FollowUpQueryParams,
+  UpdateFollowUpInput,
+} from "@/lib/validations/follow-up";
+import type {
   FollowUpWithDetails,
   PaginatedFollowUpsResponse,
-  UpdateFollowUpInput,
 } from "@/types/db/follow-up";
 import { BaseApiClient } from "./base";
 

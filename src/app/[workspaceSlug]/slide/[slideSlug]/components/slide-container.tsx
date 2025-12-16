@@ -19,6 +19,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { ChartInfo } from "@/lib/api/slides";
+import { generateChartSlug } from "@/lib/utils";
 import type { MetricWithSubmetrics } from "@/types/db/metric";
 import { useChartSearch } from "../../../../../providers/chart-search-provider";
 import { EditMetricDefinitionDialog } from "./edit-metric-definition-dialog";
@@ -37,69 +38,50 @@ const ChartSearchDialog = lazy(() =>
   })),
 );
 
-// Generate URL-safe slug from category and metric name
-export function generateChartSlug(
-  category: string | null | undefined,
-  metricName: string | null | undefined,
-): string {
-  const parts: string[] = [];
-  if (category) {
-    parts.push(
-      category
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, ""),
-    );
-  }
-  if (metricName) {
-    parts.push(
-      metricName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, ""),
-    );
-  }
-  return parts.join("-") || "chart";
-}
-
 // Skeleton loader for charts - hides chart info until reached
 function ChartSkeleton() {
   return (
-    <div className="w-full border rounded-lg overflow-visible">
+    <div className="w-full border rounded-2xl overflow-hidden">
       {/* Header Section */}
-      <div className="px-6 py-4">
+      <div className="px-3 sm:px-4 md:px-6 pt-4 pb-0">
         {/* Chart Toolbar */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Skeleton className="h-8 w-8 rounded" />
           </div>
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-9 w-28" />
-            <Skeleton className="h-9 w-28" />
-            <Skeleton className="h-9 w-32" />
-            <div className="h-6 w-px bg-border mx-1" />
+          <div className="flex items-center gap-1 sm:gap-2">
+            {/* Desktop toolbar skeletons (hidden on mobile) */}
+            <div className="hidden lg:flex items-center gap-2">
+              <Skeleton className="h-9 w-9 xl:w-28" />
+              <Skeleton className="h-9 w-9 xl:w-28" />
+              <Skeleton className="h-9 w-9 xl:w-32" />
+              <div className="h-6 w-px bg-border mx-1" />
+            </div>
+            {/* Mobile dropdown placeholder */}
+            <Skeleton className="h-9 w-9 lg:hidden" />
+            {/* Comments & Follow-ups - always visible */}
             <Skeleton className="h-9 w-9" />
             <Skeleton className="h-9 w-9" />
           </div>
         </div>
 
-        {/* Title and Status Row - always show skeleton placeholders until reached */}
-        <div className="flex items-start justify-between mt-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-9 w-24 rounded-md" />
-              <Skeleton className="h-8 w-64" />
+        {/* Title and Status Row */}
+        <div className="flex items-start justify-between gap-3 mt-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 max-w-full">
+              <Skeleton className="h-9 w-16 sm:w-24 rounded-md shrink-0" />
+              <Skeleton className="h-8 w-32 sm:w-48 md:w-64" />
             </div>
           </div>
           {/* Traffic Light placeholder */}
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-col items-end gap-2 shrink-0">
             <Skeleton className="h-10 w-10 rounded-sm" />
           </div>
         </div>
       </div>
 
       {/* Content Section - Two charts side by side */}
-      <div className="px-6 pb-6 pt-6">
+      <div className="px-2 md:px-6 pb-4 pt-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* X Chart skeleton */}
           <div className="space-y-2">
@@ -178,6 +160,10 @@ export const SlideContainer = memo(function SlideContainer({
   const [editingMetric, setEditingMetric] =
     useState<MetricWithSubmetrics | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  // Navigation button position is responsive:
+  // Mobile: 3rem from right edge
+  // Desktop: 3.5rem from right edge
 
   // Track which charts should be rendered (visible + nearby)
   const [visibleCharts, setVisibleCharts] = useState<Set<number>>(
@@ -577,7 +563,7 @@ export const SlideContainer = memo(function SlideContainer({
       {totalCharts > 1 && (
         <div
           ref={navigationRef}
-          className="fixed right-18 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 opacity-40 hover:opacity-100 transition-opacity duration-300"
+          className="fixed right-10 md:right-13 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 opacity-40 hover:opacity-100 transition-opacity duration-300"
         >
           <Tooltip>
             <TooltipTrigger asChild>

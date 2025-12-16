@@ -705,7 +705,7 @@ When sharing deseasonalized charts:
 - [Trend Lines](./TREND_LINES.md) - Can be combined with seasonality for trend + seasonal patterns
 - [Lock Limit](./LOCK_LIMIT.md) - Incompatible with seasonality (mutually exclusive)
 - [Auto Lock Limit](./AUTO_LOCK_LIMIT.md) - Incompatible with seasonality (mutually exclusive)
-- [Controller Logic](./CONTROLLER_TRAFFIC_LIGHT.md) - How traffic light evaluates seasonally-adjusted data
+- [Database Schema](./SCHEMA.md) - Schema reference including traffic light status
 
 ## References
 

@@ -365,6 +365,7 @@ export const comments = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "set null" }),
     body: text("body").notNull(),
+    // biome-ignore lint/suspicious/noExplicitAny: Self-referential FK requires explicit any to avoid circular type reference
     parentId: text("parentId").references((): any => comments.id, {
       onDelete: "cascade",
     }),

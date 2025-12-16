@@ -1,7 +1,17 @@
 // Main API client exports - centralized access point
 
+// Local imports for legacy ApiClient class
+import type { CreateSlideInput } from "@/lib/validations/slide";
+import type { CreateWorkspaceInput } from "@/lib/validations/workspace";
+import { BaseApiClient } from "./base";
+import { FollowUpApiClient } from "./follow-ups";
+import { type CreateMetricInput, MetricApiClient } from "./metrics";
+import { SlideApiClient } from "./slides";
+import { WorkspaceApiClient } from "./workspaces";
+
 // Export types
 export type { ApiError } from "./base";
+
 // Export all API clients
 export { BaseApiClient } from "./base";
 export {
@@ -31,7 +41,6 @@ export {
   useUpdateTrafficLightColor,
 } from "./submetrics";
 export { UserApiClient, userApiClient, userKeys, useUsers } from "./users";
-// Export all hooks
 export {
   useCreateWorkspace,
   useDeleteWorkspace,
@@ -45,13 +54,7 @@ export {
   workspaceKeys,
 } from "./workspaces";
 
-// Legacy compatibility - create a combined client for backward compatibility
-import { BaseApiClient } from "./base";
-import { FollowUpApiClient } from "./follow-ups";
-import { MetricApiClient } from "./metrics";
-import { SlideApiClient } from "./slides";
-import { WorkspaceApiClient } from "./workspaces";
-
+// Legacy compatibility - combined API client for backward compatibility
 export class ApiClient extends BaseApiClient {
   public workspaces: WorkspaceApiClient;
   public slides: SlideApiClient;
@@ -79,15 +82,15 @@ export class ApiClient extends BaseApiClient {
     return this.slides.getSlideById(slideId);
   }
 
-  async createWorkspace(data: any) {
+  async createWorkspace(data: CreateWorkspaceInput) {
     return this.workspaces.createWorkspace(data);
   }
 
-  async createSlide(workspaceId: string, data: any) {
+  async createSlide(workspaceId: string, data: CreateSlideInput) {
     return this.slides.createSlide(workspaceId, data);
   }
 
-  async createMetric(slideId: string, data: any) {
+  async createMetric(slideId: string, data: CreateMetricInput) {
     return this.metrics.createMetric(slideId, data);
   }
 }

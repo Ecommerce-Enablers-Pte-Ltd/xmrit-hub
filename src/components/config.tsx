@@ -139,10 +139,10 @@ export function getPriorityIcon(
     : `h-3.5 w-3.5 ${config.iconColor}`;
 
   // Clone the icon element with the merged className
-  if (React.isValidElement(config.icon)) {
+  if (React.isValidElement<{ className?: string }>(config.icon)) {
     return React.cloneElement(config.icon, {
       className: mergedClassName,
-    } as any);
+    });
   }
 
   return config.icon;

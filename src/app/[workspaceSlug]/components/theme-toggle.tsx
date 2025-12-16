@@ -26,7 +26,11 @@ export const ThemeToggle = memo(function ThemeToggle() {
       measureThemeChangePerformance(() => {
         // Use View Transitions API if available for smooth theme changes
         if (supportsViewTransitions()) {
-          (document as any).startViewTransition(() => {
+          (
+            document as Document & {
+              startViewTransition: (callback: () => void) => void;
+            }
+          ).startViewTransition(() => {
             setTheme(theme);
           });
         } else {

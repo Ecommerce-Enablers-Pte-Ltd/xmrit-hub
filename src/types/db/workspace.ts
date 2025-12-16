@@ -9,7 +9,7 @@ export interface Workspace {
   name: string;
   slug: string; // URL-friendly slug, immutable after creation
   description: string | null;
-  settings: any; // JSON object for workspace-level settings
+  settings: unknown; // JSON object for workspace-level settings
   isArchived: boolean | null;
   isPublic: boolean | null; // Public workspaces accessible to all
   createdAt: Date;

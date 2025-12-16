@@ -154,8 +154,8 @@ export async function GET(
 
     // Sort
     allFollowUps.sort((a, b) => {
-      let aVal: any;
-      let bVal: any;
+      let aVal: string | number | Date;
+      let bVal: string | number | Date;
 
       switch (sortBy) {
         case "createdAt":
@@ -325,11 +325,12 @@ export async function POST(
 
         newFollowUp = createdFollowUp;
         break; // Success! Exit the loop
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Check if it's a duplicate key error
+        const dbError = err as { code?: string; constraint?: string };
         if (
-          err.code === "23505" &&
-          err.constraint === "follow_up_identifier_idx"
+          dbError.code === "23505" &&
+          dbError.constraint === "follow_up_identifier_idx"
         ) {
           attempts++;
           if (attempts >= maxAttempts) {

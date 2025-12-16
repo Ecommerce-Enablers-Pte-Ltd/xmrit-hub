@@ -36,7 +36,6 @@ export function SlideSheet({
   definitionId,
   bucketType,
   bucketValue: initialBucketValue,
-  bucketLabel: _initialBucketLabel,
   allDataPoints,
   onCommentAdded,
   slideId,

@@ -638,12 +638,11 @@ If you only have a workspace slug, you'll need to:
 
 ## Related Documentation
 
-- [Controller Logic](./CONTROLLER_TRAFFIC_LIGHT.md) - Understanding process control status indicators
 - [Auto Lock Limit](./AUTO_LOCK_LIMIT.md) - Automatic outlier detection
 - [Lock Limit](./LOCK_LIMIT.md) - Manual limit locking
 - [Trend Lines](./TREND_LINES.md) - Trend analysis for time series data
 - [Seasonality](./DESEASONALISATION.md) - Seasonal adjustments for recurring patterns
-- [Database Schema](./SCHEMA.md) - Complete schema reference including slug fields
+- [Database Schema](./SCHEMA.md) - Complete schema reference including slug fields and traffic light status
 
 ## Future Enhancements
 

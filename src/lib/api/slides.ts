@@ -1,7 +1,11 @@
 // Slide API client and hooks
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { SlideWithMetrics } from "@/types/db/slide";
+import type {
+  CreateSlideInput,
+  UpdateSlideInput,
+} from "@/lib/validations/slide";
+import type { Slide, SlideWithMetrics } from "@/types/db/slide";
 import { BaseApiClient } from "./base";
 import { workspaceKeys } from "./workspaces";
 
@@ -13,7 +17,10 @@ export class SlideApiClient extends BaseApiClient {
     return response.slide;
   }
 
-  async createSlide(workspaceId: string, data: any): Promise<SlideWithMetrics> {
+  async createSlide(
+    workspaceId: string,
+    data: CreateSlideInput,
+  ): Promise<SlideWithMetrics> {
     const response = await this.request<{ slide: SlideWithMetrics }>(
       `/workspaces/${workspaceId}/slides`,
       {
@@ -24,7 +31,10 @@ export class SlideApiClient extends BaseApiClient {
     return response.slide;
   }
 
-  async updateSlide(slideId: string, data: any): Promise<SlideWithMetrics> {
+  async updateSlide(
+    slideId: string,
+    data: UpdateSlideInput,
+  ): Promise<SlideWithMetrics> {
     const response = await this.request<{ slide: SlideWithMetrics }>(
       `/slides/${slideId}`,
       {
@@ -101,8 +111,13 @@ export function useCreateSlide() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ workspaceId, data }: { workspaceId: string; data: any }) =>
-      slideApiClient.createSlide(workspaceId, data),
+    mutationFn: ({
+      workspaceId,
+      data,
+    }: {
+      workspaceId: string;
+      data: CreateSlideInput;
+    }) => slideApiClient.createSlide(workspaceId, data),
     onSuccess: (_, variables) => {
       // Invalidate workspace to refetch slides
       queryClient.invalidateQueries({
@@ -127,7 +142,7 @@ export function useUpdateSlide() {
     }: {
       slideId: string;
       workspaceId: string;
-      data: any;
+      data: UpdateSlideInput;
     }) => slideApiClient.updateSlide(slideId, data),
     onSuccess: (updatedSlide, variables) => {
       // Directly update the slide cache instead of invalidating
@@ -144,13 +159,13 @@ export function useUpdateSlide() {
       );
 
       // Update the workspace cache to reflect slide changes in the list
-      queryClient.setQueryData(
+      queryClient.setQueryData<{ slides?: Slide[] }>(
         workspaceKeys.detail(variables.workspaceId),
-        (oldWorkspace: any) => {
+        (oldWorkspace) => {
           if (!oldWorkspace?.slides) return oldWorkspace;
           return {
             ...oldWorkspace,
-            slides: oldWorkspace.slides.map((slide: any) =>
+            slides: oldWorkspace.slides.map((slide) =>
               slide.id === variables.slideId
                 ? { ...slide, ...updatedSlide }
                 : slide,
@@ -160,11 +175,11 @@ export function useUpdateSlide() {
       );
 
       // Update the slides list cache used by the sidebar
-      queryClient.setQueryData(
+      queryClient.setQueryData<Slide[]>(
         workspaceKeys.slidesList(variables.workspaceId),
-        (oldSlides: any) => {
+        (oldSlides) => {
           if (!oldSlides) return oldSlides;
-          return oldSlides.map((slide: any) =>
+          return oldSlides.map((slide) =>
             slide.id === variables.slideId
               ? { ...slide, ...updatedSlide }
               : slide,

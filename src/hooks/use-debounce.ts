@@ -49,7 +49,8 @@ export function useDebounce<T>(value: T, delay: number = 500): T {
  * <Input onChange={(e) => debouncedFn(e.target.value)} />
  * {isPending && <Loader />}
  */
-export function useDebouncedCallback<T extends (...args: any[]) => any>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Generic callback constraint requires any[] for proper type inference
+export function useDebouncedCallback<T extends (...args: unknown[]) => unknown>(
   callback: T,
   delay: number = 500,
 ): {

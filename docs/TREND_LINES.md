@@ -573,8 +573,8 @@ This shouldn't happen - they're mutually exclusive. If you see this, it's a UI b
 
 - [Lock Limit](./LOCK_LIMIT.md) - Incompatible with trend, but useful after trend stabilizes
 - [Auto Lock Limit](./AUTO_LOCK_LIMIT.md) - Can be used to clean data before applying trend
-- [Controller Logic](./CONTROLLER_TRAFFIC_LIGHT.md) - How traffic light evaluates processes with trends
 - [Seasonality](./DESEASONALISATION.md) - Can be combined with trends for data with both patterns
+- [Database Schema](./SCHEMA.md) - Schema reference including traffic light status
 
 ## References
 

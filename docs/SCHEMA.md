@@ -1167,7 +1167,10 @@ ORDER BY idx_scan DESC;
 - **[Data Ingestion API](./DATA_INGESTION.md)** - Programmatic data ingestion
 - **[Comment System](./COMMENT_SYSTEM.md)** - Comment features and workflows
 - **[Follow-up System](./FOLLOW_UP.md)** - Task/ticket management with temporal resolution tracking
-- **[Default Workspace Setup](./DEFAULT_WORKSPACE_SETUP.md)** - Initial workspace creation
+- **[Auto Lock Limit](./AUTO_LOCK_LIMIT.md)** - Automatic outlier detection
+- **[Lock Limit](./LOCK_LIMIT.md)** - Manual limit locking
+- **[Trend Lines](./TREND_LINES.md)** - Trend analysis for time series data
+- **[Seasonality](./DESEASONALISATION.md)** - Seasonal adjustments for recurring patterns
 
 ## References
 

@@ -1,6 +1,7 @@
 // Metric Definitions API client and hooks
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { UpdateMetricDefinitionInput } from "@/lib/validations/metric";
 import type { MetricDefinition } from "@/types/db/metric-definition";
 import { BaseApiClient } from "./base";
 import { slideKeys } from "./slides";
@@ -8,7 +9,7 @@ import { slideKeys } from "./slides";
 export class MetricDefinitionApiClient extends BaseApiClient {
   async updateMetricDefinition(
     definitionId: string,
-    data: any,
+    data: UpdateMetricDefinitionInput,
   ): Promise<MetricDefinition> {
     const response = await this.request<{ definition: MetricDefinition }>(
       `/metric-definitions/${definitionId}`,
@@ -45,8 +46,13 @@ export function useUpdateMetricDefinition() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ definitionId, data }: { definitionId: string; data: any }) =>
-      metricDefinitionApiClient.updateMetricDefinition(definitionId, data),
+    mutationFn: ({
+      definitionId,
+      data,
+    }: {
+      definitionId: string;
+      data: UpdateMetricDefinitionInput;
+    }) => metricDefinitionApiClient.updateMetricDefinition(definitionId, data),
     onSuccess: (updatedDefinition, variables) => {
       // Update the metric definition cache directly
       queryClient.setQueryData<MetricDefinition>(

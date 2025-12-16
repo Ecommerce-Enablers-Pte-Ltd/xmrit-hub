@@ -42,9 +42,9 @@ import {
   useWorkspaces,
 } from "@/lib/api";
 import { cn, getErrorMessage, normalizeSlug } from "@/lib/utils";
+import type { FollowUpQueryParams } from "@/lib/validations/follow-up";
 import type {
   FollowUpPriority,
-  FollowUpQueryParams,
   FollowUpStatus,
   FollowUpWithDetails,
 } from "@/types/db/follow-up";

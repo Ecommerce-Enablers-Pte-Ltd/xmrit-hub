@@ -124,10 +124,10 @@ export async function POST(
     );
 
     return NextResponse.json(result, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating slide comment:", error);
 
-    if (error.message === "Invalid parent comment") {
+    if (error instanceof Error && error.message === "Invalid parent comment") {
       return NextResponse.json(
         { error: "Invalid parent comment" },
         { status: 400 },

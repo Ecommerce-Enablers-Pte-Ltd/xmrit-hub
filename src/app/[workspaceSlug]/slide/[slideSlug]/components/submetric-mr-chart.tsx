@@ -13,11 +13,24 @@ import {
   YAxis,
 } from "recharts";
 import { useChartTheme } from "@/hooks/use-chart-theme";
+import {
+  AXIS_LINE_CONFIG,
+  formatTickValue,
+  getDotStroke,
+  TICK_CONFIG,
+  TICK_LINE_CONFIG,
+  VIOLATION_COLORS,
+} from "@/lib/chart-utils";
 import type { XMRLimits } from "@/lib/xmr-calculations";
+import type {
+  ChartDataPoint,
+  RechartsDotProps,
+  RechartsTooltipProps,
+} from "@/types/chart";
 import type { Submetric } from "@/types/db/submetric";
 
 interface SubmetricMRChartProps {
-  chartData: any[];
+  chartData: ChartDataPoint[];
   xmrLimits: XMRLimits;
   submetric: Submetric;
   isLimitsLocked: boolean;
@@ -37,7 +50,7 @@ export const SubmetricMRChart = memo(
     const mrYAxisDomain = useMemo(() => {
       if (chartData.length === 0) return [0, 100];
 
-      const ranges = chartData.map((d) => d.range);
+      const ranges = chartData.map((d) => d.range ?? 0);
       const dataMax = Math.max(...ranges);
       const maxBound = Math.max(dataMax, xmrLimits.URL);
       const padding = maxBound * 0.15;
@@ -47,7 +60,7 @@ export const SubmetricMRChart = memo(
 
     // Memoize custom tooltip
     const CustomTooltip = useCallback(
-      ({ active, payload }: any) => {
+      ({ active, payload }: RechartsTooltipProps) => {
         if (active && payload && payload.length) {
           const data = payload[0].payload;
 
@@ -109,18 +122,20 @@ export const SubmetricMRChart = memo(
 
     // Memoize dot renderer
     const renderDot = useCallback(
-      (props: any) => {
+      (props: RechartsDotProps) => {
         const { cx, cy, payload, index } = props;
         const isRangeViolation = payload?.isRangeViolation;
-        // Use theme-based colors
-        const dotStroke = isDark ? "#2a2a2a" : "#ffffff";
+        const dotStroke = getDotStroke(isDark);
+        const violationConfig = VIOLATION_COLORS.rule1;
 
         const fillColor = isRangeViolation
-          ? "#ef4444" // red for violations
-          : submetric.color || "#3b82f6"; // purple/violet for normal
-        const strokeColor = isRangeViolation ? "#dc2626" : dotStroke;
-        const radius = isRangeViolation ? 6 : 4;
-        const strokeWidth = isRangeViolation ? 3 : 2;
+          ? violationConfig.fill
+          : submetric.color || "#3b82f6";
+        const strokeColor = isRangeViolation
+          ? violationConfig.stroke
+          : dotStroke;
+        const radius = isRangeViolation ? violationConfig.radius : 4;
+        const strokeWidth = isRangeViolation ? violationConfig.strokeWidth : 2;
 
         return (
           <circle
@@ -139,21 +154,20 @@ export const SubmetricMRChart = memo(
           />
         );
       },
-      [isDark, submetric.color], // Depends on theme and submetric color
+      [isDark, submetric.color],
     );
 
     // Memoize active dot renderer
     const renderActiveDot = useCallback(
-      (props: any) => {
+      (props: RechartsDotProps) => {
         const { cx, cy, payload } = props;
         const isRangeViolation = payload?.isRangeViolation;
+        const dotStroke = getDotStroke(isDark);
+        const violationConfig = VIOLATION_COLORS.rule1;
 
-        // Use theme-based colors
-        const dotStroke = isDark ? "#2a2a2a" : "#ffffff";
-
-        const fillColor = isRangeViolation ? "#ef4444" : dotStroke;
+        const fillColor = isRangeViolation ? violationConfig.fill : dotStroke;
         const strokeColor = isRangeViolation
-          ? "#dc2626"
+          ? violationConfig.stroke
           : submetric.color || "#3b82f6";
 
         return (
@@ -171,25 +185,8 @@ export const SubmetricMRChart = memo(
           />
         );
       },
-      [isDark, submetric.color], // Depends on theme and submetric color
+      [isDark, submetric.color],
     );
-
-    // Memoize tick formatter
-    const tickFormatter = useCallback(
-      (value: number) => Number(value).toFixed(1),
-      [],
-    );
-
-    // Memoize static axis configurations
-    const axisLineConfig = useMemo(
-      () => ({ stroke: "currentColor", strokeWidth: 1 }),
-      [],
-    );
-    const tickLineConfig = useMemo(
-      () => ({ stroke: "currentColor", strokeWidth: 1 }),
-      [],
-    );
-    const tickConfig = useMemo(() => ({ fontSize: 12 }), []);
 
     // Memoize reference line labels
     const avgMovementLabel = useMemo(
@@ -233,9 +230,9 @@ export const SubmetricMRChart = memo(
             <XAxis
               dataKey="timestamp"
               className="text-sm fill-foreground"
-              axisLine={axisLineConfig}
-              tickLine={tickLineConfig}
-              tick={tickConfig}
+              axisLine={AXIS_LINE_CONFIG}
+              tickLine={TICK_LINE_CONFIG}
+              tick={TICK_CONFIG}
               interval="preserveStartEnd"
             >
               <Label
@@ -249,14 +246,17 @@ export const SubmetricMRChart = memo(
             </XAxis>
             <YAxis
               className="text-sm fill-foreground"
-              axisLine={axisLineConfig}
-              tickLine={tickLineConfig}
-              tick={tickConfig}
-              tickFormatter={tickFormatter}
+              axisLine={AXIS_LINE_CONFIG}
+              tickLine={TICK_LINE_CONFIG}
+              tick={TICK_CONFIG}
+              tickFormatter={formatTickValue}
               domain={mrYAxisDomain}
               width={50}
             />
-            <Tooltip content={CustomTooltip} />
+            <Tooltip
+              // biome-ignore lint/suspicious/noExplicitAny: Recharts types are complex
+              content={CustomTooltip as any}
+            />
 
             {/* Average Movement Line */}
             <ReferenceLine
@@ -282,8 +282,10 @@ export const SubmetricMRChart = memo(
               dataKey="range"
               stroke={submetric.color || "#3b82f6"}
               strokeWidth={3}
-              dot={renderDot}
-              activeDot={renderActiveDot}
+              // biome-ignore lint/suspicious/noExplicitAny: Recharts dot/activeDot types are complex
+              dot={renderDot as any}
+              // biome-ignore lint/suspicious/noExplicitAny: Recharts dot/activeDot types are complex
+              activeDot={renderActiveDot as any}
               connectNulls={false}
             />
           </LineChart>

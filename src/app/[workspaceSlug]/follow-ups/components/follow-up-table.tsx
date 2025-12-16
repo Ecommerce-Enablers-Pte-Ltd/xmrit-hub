@@ -53,7 +53,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { getInitials } from "@/lib/formatting";
-import { cn, generateSlideUrl } from "@/lib/utils";
+import { cn, generateChartSlug, generateSlideUrl } from "@/lib/utils";
 import type { FollowUpWithDetails } from "@/types/db/follow-up";
 
 type SortField = "identifier" | "title" | "status" | "createdAt";
@@ -69,31 +69,6 @@ interface FollowUpTableProps {
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   onSort?: (field: SortField) => void;
-}
-
-// Generate URL-safe slug from category and metric name (matching slide-container.tsx)
-function generateChartSlug(
-  category: string | null | undefined,
-  metricName: string | null | undefined,
-): string {
-  const parts: string[] = [];
-  if (category) {
-    parts.push(
-      category
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, ""),
-    );
-  }
-  if (metricName) {
-    parts.push(
-      metricName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, ""),
-    );
-  }
-  return parts.join("-") || "chart";
 }
 
 // Sortable column header component - defined outside to prevent recreation on every render

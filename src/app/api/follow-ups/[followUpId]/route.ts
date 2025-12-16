@@ -99,7 +99,7 @@ async function updateFollowUp(
     const validatedData = validationResult.data;
 
     // Prepare update values
-    const updateValues: Record<string, any> = {
+    const updateValues: Partial<typeof followUps.$inferInsert> = {
       updatedAt: new Date(),
     };
 

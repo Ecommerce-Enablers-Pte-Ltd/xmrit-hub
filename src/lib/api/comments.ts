@@ -367,8 +367,15 @@ export async function createPointComment(
     .where(eq(users.id, userId))
     .limit(1);
 
+  const createdComment = newComment[0];
   const commentWithUser: CommentWithUser = {
-    ...(newComment as any)[0],
+    id: createdComment.id,
+    threadId: createdComment.threadId,
+    userId: createdComment.userId,
+    body: createdComment.body,
+    parentId: createdComment.parentId,
+    createdAt: createdComment.createdAt,
+    updatedAt: createdComment.updatedAt,
     user: {
       id: user[0].id,
       name: user[0].name,
@@ -648,8 +655,15 @@ export async function createSlideComment(
     .where(eq(users.id, userId))
     .limit(1);
 
+  const createdComment = newComment[0];
   const commentWithUser: CommentWithUser = {
-    ...(newComment as any)[0],
+    id: createdComment.id,
+    threadId: createdComment.threadId,
+    userId: createdComment.userId,
+    body: createdComment.body,
+    parentId: createdComment.parentId,
+    createdAt: createdComment.createdAt,
+    updatedAt: createdComment.updatedAt,
     user: {
       id: user[0].id,
       name: user[0].name,

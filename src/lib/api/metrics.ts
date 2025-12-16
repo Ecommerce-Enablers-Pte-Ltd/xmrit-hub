@@ -1,19 +1,33 @@
 // Metrics API client and hooks
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { UpdateMetricInput } from "@/lib/validations/metric";
 import type { Metric } from "@/types/db/metric";
 import { BaseApiClient } from "./base";
 import { slideKeys } from "./slides";
 
+// Input type for creating a metric (name is required)
+export interface CreateMetricInput {
+  name: string;
+  definition?: string | null;
+  ranking?: number | null;
+}
+
 export class MetricApiClient extends BaseApiClient {
-  async createMetric(slideId: string, data: any): Promise<Metric> {
+  async createMetric(
+    slideId: string,
+    data: CreateMetricInput,
+  ): Promise<Metric> {
     return this.request(`/slides/${slideId}/metrics`, {
       method: "POST",
       body: JSON.stringify(data),
     });
   }
 
-  async updateMetric(metricId: string, data: any): Promise<Metric> {
+  async updateMetric(
+    metricId: string,
+    data: UpdateMetricInput,
+  ): Promise<Metric> {
     const response = await this.request<{ metric: Metric }>(
       `/metrics/${metricId}`,
       {
@@ -74,8 +88,13 @@ export function useUpdateMetric() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ metricId, data }: { metricId: string; data: any }) =>
-      metricApiClient.updateMetric(metricId, data),
+    mutationFn: ({
+      metricId,
+      data,
+    }: {
+      metricId: string;
+      data: UpdateMetricInput;
+    }) => metricApiClient.updateMetric(metricId, data),
     onSuccess: (updatedMetric, variables) => {
       // Update the metric cache directly
       queryClient.setQueryData<Metric>(

@@ -43,10 +43,10 @@ export async function PUT(
     }
 
     // Check if the workspace is public or user has access
-    if (
-      existingDefinition.workspace &&
-      (existingDefinition.workspace as any).isPublic === false
-    ) {
+    const workspace = existingDefinition.workspace as {
+      isPublic?: boolean | null;
+    } | null;
+    if (workspace && workspace.isPublic === false) {
       return NextResponse.json(
         {
           error:
@@ -130,10 +130,10 @@ export async function GET(
     }
 
     // Check if the workspace is public or user has access
-    if (
-      definition.workspace &&
-      (definition.workspace as any).isPublic === false
-    ) {
+    const definitionWorkspace = definition.workspace as {
+      isPublic?: boolean | null;
+    } | null;
+    if (definitionWorkspace && definitionWorkspace.isPublic === false) {
       return NextResponse.json(
         {
           error:

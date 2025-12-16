@@ -205,6 +205,37 @@ export function getCookie(name: string): string | null {
 }
 
 /**
+ * Generates a URL-safe slug from category and metric name.
+ * Used for creating anchor links to charts on slide pages.
+ * @param category - The category/dimension (e.g., "Adidas", "North America")
+ * @param metricName - The metric name (e.g., "% of MCB Count")
+ * @returns URL-safe slug (e.g., "adidas-of-mcb-count")
+ */
+export function generateChartSlug(
+  category: string | null | undefined,
+  metricName: string | null | undefined,
+): string {
+  const parts: string[] = [];
+  if (category) {
+    parts.push(
+      category
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, ""),
+    );
+  }
+  if (metricName) {
+    parts.push(
+      metricName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, ""),
+    );
+  }
+  return parts.join("-") || "chart";
+}
+
+/**
  * Extracts a user-friendly error message from various error formats.
  * Handles:
  * - Error objects with message property

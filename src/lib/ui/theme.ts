@@ -49,6 +49,7 @@ export function supportsViewTransitions(): boolean {
   return (
     typeof document !== "undefined" &&
     "startViewTransition" in document &&
-    typeof (document as any).startViewTransition === "function"
+    typeof (document as Document & { startViewTransition?: unknown })
+      .startViewTransition === "function"
   );
 }

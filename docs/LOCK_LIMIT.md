@@ -545,9 +545,9 @@ If calculated locked limits don't match expectations:
 ## Related Documentation
 
 - [Auto Lock Limit](./AUTO_LOCK_LIMIT.md) - Automatic outlier detection and locking
-- [Controller Logic](./CONTROLLER_TRAFFIC_LIGHT.md) - How locked limits affect process status
 - [Trend Lines](./TREND_LINES.md) - Alternative to locking when data has trends
 - [Seasonality](./DESEASONALISATION.md) - Seasonal adjustments (incompatible with lock limits)
+- [Database Schema](./SCHEMA.md) - Schema reference including traffic light status
 
 ## References
 

@@ -67,36 +67,8 @@ export interface FollowUpWithDetails extends FollowUp {
   submetricDefinition: SubmetricDefinition | null;
 }
 
-/**
- * Type for creating a new follow-up
- */
-export interface CreateFollowUpInput {
-  title: string;
-  description?: string;
-  slideId?: string;
-  submetricDefinitionId?: string;
-  threadId?: string;
-  status?: FollowUpStatus;
-  priority?: FollowUpPriority;
-  assigneeIds?: string[]; // New: multiple assignees
-  dueDate?: string;
-}
-
-/**
- * Type for updating a follow-up
- */
-export interface UpdateFollowUpInput {
-  title?: string;
-  description?: string;
-  slideId?: string;
-  submetricDefinitionId?: string;
-  threadId?: string;
-  resolvedAtSlideId?: string | null;
-  status?: FollowUpStatus;
-  priority?: FollowUpPriority;
-  assigneeIds?: string[]; // New: multiple assignees
-  dueDate?: string;
-}
+// Note: CreateFollowUpInput, UpdateFollowUpInput, and FollowUpQueryParams types
+// are defined in @/lib/validations/follow-up.ts as Zod inferred types (single source of truth)
 
 /**
  * Pagination metadata
@@ -115,29 +87,4 @@ export interface PaginationMeta {
 export interface PaginatedFollowUpsResponse {
   followUps: FollowUpWithDetails[];
   pagination: PaginationMeta;
-}
-
-/**
- * Query parameters for follow-up list
- */
-export interface FollowUpQueryParams {
-  page?: number;
-  limit?: number;
-  sortBy?:
-    | "createdAt"
-    | "updatedAt"
-    | "title"
-    | "status"
-    | "priority"
-    | "dueDate"
-    | "identifier";
-  sortOrder?: "asc" | "desc";
-  status?: FollowUpStatus;
-  priority?: FollowUpPriority;
-  assigneeId?: string;
-  slideId?: string;
-  submetricDefinitionId?: string;
-  search?: string;
-  unassigned?: boolean;
-  overdue?: boolean;
 }

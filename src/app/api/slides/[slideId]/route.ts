@@ -91,7 +91,8 @@ export async function GET(
     }
 
     // Check if the workspace is public or user has access
-    if (slide.workspace && (slide.workspace as any).isPublic === false) {
+    const workspace = slide.workspace as { isPublic?: boolean | null } | null;
+    if (workspace && workspace.isPublic === false) {
       // Private workspace - should check user membership
       return NextResponse.json(
         { error: "Access denied - slide belongs to a private workspace" },
@@ -164,10 +165,10 @@ export async function PUT(
     }
 
     // Check if the workspace is public or user has access
-    if (
-      existingSlide.workspace &&
-      (existingSlide.workspace as any).isPublic === false
-    ) {
+    const existingSlideWorkspace = existingSlide.workspace as {
+      isPublic?: boolean | null;
+    } | null;
+    if (existingSlideWorkspace && existingSlideWorkspace.isPublic === false) {
       // Private workspace - should check user ownership before allowing modification
       return NextResponse.json(
         { error: "Access denied - cannot modify slide from private workspace" },
@@ -280,7 +281,10 @@ export async function DELETE(
     }
 
     // Check if the workspace is public or user has access
-    if (slide.workspace && (slide.workspace as any).isPublic === false) {
+    const deleteSlideWorkspace = slide.workspace as {
+      isPublic?: boolean | null;
+    } | null;
+    if (deleteSlideWorkspace && deleteSlideWorkspace.isPublic === false) {
       // Private workspace - should check user ownership before allowing delete
       return NextResponse.json(
         { error: "Access denied - cannot delete slide from private workspace" },

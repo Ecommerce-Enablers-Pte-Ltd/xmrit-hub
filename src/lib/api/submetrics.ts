@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { SlideWithMetrics } from "@/types/db/slide";
 import type { TrafficLightColor } from "@/types/db/submetric";
 import { BaseApiClient } from "./base";
 import { slideKeys } from "./slides";
@@ -50,21 +51,24 @@ export function useUpdateTrafficLightColor(slideId: string) {
 
       // Optimistically update the cache
       // Note: The cache stores SlideWithMetrics directly, not wrapped in { slide: ... }
-      queryClient.setQueryData(slideKeys.detail(slideId), (old: any) => {
-        if (!old?.metrics) return old;
+      queryClient.setQueryData<SlideWithMetrics>(
+        slideKeys.detail(slideId),
+        (old) => {
+          if (!old?.metrics) return old;
 
-        return {
-          ...old,
-          metrics: old.metrics.map((metric: any) => ({
-            ...metric,
-            submetrics: metric.submetrics.map((submetric: any) =>
-              submetric.id === submetricId
-                ? { ...submetric, trafficLightColor }
-                : submetric,
-            ),
-          })),
-        };
-      });
+          return {
+            ...old,
+            metrics: old.metrics.map((metric) => ({
+              ...metric,
+              submetrics: metric.submetrics.map((submetric) =>
+                submetric.id === submetricId
+                  ? { ...submetric, trafficLightColor }
+                  : submetric,
+              ),
+            })),
+          };
+        },
+      );
 
       // Return context with the previous value
       return { previousSlide };

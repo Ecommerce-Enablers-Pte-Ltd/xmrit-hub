@@ -6,7 +6,12 @@ import { AlertCircle, CalendarIcon, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
-import { getPriorityIcon, getStatusIcon } from "@/components/config";
+import {
+  getPriorityIcon,
+  getPriorityLabel,
+  getStatusIcon,
+  getStatusLabel,
+} from "@/components/config";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -102,24 +107,45 @@ const FormError = ({ message }: { message?: string }) => {
   );
 };
 
-const STATUS_OPTIONS: { value: FollowUpStatus; label: string }[] = [
-  { value: "todo", label: "Todo" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "done", label: "Done" },
-  { value: "cancelled", label: "Cancelled" },
+// Status options derived from centralized config (order preserved)
+const STATUS_ORDER: FollowUpStatus[] = [
+  "todo",
+  "in_progress",
+  "done",
+  "cancelled",
 ];
+const STATUS_ORDER_WITH_RESOLVED: FollowUpStatus[] = [
+  ...STATUS_ORDER,
+  "resolved",
+];
+
+const STATUS_OPTIONS: { value: FollowUpStatus; label: string }[] =
+  STATUS_ORDER.map((status) => ({
+    value: status,
+    label: getStatusLabel(status),
+  }));
 
 // Include resolved in the display-only options (for showing current status)
 const STATUS_OPTIONS_WITH_RESOLVED: { value: FollowUpStatus; label: string }[] =
-  [...STATUS_OPTIONS, { value: "resolved", label: "Resolved" }];
+  STATUS_ORDER_WITH_RESOLVED.map((status) => ({
+    value: status,
+    label: getStatusLabel(status),
+  }));
 
-const PRIORITY_OPTIONS: { value: FollowUpPriority; label: string }[] = [
-  { value: "no_priority", label: "No Priority" },
-  { value: "urgent", label: "Urgent" },
-  { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
-  { value: "low", label: "Low" },
+// Priority options derived from centralized config (order preserved)
+const PRIORITY_ORDER: FollowUpPriority[] = [
+  "no_priority",
+  "urgent",
+  "high",
+  "medium",
+  "low",
 ];
+
+const PRIORITY_OPTIONS: { value: FollowUpPriority; label: string }[] =
+  PRIORITY_ORDER.map((priority) => ({
+    value: priority,
+    label: getPriorityLabel(priority),
+  }));
 
 export function FollowUpDialog({
   open,
