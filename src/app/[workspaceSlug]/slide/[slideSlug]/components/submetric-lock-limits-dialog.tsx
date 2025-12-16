@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatTimestampToDateString } from "@/lib/time-buckets";
 import {
   type DataPoint,
   generateXMRData,
@@ -371,29 +372,6 @@ export function SubmetricLockLimitsDialog({
     onOpenChange(false);
   };
 
-  // Format timestamp for display
-  const formatTimestamp = (timestamp: string): string => {
-    try {
-      // Handle YYYYMMDD format
-      if (/^\d{8}$/.test(timestamp)) {
-        const year = timestamp.substring(0, 4);
-        const month = timestamp.substring(4, 6);
-        const day = timestamp.substring(6, 8);
-        return `${year}-${month}-${day}`;
-      }
-      // Handle YYYYMM format
-      if (/^\d{6}$/.test(timestamp)) {
-        const year = timestamp.substring(0, 4);
-        const month = timestamp.substring(4, 6);
-        return `${year}-${month}-01`;
-      }
-      // Otherwise return as is
-      return timestamp;
-    } catch {
-      return timestamp;
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-[50vw] max-h-[80vh] sm:max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0">
@@ -611,7 +589,7 @@ export function SubmetricLockLimitsDialog({
                         key={`${point.timestamp}-${index}`}
                         point={point}
                         index={index}
-                        timestamp={formatTimestamp(point.timestamp)}
+                        timestamp={formatTimestampToDateString(point.timestamp)}
                         onEditValue={handleEditValue}
                         onExclude={handleExcludeRow}
                         canExclude={canExclude}

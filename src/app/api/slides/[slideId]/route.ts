@@ -67,6 +67,7 @@ export async function GET(
                   },
                 },
               },
+              // Exclude dataPoints JSONB for lightweight polling - fetch lazily per-chart
               columns: {
                 id: true,
                 metricId: true,
@@ -76,9 +77,9 @@ export async function GET(
                 color: true,
                 trafficLightColor: true,
                 metadata: true,
-                dataPoints: true,
                 createdAt: true,
                 updatedAt: true,
+                // dataPoints: false - explicitly excluded for mobile performance
               },
             },
           },

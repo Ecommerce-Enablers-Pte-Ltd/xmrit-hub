@@ -10,10 +10,10 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TimeBucket } from "@/lib/time-buckets";
-import { CommentsTab, type DataPoint } from "./comments-sheet-tab";
+import { type CommentDataPoint, CommentsTab } from "./comments-sheet-tab";
 import { FollowUpTab } from "./follow-up-sheet-tab";
 
-export type { DataPoint };
+export type { CommentDataPoint };
 
 interface SlideSheetProps {
   open: boolean;
@@ -22,7 +22,7 @@ interface SlideSheetProps {
   bucketType: TimeBucket;
   bucketValue: string;
   bucketLabel?: string;
-  allDataPoints?: DataPoint[];
+  allDataPoints?: CommentDataPoint[];
   onCommentAdded?: (bucketValue: string) => void;
   slideId: string;
   initialFilterToAll?: boolean;

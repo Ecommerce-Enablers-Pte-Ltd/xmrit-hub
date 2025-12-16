@@ -24,6 +24,8 @@ import {
   YAxis,
 } from "recharts";
 import { useChartTheme } from "@/hooks/use-chart-theme";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobileDevice } from "@/hooks/use-mobile-device";
 import {
   AXIS_LINE_CONFIG,
   formatTickValue,
@@ -54,7 +56,7 @@ import type {
   XAxisTickProps,
 } from "@/types/chart";
 import type { Submetric } from "@/types/db/submetric";
-import { type DataPoint, SlideSheet } from "./slide-sheet";
+import { type CommentDataPoint, SlideSheet } from "./slide-sheet";
 
 // Separate component for dialog management to prevent chart re-renders
 interface DialogManagerProps {
@@ -62,7 +64,7 @@ interface DialogManagerProps {
   selectedPoint: { timestamp: string; bucketValue: string } | null;
   definitionId: string | undefined | null;
   bucketType: TimeBucket;
-  allDataPoints: DataPoint[];
+  allDataPoints: CommentDataPoint[];
   slideId: string;
   workspaceId: string;
   onOpenChange: (open: boolean) => void;
@@ -509,6 +511,8 @@ const SubmetricXChartInternal = memo(
     SubmetricXChartHandle,
     Omit<SubmetricXChartProps, "onCommentAdded"> & {
       onPointClick?: (data: { timestamp: string; bucketValue: string }) => void;
+      isMobileDevice?: boolean;
+      isMobile?: boolean;
     }
   >(
     (
@@ -523,6 +527,8 @@ const SubmetricXChartInternal = memo(
         onPointClick,
         batchIndex = 0,
         batchSize,
+        isMobileDevice = false,
+        isMobile = false,
       },
       ref,
     ) => {
@@ -757,9 +763,10 @@ const SubmetricXChartInternal = memo(
         [isDark, submetric.color],
       );
 
-      // Handle point click
+      // Handle point click (disabled on mobile)
       const handlePointClick = useCallback(
         (data: ChartDataPoint | undefined) => {
+          if (isMobileDevice) return; // Disable on mobile devices
           if (!submetric.definitionId || !onPointClick || !data) return;
 
           const timestamp = data.fullTimestamp; // YYYY-MM-DD format
@@ -770,7 +777,7 @@ const SubmetricXChartInternal = memo(
             bucketValue,
           });
         },
-        [submetric.definitionId, bucketType, onPointClick],
+        [submetric.definitionId, bucketType, onPointClick, isMobileDevice],
       );
 
       // Memoize active dot renderer
@@ -782,6 +789,23 @@ const SubmetricXChartInternal = memo(
             submetric.color || "#3b82f6",
             isDark,
           );
+
+          // On mobile, render without click handlers
+          if (isMobileDevice) {
+            return (
+              <circle
+                cx={cx}
+                cy={cy}
+                r={8}
+                fill={fillColor}
+                stroke={strokeColor}
+                strokeWidth={3}
+                style={{
+                  filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.3))",
+                }}
+              />
+            );
+          }
 
           return (
             // biome-ignore lint/a11y/useSemanticElements: Chart library requires SVG circle element for rendering
@@ -808,7 +832,7 @@ const SubmetricXChartInternal = memo(
             />
           );
         },
-        [isDark, submetric.color, handlePointClick],
+        [isDark, submetric.color, handlePointClick, isMobileDevice],
       );
 
       // Memoize custom X-axis tick renderer (simplified - no comment indicators)
@@ -889,7 +913,11 @@ const SubmetricXChartInternal = memo(
             <ResponsiveContainer width="100%" height="100%" debounce={350}>
               <LineChart
                 data={mergedChartData}
-                margin={{ top: 40, right: 60, left: 0, bottom: 40 }}
+                margin={
+                  isMobile
+                    ? { top: 40, right: 20, left: -20, bottom: 40 }
+                    : { top: 40, right: 60, left: 0, bottom: 40 }
+                }
               >
                 <CartesianGrid
                   strokeDasharray="2 2"
@@ -938,10 +966,12 @@ const SubmetricXChartInternal = memo(
                   )}
                 </YAxis>
 
-                <Tooltip
-                  // biome-ignore lint/suspicious/noExplicitAny: Recharts Tooltip content types are complex
-                  content={CustomTooltip as any}
-                />
+                {!isMobileDevice && (
+                  <Tooltip
+                    // biome-ignore lint/suspicious/noExplicitAny: Recharts Tooltip content types are complex
+                    content={CustomTooltip as any}
+                  />
+                )}
 
                 {/* Control Limit Lines - Use trend lines if active, otherwise use reference lines */}
                 {trendActive && trendLines ? (
@@ -1101,6 +1131,8 @@ SubmetricXChartInternal.displayName = "SubmetricXChartInternal";
 // Wrapper component that manages dialog state separately from chart
 export const SubmetricXChart = memo((props: SubmetricXChartProps) => {
   const chartRef = useRef<SubmetricXChartHandle>(null);
+  const isMobile = useIsMobile();
+  const { isMobileDevice } = useIsMobileDevice();
   const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
   const [selectedPoint, setSelectedPoint] = useState<{
     timestamp: string;
@@ -1115,7 +1147,7 @@ export const SubmetricXChart = memo((props: SubmetricXChartProps) => {
   }, [props.chartData]);
 
   // Create array of all data points for navigation
-  const allDataPoints = useMemo<DataPoint[]>(() => {
+  const allDataPoints = useMemo<CommentDataPoint[]>(() => {
     return props.chartData.map((point) => ({
       timestamp: point.fullTimestamp,
       bucketValue: normalizeToBucket(point.fullTimestamp, bucketType),
@@ -1159,6 +1191,8 @@ export const SubmetricXChart = memo((props: SubmetricXChartProps) => {
         ref={chartRef}
         {...props}
         onPointClick={handlePointClick}
+        isMobileDevice={isMobileDevice}
+        isMobile={isMobile}
       />
       <DialogManager
         isOpen={commentsDialogOpen}

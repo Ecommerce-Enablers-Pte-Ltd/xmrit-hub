@@ -5,6 +5,7 @@ import {
   lazy,
   memo,
   Suspense,
+  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -18,7 +19,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useIsMobileDevice } from "@/hooks/use-mobile-device";
 import type { ChartInfo } from "@/lib/api/slides";
+import { usePrefetchSubmetricDataPoints } from "@/lib/api/slides";
 import { generateChartSlug } from "@/lib/utils";
 import type { MetricWithSubmetrics } from "@/types/db/metric";
 import { useChartSearch } from "../../../../../providers/chart-search-provider";
@@ -127,7 +130,7 @@ function arePropsEqual(
       return false;
     }
 
-    // Check if submetrics data changed
+    // Check if submetrics metadata changed (not dataPoints - those are lazy-loaded)
     for (let j = 0; j < prevMetric.submetrics.length; j++) {
       const prevSub = prevMetric.submetrics[j];
       const nextSub = nextMetric.submetrics[j];
@@ -136,8 +139,8 @@ function arePropsEqual(
         prevSub.id !== nextSub.id ||
         prevSub.definition?.metricName !== nextSub.definition?.metricName ||
         prevSub.definition?.category !== nextSub.definition?.category ||
-        prevSub.trafficLightColor !== nextSub.trafficLightColor ||
-        (prevSub.dataPoints?.length ?? 0) !== (nextSub.dataPoints?.length ?? 0)
+        prevSub.trafficLightColor !== nextSub.trafficLightColor
+        // Note: dataPoints comparison removed - they're now lazy-loaded per chart
       ) {
         return false;
       }
@@ -153,7 +156,10 @@ export const SlideContainer = memo(function SlideContainer({
   slideId,
   workspaceId,
 }: SlideContainerProps) {
+  const { isMobileDevice } = useIsMobileDevice();
   const chartRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // WeakMap for O(1) element-to-index lookups (much faster than indexOf in observers)
+  const chartIndexMap = useRef<WeakMap<HTMLDivElement, number>>(new WeakMap());
   const navigationRef = useRef<HTMLDivElement>(null);
   // Use ref to track current index for instant navigation without re-renders
   const currentIndexRef = useRef<number>(0);
@@ -166,9 +172,14 @@ export const SlideContainer = memo(function SlideContainer({
   // Desktop: 3.5rem from right edge
 
   // Track which charts should be rendered (visible + nearby)
+  // Mobile: start with first 3 charts (increased for smoother initial experience)
+  // Desktop: start with first 4 charts
   const [visibleCharts, setVisibleCharts] = useState<Set<number>>(
-    () => new Set([0, 1, 2]), // Initially render first 3 charts
+    () => new Set(isMobileDevice ? [0, 1, 2] : [0, 1, 2, 3]),
   );
+
+  // Prefetch hook for batch-loading datapoints
+  const prefetchDataPoints = usePrefetchSubmetricDataPoints();
 
   // Chart search context
   const {
@@ -199,6 +210,20 @@ export const SlideContainer = memo(function SlideContainer({
       })),
     );
   }, [metrics]);
+
+  // Prefetch datapoints for initially visible charts on mount
+  // This ensures the first few charts load quickly
+  useEffect(() => {
+    if (allCharts.length === 0 || !slideId) return;
+
+    // Prefetch datapoints for initial charts (matches useState initial set)
+    const initialCount = Math.min(isMobileDevice ? 3 : 4, allCharts.length);
+    const initialSubmetricIds = allCharts
+      .slice(0, initialCount)
+      .map((c) => c.submetric.id);
+
+    prefetchDataPoints(slideId, initialSubmetricIds);
+  }, [allCharts, slideId, prefetchDataPoints, isMobileDevice]);
 
   // Derive chart info for search dialog directly from allCharts
   const chartInfoList: ChartInfo[] = useMemo(() => {
@@ -340,78 +365,146 @@ export const SlideContainer = memo(function SlideContainer({
   }, [scrollToChart, totalCharts]);
 
   // Auto-track which chart is in view and manage virtualization
+  // Mobile: charts stay rendered once loaded (no removal) to prevent scroll jank
+  // Desktop: charts can be removed when far away for memory efficiency
   useEffect(() => {
     if (chartRefs.current.length === 0) return;
 
-    // Observer for tracking current chart (center of viewport)
-    const trackingObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const element = entry.target as HTMLDivElement;
-            const index = chartRefs.current.indexOf(element);
-            if (index !== -1) {
-              // Update current index WITHOUT triggering re-render
-              currentIndexRef.current = index;
-            }
-          }
-        });
-      },
-      {
-        root: null,
-        rootMargin: "-40% 0px -40% 0px", // Middle 20% of viewport
-        threshold: 0,
-      },
-    );
+    let trackingObserver: IntersectionObserver | null = null;
+    let virtualizationObserver: IntersectionObserver | null = null;
+    let cleanupCalled = false;
 
-    // Observer for managing which charts should render (virtualization)
-    const virtualizationObserver = new IntersectionObserver(
-      (entries) => {
-        setVisibleCharts((prev) => {
-          const next = new Set(prev);
-          entries.forEach((entry) => {
-            const element = entry.target as HTMLDivElement;
-            const index = chartRefs.current.indexOf(element);
-            if (index !== -1) {
-              if (entry.isIntersecting) {
-                // Add visible chart and adjacent ones
-                next.add(index);
-                if (index > 0) next.add(index - 1);
-                if (index < totalCharts - 1) next.add(index + 1);
-              } else {
-                // Keep charts in memory if they're adjacent to visible ones
-                const isAdjacent = Array.from(next).some(
-                  (visibleIndex) => Math.abs(visibleIndex - index) <= 1,
-                );
-                if (!isAdjacent) {
-                  next.delete(index);
-                }
+    // Setup function - can be called immediately or after delay
+    const setupObservers = () => {
+      if (cleanupCalled) return;
+
+      // Observer for tracking current chart (center of viewport)
+      trackingObserver = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              const element = entry.target as HTMLDivElement;
+              // O(1) lookup using WeakMap instead of O(n) indexOf
+              const index = chartIndexMap.current.get(element);
+              if (index !== undefined) {
+                // Update current index WITHOUT triggering re-render
+                currentIndexRef.current = index;
               }
             }
-          });
-          return next;
-        });
-      },
-      {
-        root: null,
-        rootMargin: "400px", // Load charts 400px before they enter viewport
-        threshold: 0,
-      },
-    );
+          }
+        },
+        {
+          root: null,
+          rootMargin: "-40% 0px -40% 0px", // Middle 20% of viewport
+          threshold: 0,
+        },
+      );
 
-    // Observe all chart elements
-    chartRefs.current.forEach((chartElement) => {
-      if (chartElement) {
-        trackingObserver.observe(chartElement);
-        virtualizationObserver.observe(chartElement);
-      }
-    });
+      // Observer for managing which charts should render (virtualization)
+      // Mobile: larger preload margin + never remove once rendered (prevents jank)
+      // Desktop: moderate preload margin with cleanup for memory efficiency
+      //
+      // Key optimization: Use startTransition to mark state updates as non-urgent
+      // This allows scroll events to be processed without waiting for re-renders
+      virtualizationObserver = new IntersectionObserver(
+        (entries) => {
+          // Use startTransition to defer state updates - prevents scroll blocking
+          startTransition(() => {
+            setVisibleCharts((prev) => {
+              const next = new Set(prev);
+              let hasChanges = false;
+              const newlyVisibleIndices: number[] = [];
+
+              for (const entry of entries) {
+                const element = entry.target as HTMLDivElement;
+                // O(1) lookup using WeakMap instead of O(n) indexOf
+                const index = chartIndexMap.current.get(element);
+                if (index !== undefined) {
+                  if (entry.isIntersecting) {
+                    // Add visible chart and adjacent ones
+                    if (!next.has(index)) {
+                      next.add(index);
+                      hasChanges = true;
+                      newlyVisibleIndices.push(index);
+                    }
+                    // Preload 2 adjacent charts on both mobile and desktop for smoother scrolling
+                    const adjacentRange = 2;
+                    for (
+                      let i = Math.max(0, index - adjacentRange);
+                      i <= Math.min(totalCharts - 1, index + adjacentRange);
+                      i++
+                    ) {
+                      if (!next.has(i)) {
+                        next.add(i);
+                        hasChanges = true;
+                        newlyVisibleIndices.push(i);
+                      }
+                    }
+                  } else if (!isMobileDevice) {
+                    // Desktop only: remove charts that are far from any visible chart
+                    // Mobile: NEVER remove charts once rendered - this prevents scroll jank
+                    const keepDistance = 3;
+                    const isNearVisible = Array.from(next).some(
+                      (visibleIndex) =>
+                        Math.abs(visibleIndex - index) <= keepDistance,
+                    );
+                    if (!isNearVisible && next.has(index)) {
+                      next.delete(index);
+                      hasChanges = true;
+                    }
+                  }
+                }
+              }
+
+              // Prefetch datapoints for newly visible charts (batch request)
+              if (newlyVisibleIndices.length > 0 && slideId) {
+                const submetricIds = newlyVisibleIndices
+                  .map((idx) => allCharts[idx]?.submetric.id)
+                  .filter(Boolean) as string[];
+                if (submetricIds.length > 0) {
+                  prefetchDataPoints(slideId, submetricIds);
+                }
+              }
+
+              // Only return new Set if something actually changed
+              return hasChanges ? next : prev;
+            });
+          });
+        },
+        {
+          root: null,
+          // Mobile: larger preload margin (800px) for smoother experience since we don't remove
+          // Desktop: moderate margin (400px) with cleanup for memory efficiency
+          rootMargin: isMobileDevice ? "800px" : "400px",
+          threshold: 0,
+        },
+      );
+
+      // Observe all chart elements
+      chartRefs.current.forEach((chartElement) => {
+        if (chartElement) {
+          trackingObserver?.observe(chartElement);
+          virtualizationObserver?.observe(chartElement);
+        }
+      });
+    };
+
+    // On mobile, delay observer setup to let initial render complete
+    // This prevents jank during the initial page load
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    if (isMobileDevice) {
+      timeoutId = setTimeout(setupObservers, 100);
+    } else {
+      setupObservers();
+    }
 
     return () => {
-      trackingObserver.disconnect();
-      virtualizationObserver.disconnect();
+      cleanupCalled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      trackingObserver?.disconnect();
+      virtualizationObserver?.disconnect();
     };
-  }, [totalCharts]); // Re-run when number of charts changes
+  }, [totalCharts, isMobileDevice, slideId, allCharts, prefetchDataPoints]); // Re-run when number of charts changes or device type changes
 
   // Scroll to chart from URL hash (for deep linking)
   // Uses "instant" behavior - direct jump without scroll animation
@@ -559,8 +652,8 @@ export const SlideContainer = memo(function SlideContainer({
         </Suspense>
       )}
 
-      {/* Floating Navigation Controls */}
-      {totalCharts > 1 && (
+      {/* Floating Navigation Controls - Hidden on mobile devices */}
+      {totalCharts > 1 && !isMobileDevice && (
         <div
           ref={navigationRef}
           className="fixed right-10 md:right-13 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 opacity-40 hover:opacity-100 transition-opacity duration-300"
@@ -624,8 +717,8 @@ export const SlideContainer = memo(function SlideContainer({
         {metrics.map((metric) => (
           <div key={metric.id} id={`metric-${metric.id}`} className="space-y-8">
             <div>
-              <div className="flex items-center gap-2 mb-0.5">
-                <h2 className="text-3xl font-bold text-foreground">
+              <div className="flex items-start gap-2 mb-0.5">
+                <h2 className="text-2xl sm:text-3xl font-bold text-foreground wrap-break-word">
                   {metric.name}
                 </h2>
                 <Button
@@ -686,11 +779,22 @@ export const SlideContainer = memo(function SlideContainer({
                       id={chartData?.slug}
                       ref={(el) => {
                         chartRefs.current[chartIndex] = el;
+                        // Populate WeakMap for O(1) lookups in observers
+                        if (el) {
+                          chartIndexMap.current.set(el, chartIndex);
+                        }
                       }}
-                      className="transition-all duration-300 rounded-lg relative"
+                      className="rounded-lg relative"
                       style={{
                         // Reserve minimum height to prevent layout shift
                         minHeight: shouldRender ? undefined : "500px",
+                        // Use content-visibility for native browser optimization of off-screen charts
+                        // This dramatically improves scroll performance on mobile without removing from DOM
+                        contentVisibility: "auto",
+                        containIntrinsicSize: "auto 500px",
+                        // CSS containment - tells browser this element's rendering is independent
+                        // Significantly reduces layout thrashing during scroll
+                        contain: "layout style paint",
                       }}
                     >
                       {shouldRender ? (

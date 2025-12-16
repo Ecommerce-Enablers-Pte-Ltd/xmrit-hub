@@ -8,6 +8,17 @@
 export type TimeBucket = "day" | "week" | "month" | "quarter" | "year";
 
 /**
+ * Array of all valid time bucket values for validation
+ */
+export const VALID_TIME_BUCKETS: TimeBucket[] = [
+  "day",
+  "week",
+  "month",
+  "quarter",
+  "year",
+];
+
+/**
  * Parse timestamp in various formats to Date
  * Supports: YYYYMM, YYYYMMDD, ISO strings
  */
@@ -76,6 +87,22 @@ function formatDateKey(date: Date): string {
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
   const day = String(date.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+/**
+ * Format a timestamp string to YYYY-MM-DD format for display
+ * Handles various input formats: YYYYMM, YYYYMMDD, ISO strings
+ *
+ * @param timestamp - Timestamp string in any supported format
+ * @returns Formatted date string as YYYY-MM-DD
+ */
+export function formatTimestampToDateString(timestamp: string): string {
+  try {
+    const date = parseTimestamp(timestamp);
+    return formatDateKey(date);
+  } catch {
+    return timestamp;
+  }
 }
 
 /**

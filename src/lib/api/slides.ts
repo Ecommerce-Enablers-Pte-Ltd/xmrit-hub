@@ -6,6 +6,7 @@ import type {
   UpdateSlideInput,
 } from "@/lib/validations/slide";
 import type { Slide, SlideWithMetrics } from "@/types/db/slide";
+import type { DataPointJson } from "@/types/db/submetric";
 import { BaseApiClient } from "./base";
 import { workspaceKeys } from "./workspaces";
 
@@ -15,6 +16,23 @@ export class SlideApiClient extends BaseApiClient {
       `/slides/${slideId}`,
     );
     return response.slide;
+  }
+
+  /**
+   * Batch fetch dataPoints for multiple submetrics
+   * Returns map of submetricId -> dataPoints array
+   */
+  async getSubmetricDataPoints(
+    slideId: string,
+    submetricIds: string[],
+  ): Promise<Record<string, DataPointJson[]>> {
+    const response = await this.request<{
+      dataPointsBySubmetricId: Record<string, DataPointJson[]>;
+    }>(`/slides/${slideId}/submetrics/data-points`, {
+      method: "POST",
+      body: JSON.stringify({ submetricIds }),
+    });
+    return response.dataPointsBySubmetricId;
   }
 
   async createSlide(
@@ -67,6 +85,12 @@ export const slideKeys = {
       : slideKeys.lists(),
   details: () => [...slideKeys.all, "detail"] as const,
   detail: (id: string) => [...slideKeys.details(), id] as const,
+  // DataPoints keys for lazy loading
+  dataPoints: () => [...slideKeys.all, "dataPoints"] as const,
+  dataPointsForSlide: (slideId: string) =>
+    [...slideKeys.dataPoints(), slideId] as const,
+  dataPointsForSubmetric: (slideId: string, submetricId: string) =>
+    [...slideKeys.dataPointsForSlide(slideId), submetricId] as const,
 };
 
 // React Query hooks for slide data fetching with optimizations
@@ -103,6 +127,84 @@ export function usePrefetchSlide() {
       queryFn: () => slideApiClient.getSlideById(slideId),
       staleTime: 30 * 1000, // Match the useSlide staleTime
     });
+  };
+}
+
+/**
+ * Hook to fetch dataPoints for a single submetric (lazy loading)
+ * Uses the batch endpoint but caches per-submetric for efficient reuse
+ */
+export function useSubmetricDataPoints(
+  slideId: string,
+  submetricId: string | undefined,
+  enabled = true,
+) {
+  const query = useQuery({
+    queryKey: slideKeys.dataPointsForSubmetric(slideId, submetricId ?? ""),
+    queryFn: async () => {
+      if (!submetricId) return null;
+
+      // Fetch via batch endpoint (single item)
+      const result = await slideApiClient.getSubmetricDataPoints(slideId, [
+        submetricId,
+      ]);
+      return result[submetricId] ?? null;
+    },
+    enabled: enabled && !!slideId && !!submetricId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - dataPoints change infrequently
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    // Don't refetch on window focus - dataPoints are relatively stable
+    refetchOnWindowFocus: false,
+  });
+
+  return {
+    dataPoints: query.data ?? null,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    error: query.error?.message ?? null,
+  };
+}
+
+/**
+ * Hook to batch-prefetch dataPoints for multiple submetrics
+ * Used by SlideContainer to prefetch visible charts' data
+ */
+export function usePrefetchSubmetricDataPoints() {
+  const queryClient = useQueryClient();
+
+  return async (slideId: string, submetricIds: string[]) => {
+    if (!slideId || submetricIds.length === 0) return;
+
+    // Filter out already-cached submetrics
+    const uncachedIds = submetricIds.filter((id) => {
+      const cached = queryClient.getQueryData(
+        slideKeys.dataPointsForSubmetric(slideId, id),
+      );
+      return cached === undefined;
+    });
+
+    if (uncachedIds.length === 0) return;
+
+    try {
+      // Fetch all uncached dataPoints in one batch request
+      const results = await slideApiClient.getSubmetricDataPoints(
+        slideId,
+        uncachedIds,
+      );
+
+      // Populate individual caches
+      for (const [submetricId, dataPoints] of Object.entries(results)) {
+        queryClient.setQueryData(
+          slideKeys.dataPointsForSubmetric(slideId, submetricId),
+          dataPoints,
+        );
+      }
+    } catch (error) {
+      console.error(
+        "[usePrefetchSubmetricDataPoints] Batch fetch failed:",
+        error,
+      );
+    }
   };
 }
 

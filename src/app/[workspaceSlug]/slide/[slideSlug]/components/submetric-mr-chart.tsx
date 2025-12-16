@@ -13,6 +13,8 @@ import {
   YAxis,
 } from "recharts";
 import { useChartTheme } from "@/hooks/use-chart-theme";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobileDevice } from "@/hooks/use-mobile-device";
 import {
   AXIS_LINE_CONFIG,
   formatTickValue,
@@ -45,6 +47,10 @@ export const SubmetricMRChart = memo(
   }: SubmetricMRChartProps) => {
     // Track theme for consistent colors
     const isDark = useChartTheme();
+    // Detect mobile screen width for responsive layout
+    const isMobile = useIsMobile();
+    // Detect mobile device to disable tooltip interactions
+    const { isMobileDevice } = useIsMobileDevice();
 
     // Calculate Y-axis domain for MR chart
     const mrYAxisDomain = useMemo(() => {
@@ -157,7 +163,7 @@ export const SubmetricMRChart = memo(
       [isDark, submetric.color],
     );
 
-    // Memoize active dot renderer
+    // Memoize active dot renderer (no interactions on mobile)
     const renderActiveDot = useCallback(
       (props: RechartsDotProps) => {
         const { cx, cy, payload } = props;
@@ -180,12 +186,12 @@ export const SubmetricMRChart = memo(
             strokeWidth={3}
             style={{
               filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.3))",
-              cursor: "pointer",
+              cursor: isMobileDevice ? "default" : "pointer",
             }}
           />
         );
       },
-      [isDark, submetric.color],
+      [isDark, submetric.color, isMobileDevice],
     );
 
     // Memoize reference line labels
@@ -220,7 +226,11 @@ export const SubmetricMRChart = memo(
         <ResponsiveContainer width="100%" height="100%" debounce={350}>
           <LineChart
             data={chartData}
-            margin={{ top: 40, right: 60, left: 20, bottom: 40 }}
+            margin={
+              isMobile
+                ? { top: 40, right: 20, left: -10, bottom: 40 }
+                : { top: 40, right: 60, left: 20, bottom: 40 }
+            }
           >
             <CartesianGrid
               strokeDasharray="2 2"
@@ -253,10 +263,12 @@ export const SubmetricMRChart = memo(
               domain={mrYAxisDomain}
               width={50}
             />
-            <Tooltip
-              // biome-ignore lint/suspicious/noExplicitAny: Recharts types are complex
-              content={CustomTooltip as any}
-            />
+            {!isMobileDevice && (
+              <Tooltip
+                // biome-ignore lint/suspicious/noExplicitAny: Recharts types are complex
+                content={CustomTooltip as any}
+              />
+            )}
 
             {/* Average Movement Line */}
             <ReferenceLine

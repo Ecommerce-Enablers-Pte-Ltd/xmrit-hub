@@ -88,7 +88,7 @@ export function DashboardLayout({
               </div>
               <UserNav session={session} />
             </header>
-            <main className="flex-1 overflow-auto px-6 pt-2 pb-6 md:p-6">
+            <main className="flex-1 overflow-auto px-4 pt-2 pb-6 md:p-6">
               {children}
             </main>
           </div>

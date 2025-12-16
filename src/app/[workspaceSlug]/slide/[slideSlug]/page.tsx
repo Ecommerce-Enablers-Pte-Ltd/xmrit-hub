@@ -74,7 +74,8 @@ async function getSlideByNumber(
                 },
               },
             },
-            // Limit columns to reduce data transfer (especially important for dataPoints JSONB)
+            // Limit columns to reduce data transfer - EXCLUDE dataPoints JSONB for fast initial load
+            // dataPoints will be fetched lazily per-chart when needed
             columns: {
               id: true,
               metricId: true,
@@ -84,9 +85,9 @@ async function getSlideByNumber(
               color: true,
               trafficLightColor: true,
               metadata: true,
-              dataPoints: true,
               createdAt: true,
               updatedAt: true,
+              // dataPoints: false - explicitly excluded for mobile performance
             },
           },
         },

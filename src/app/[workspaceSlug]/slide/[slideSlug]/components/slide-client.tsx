@@ -7,10 +7,10 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { EditSlideNameDialog } from "@/app/[workspaceSlug]/components/edit-slide-name-dialog";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
-import { useIsMobileDevice } from "@/hooks/use-mobile-device";
 import { slideKeys, useSlide } from "@/lib/api/slides";
 import { generateSlideUrl } from "@/lib/utils";
 import { CommentCountsProvider } from "@/providers/comment-counts-provider";
+import { FollowUpCountsProvider } from "@/providers/follow-up-counts-provider";
 import type { SlideWithMetrics } from "@/types/db/slide";
 import type { Workspace } from "@/types/db/workspace";
 import { SlideContainer } from "./slide-container";
@@ -88,7 +88,8 @@ export function SlideClient({
   workspace,
 }: SlideClientProps) {
   const router = useRouter();
-  const { isMobileDevice, isLoading: isMobileLoading } = useIsMobileDevice();
+  // Temporarily disabled mobile device check
+  // const { isMobileDevice, isLoading: isMobileLoading } = useIsMobileDevice();
   const queryClient = useQueryClient();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { open, setOpen, isMobile: isSidebarMobile } = useSidebar();
@@ -180,16 +181,6 @@ export function SlideClient({
   // Memoize callbacks to prevent unnecessary re-renders
   const handleEditClick = useMemo(() => () => setIsEditDialogOpen(true), []);
 
-  // Show nothing while detecting device type to prevent content flash
-  if (isMobileLoading) {
-    return null;
-  }
-
-  // Block mobile devices from viewing slide page
-  if (isMobileDevice) {
-    return <MobileWarning />;
-  }
-
   return (
     <div>
       <SlideHeader
@@ -207,13 +198,18 @@ export function SlideClient({
       />
 
       <div className="px-2 py-6">
-        {/* Wrap with CommentCountsProvider to batch-fetch all comment counts in ONE request */}
+        {/* Wrap with providers to batch-fetch all counts in ONE request each instead of 100+ individual requests */}
         <CommentCountsProvider slideId={slideId} definitionIds={definitionIds}>
-          <SlideContainer
-            metrics={metrics}
+          <FollowUpCountsProvider
             slideId={slideId}
-            workspaceId={workspaceId}
-          />
+            definitionIds={definitionIds}
+          >
+            <SlideContainer
+              metrics={metrics}
+              slideId={slideId}
+              workspaceId={workspaceId}
+            />
+          </FollowUpCountsProvider>
         </CommentCountsProvider>
       </div>
     </div>

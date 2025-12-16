@@ -12,14 +12,27 @@ export function useIsMobile() {
   });
 
   React.useEffect(() => {
+    // Track if the effect is still active to prevent setState on unmounted component
+    let isActive = true;
+
     const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
     const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+      if (isActive) {
+        const newValue = window.innerWidth < MOBILE_BREAKPOINT;
+        // Use functional update to only trigger re-render if value actually changed
+        setIsMobile((prev) => (prev !== newValue ? newValue : prev));
+      }
     };
     mql.addEventListener("change", onChange);
     // Sync state in case it changed between SSR and hydration
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-    return () => mql.removeEventListener("change", onChange);
+    if (isActive) {
+      const currentValue = window.innerWidth < MOBILE_BREAKPOINT;
+      setIsMobile((prev) => (prev !== currentValue ? currentValue : prev));
+    }
+    return () => {
+      isActive = false;
+      mql.removeEventListener("change", onChange);
+    };
   }, []);
 
   return isMobile;

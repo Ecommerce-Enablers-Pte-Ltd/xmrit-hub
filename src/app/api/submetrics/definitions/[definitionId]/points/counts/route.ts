@@ -4,7 +4,7 @@ import {
   getWorkspaceIdFromDefinition,
 } from "@/lib/api/comments";
 import { auth } from "@/lib/auth";
-import type { TimeBucket } from "@/lib/time-buckets";
+import { type TimeBucket, VALID_TIME_BUCKETS } from "@/lib/time-buckets";
 
 /**
  * GET /api/submetrics/definitions/[definitionId]/points/counts
@@ -54,14 +54,7 @@ export async function GET(
     }
 
     // Validate bucketType
-    const validBuckets: TimeBucket[] = [
-      "day",
-      "week",
-      "month",
-      "quarter",
-      "year",
-    ];
-    if (!validBuckets.includes(bucketType)) {
+    if (!VALID_TIME_BUCKETS.includes(bucketType)) {
       return NextResponse.json(
         { error: "Invalid bucketType" },
         { status: 400 },

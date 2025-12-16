@@ -147,20 +147,14 @@
   }
 
   /*
-   * Touch device optimizations for removing sticky hover/focus states.
-   * On touch devices, hover states can get "stuck" after tapping,
-   * and focus rings persist unnecessarily. This media query targets
-   * devices without hover capability (touch-only devices).
+   * Touch device optimizations.
+   * Provides visual feedback for touch interactions.
+   *
+   * Note: Modern browsers (iOS 13+, Chrome Android) automatically clear
+   * hover states after touch, so sticky hover is less of an issue now.
+   * If needed, hover styles can be scoped with @media (hover: hover).
    */
   @media (hover: none) and (pointer: coarse) {
-    /* Remove focus ring after touch interaction - blur immediately */
-    :where(button, [role="button"], a, [data-slot="button"]):focus:not(
-        :focus-visible
-      ) {
-      outline: none;
-      box-shadow: none;
-    }
-
     /* Ensure active states still work for touch feedback */
     :where(button, [role="button"], [data-slot="button"]):active {
       opacity: 0.8;

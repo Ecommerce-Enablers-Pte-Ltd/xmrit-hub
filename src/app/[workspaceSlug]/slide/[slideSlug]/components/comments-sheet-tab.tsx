@@ -52,7 +52,7 @@ import type {
   CommentWithUser,
 } from "@/types/db/comment";
 
-export interface DataPoint {
+export interface CommentDataPoint {
   timestamp: string;
   bucketValue: string;
 }
@@ -61,7 +61,7 @@ interface CommentsTabProps {
   definitionId: string;
   bucketType: TimeBucket;
   bucketValue: string;
-  allDataPoints?: DataPoint[];
+  allDataPoints?: CommentDataPoint[];
   onCommentAdded?: (bucketValue: string) => void;
   slideId: string;
   initialFilterToAll?: boolean;

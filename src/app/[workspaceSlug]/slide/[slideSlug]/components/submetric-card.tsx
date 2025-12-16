@@ -22,13 +22,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSidebar } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useSubmetricFollowUpsCount } from "@/lib/api/follow-ups";
+import { useSubmetricDataPoints } from "@/lib/api/slides";
 import { detectBucketType, parseTimestamp } from "@/lib/time-buckets";
+import { handleCloseAutoFocus } from "@/lib/ui/focus";
 import { generateChartSlug } from "@/lib/utils";
 import {
   applySeasonalFactors,
@@ -47,14 +49,86 @@ import {
   type TrendLimits,
   type XMRLimits,
 } from "@/lib/xmr-calculations";
-import type { Submetric } from "@/types/db/submetric";
-import { type DataPoint as CommentDataPoint, SlideSheet } from "./slide-sheet";
+import { useDefinitionFollowUpCount } from "@/providers/follow-up-counts-provider";
+import type { DataPointJson, Submetric } from "@/types/db/submetric";
+import { type CommentDataPoint, SlideSheet } from "./slide-sheet";
 import { SubmetricLockLimitsDialog } from "./submetric-lock-limits-dialog";
 import { SubmetricMRChart } from "./submetric-mr-chart";
 import { SubmetricSeasonalityDialog } from "./submetric-seasonality-dialog";
 import { SubmetricTrendDialog } from "./submetric-trend-dialog";
 import { SubmetricXChart } from "./submetric-x-chart";
 import { TrafficLightIndicator } from "./traffic-light-indicator";
+
+// Loading skeleton for chart - shown while dataPoints are being fetched
+function ChartLoadingSkeleton({
+  category,
+  metricName,
+}: {
+  category: string | null;
+  metricName: string;
+}) {
+  return (
+    <div className="w-full border overflow-hidden rounded-2xl">
+      {/* Header Section */}
+      <div className="px-3 sm:px-4 md:px-6 pt-4 pb-0">
+        {/* Chart Toolbar */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-8 rounded" />
+          </div>
+          <div className="flex items-center gap-1 sm:gap-2">
+            {/* Desktop toolbar skeletons (hidden on mobile) */}
+            <div className="hidden lg:flex items-center gap-2">
+              <Skeleton className="h-9 w-9 xl:w-28" />
+              <Skeleton className="h-9 w-9 xl:w-28" />
+              <Skeleton className="h-9 w-9 xl:w-32" />
+              <div className="h-6 w-px bg-border mx-1" />
+            </div>
+            {/* Mobile dropdown placeholder */}
+            <Skeleton className="h-9 w-9 lg:hidden" />
+            {/* Comments & Follow-ups - always visible */}
+            <Skeleton className="h-9 w-9" />
+            <Skeleton className="h-9 w-9" />
+          </div>
+        </div>
+
+        {/* Title and Status Row - show actual metadata */}
+        <div className="flex items-start justify-between gap-3 mt-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 md:gap-3 text-left w-full">
+              {category && (
+                <span className="px-2 sm:px-4 py-1.5 sm:py-2 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-md text-xs sm:text-sm font-bold uppercase tracking-wide whitespace-nowrap overflow-hidden text-ellipsis shrink-0 max-w-[30vw] sm:max-w-[25vw] md:max-w-[20vw] lg:max-w-[15vw]">
+                  {category}
+                </span>
+              )}
+              <h2 className="text-lg sm:text-xl md:text-2xl font-semibold tracking-tight overflow-hidden text-ellipsis whitespace-nowrap min-w-0 flex-1">
+                {metricName}
+              </h2>
+            </div>
+          </div>
+          {/* Traffic Light placeholder */}
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <Skeleton className="h-10 w-10 rounded-sm" />
+          </div>
+        </div>
+      </div>
+
+      {/* Content Section - Two charts side by side */}
+      <div className="px-2 md:px-6 pb-4 pt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* X Chart skeleton */}
+          <div className="space-y-2">
+            <Skeleton className="h-[350px] w-full" />
+          </div>
+          {/* MR Chart skeleton */}
+          <div className="space-y-2">
+            <Skeleton className="h-[350px] w-full" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface SubmetricLineChartProps {
   submetric: Submetric;
@@ -70,24 +144,30 @@ export const SubmetricLineChart = memo(
     slideId,
     workspaceId,
   }: SubmetricLineChartProps) {
-    // Get sidebar state for dynamic width calculations
+    // Get sidebar state for dynamic width calculations (desktop only)
     const { state: sidebarState } = useSidebar();
-
-    // Calculate max width for title based on sidebar state
-    // Sidebar width: 16rem (256px) when expanded, 3rem (48px) when collapsed
-    const { titleMaxWidth, categoryMaxWidth } = useMemo(() => {
-      // Desktop: subtract sidebar width
-      const sidebarWidth = sidebarState === "expanded" ? "16rem" : "3rem";
-      return {
-        titleMaxWidth: `calc(85vw - ${sidebarWidth})`,
-        categoryMaxWidth: `calc(25vw - ${sidebarWidth} * 0.2)`, // Proportionally reduce category width
-      };
-    }, [sidebarState]);
 
     // Get category, metricName, unit, preferredTrend from definition (new schema)
     const category = submetric.definition?.category || null;
     const metricName = submetric.definition?.metricName || "Untitled Submetric";
     const preferredTrend = submetric.definition?.preferredTrend || null;
+
+    // Check if dataPoints are already available (from SSR/cache) or need lazy loading
+    const hasInlineDataPoints =
+      !!submetric.dataPoints && submetric.dataPoints.length > 0;
+
+    // Lazy-fetch dataPoints if not inline (mobile optimization)
+    // Only fetches when chart becomes visible and dataPoints weren't in initial payload
+    const { dataPoints: fetchedDataPoints, isLoading: isLoadingDataPoints } =
+      useSubmetricDataPoints(slideId, submetric.id, !hasInlineDataPoints);
+
+    // Use inline dataPoints if available, otherwise use fetched ones
+    const effectiveDataPoints: DataPointJson[] | null = hasInlineDataPoints
+      ? submetric.dataPoints
+      : fetchedDataPoints;
+
+    // Track if still loading dataPoints (for conditional rendering at end)
+    const isDataPointsLoading = !hasInlineDataPoints && isLoadingDataPoints;
 
     // Check if label indicates trend or seasonality
     const labelHasTrend = useMemo(
@@ -144,13 +224,15 @@ export const SubmetricLineChart = memo(
 
     // Follow-ups sheet state
     const [isFollowUpsSheetOpen, setIsFollowUpsSheetOpen] = useState(false);
+    // Use batched follow-up counts from provider (1 request vs 100+ individual requests)
     const { count: followUpsCount, isLoading: isFollowUpsLoading } =
-      useSubmetricFollowUpsCount(submetric.definitionId ?? undefined, slideId);
+      useDefinitionFollowUpCount(submetric.definitionId ?? undefined);
 
     // Memoize raw data points transformation with deduplication
+    // Uses effectiveDataPoints (inline from SSR or lazy-fetched)
     const rawDataPoints = useMemo<DataPoint[]>(() => {
       const points =
-        submetric.dataPoints?.map((point) => ({
+        effectiveDataPoints?.map((point) => ({
           timestamp: point.timestamp,
           value: Number(point.value),
           confidence: point.confidence ?? undefined,
@@ -201,7 +283,7 @@ export const SubmetricLineChart = memo(
       }
 
       return Array.from(deduplicated.values());
-    }, [submetric.dataPoints]);
+    }, [effectiveDataPoints]);
 
     // Prepare data for comments sheet
     const commentDataPoints = useMemo<CommentDataPoint[]>(() => {
@@ -669,6 +751,13 @@ export const SubmetricLineChart = memo(
       }
     }, [chartSlug]);
 
+    // Show loading skeleton while fetching dataPoints (after all hooks are called)
+    if (isDataPointsLoading) {
+      return (
+        <ChartLoadingSkeleton category={category} metricName={metricName} />
+      );
+    }
+
     return (
       <div className="w-full border overflow-hidden rounded-2xl ">
         {/* Header Section */}
@@ -696,7 +785,7 @@ export const SubmetricLineChart = memo(
                     {preferredTrend.toUpperCase()} PREFERRED
                   </span>
                   <span className="sm:hidden">
-                    {preferredTrend.toUpperCase()[0]}
+                    {preferredTrend.toUpperCase()}
                   </span>
                 </span>
               )}
@@ -874,7 +963,11 @@ export const SubmetricLineChart = memo(
                         )}
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-56"
+                      onCloseAutoFocus={handleCloseAutoFocus}
+                    >
                       {/* Active state removal actions */}
                       {isLimitsLocked && (
                         <DropdownMenuItem
@@ -1011,23 +1104,29 @@ export const SubmetricLineChart = memo(
           </div>
 
           {/* Title and Status Row */}
-          <div className="flex items-start justify-between gap-3 mt-4">
-            <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between mt-4 gap-3">
+            <div
+              className="flex-1 min-w-0 overflow-hidden"
+              // Dynamic max-width based on sidebar state (desktop only)
+              // On mobile (no sidebar), uses 100% of container
+              style={{
+                maxWidth:
+                  sidebarState === "expanded"
+                    ? "calc(100% - 3rem)" // Account for traffic light indicator
+                    : "calc(100% - 3rem)",
+              }}
+            >
               <button
                 onClick={copyChartLink}
-                className="flex items-center gap-3 text-left group cursor-pointer max-w-full"
-                style={{ maxWidth: titleMaxWidth }}
+                className="flex items-center gap-2 md:gap-3 text-left group cursor-pointer w-full"
                 type="button"
               >
                 {category && (
-                  <span
-                    className="px-4 py-2 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-md text-sm font-bold uppercase tracking-wide whitespace-nowrap overflow-hidden text-ellipsis shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-blue-800 transition-colors"
-                    style={{ maxWidth: categoryMaxWidth }}
-                  >
+                  <span className="px-2 sm:px-4 py-1.5 sm:py-2 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-md text-xs sm:text-sm font-bold uppercase tracking-wide whitespace-nowrap overflow-hidden text-ellipsis shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-blue-800 transition-colors max-w-[30vw] sm:max-w-[25vw] md:max-w-[20vw] lg:max-w-[15vw]">
                     {category}
                   </span>
                 )}
-                <h2 className="text-2xl font-semibold tracking-tight overflow-hidden text-ellipsis whitespace-nowrap min-w-0 flex-1 transition-colors group-hover:text-primary">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-semibold tracking-tight overflow-hidden text-ellipsis whitespace-nowrap min-w-0 flex-1 transition-colors group-hover:text-primary">
                   {metricName}
                 </h2>
               </button>
@@ -1163,6 +1262,8 @@ export const SubmetricLineChart = memo(
   (prevProps, nextProps) => {
     // Custom comparison function for memo
     // Only re-render if these specific properties change
+    // Note: dataPoints are now lazily fetched, so we don't compare them here
+    // The component will handle loading state internally
     return (
       prevProps.slideId === nextProps.slideId &&
       prevProps.workspaceId === nextProps.workspaceId &&
@@ -1171,11 +1272,11 @@ export const SubmetricLineChart = memo(
         nextProps.submetric.definition?.category &&
       prevProps.submetric.definition?.metricName ===
         nextProps.submetric.definition?.metricName &&
-      prevProps.submetric.dataPoints === nextProps.submetric.dataPoints &&
       prevProps.submetric.definition?.preferredTrend ===
         nextProps.submetric.definition?.preferredTrend
       // Note: trafficLightColor is no longer checked here because it's handled
       // by the isolated TrafficLightIndicator component
+      // Note: dataPoints comparison removed - lazy loading handles this internally
     );
   },
 );

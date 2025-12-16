@@ -52,24 +52,31 @@ export function NavbarChartSearchButton() {
     return () => window.removeEventListener("keydown", handleSearchShortcut);
   }, [isSlidePage, context]);
 
-  // Don't show button if not on a slide page or on mobile device
-  if (!isSlidePage || !context || isMobileDevice) {
+  // Don't show button if not on a slide page
+  if (!isSlidePage || !context) {
     return null;
+  }
+
+  const searchButton = (
+    <Button
+      size="icon"
+      variant="ghost"
+      className="h-9 w-9"
+      onClick={context.open}
+    >
+      <Search className="h-4 w-4" />
+      <span className="sr-only">Search charts</span>
+    </Button>
+  );
+
+  // On mobile, render button without tooltip (tooltips are awkward on touch devices)
+  if (isMobileDevice) {
+    return searchButton;
   }
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-9 w-9"
-          onClick={context.open}
-        >
-          <Search className="h-4 w-4" />
-          <span className="sr-only">Search charts</span>
-        </Button>
-      </TooltipTrigger>
+      <TooltipTrigger asChild>{searchButton}</TooltipTrigger>
       <TooltipContent side="bottom">
         <span className="flex items-center gap-2">
           Search charts
