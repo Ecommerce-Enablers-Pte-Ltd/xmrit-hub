@@ -65,7 +65,9 @@ const DataPointRow = memo(
   }) => {
     return (
       <TableRow className={isExcluded ? "bg-gray-100 dark:bg-gray-800/50" : ""}>
-        <TableCell className={isExcluded ? "text-muted-foreground" : ""}>
+        <TableCell
+          className={`text-[10px] sm:text-sm py-1.5 sm:py-2 ${isExcluded ? "text-muted-foreground" : ""}`}
+        >
           {timestamp}
         </TableCell>
         <TableCell className="text-right p-1">
@@ -74,7 +76,7 @@ const DataPointRow = memo(
             step="0.01"
             value={isExcluded ? "" : point.value}
             onChange={(e) => onEditValue(index, e.target.value)}
-            className="text-right h-8 w-32 ml-auto"
+            className="text-right h-7 sm:h-8 w-20 sm:w-32 ml-auto text-xs sm:text-sm"
             placeholder={isExcluded ? "Excluded" : undefined}
             disabled={isExcluded}
           />
@@ -84,7 +86,7 @@ const DataPointRow = memo(
             variant="ghost"
             size="sm"
             onClick={() => onExclude(index)}
-            className={`h-8 w-8 p-0 ${
+            className={`h-7 w-7 sm:h-8 sm:w-8 p-0 ${
               isExcluded
                 ? "text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950"
                 : "text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
@@ -99,9 +101,9 @@ const DataPointRow = memo(
             }
           >
             {isExcluded ? (
-              <Undo2 className="h-4 w-4" />
+              <Undo2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             ) : (
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             )}
           </Button>
         </TableCell>
@@ -394,28 +396,32 @@ export function SubmetricLockLimitsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[50vw]! max-h-[90vh] flex flex-col overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-[50vw] max-h-[80vh] sm:max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0">
+        <DialogHeader className="shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-2 sm:pb-3">
           <div className="flex items-center justify-between pr-8">
-            <DialogTitle className="text-2xl font-bold">
-              Lock Limits - {submetricName}
+            <DialogTitle className="text-base sm:text-2xl font-bold truncate pr-2">
+              Lock Limits{submetricName ? ` - ${submetricName}` : ""}
             </DialogTitle>
-            <Button onClick={handleLockLimits} size="sm" className="h-9">
+            <Button
+              onClick={handleLockLimits}
+              size="sm"
+              className="h-8 sm:h-9 text-xs sm:text-sm shrink-0"
+            >
               Lock Limits
             </Button>
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-4 pr-2">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-3 sm:gap-4 px-4 sm:px-6 pb-4 sm:pb-6">
           {/* Description */}
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Edit or remove data points below, or manually enter limit values.
               Manual values take precedence. Click the trash icon to exclude
               data points, or the undo icon to include them back.
             </p>
             {outlierIndices.length > 0 && (
-              <p className="text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-200 dark:border-amber-800">
+              <p className="text-xs sm:text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 p-2 sm:p-3 rounded-md border border-amber-200 dark:border-amber-800">
                 {isCurrentLimitsManuallyLocked ? (
                   <>
                     📋 {outlierIndices.length} data point
@@ -435,9 +441,9 @@ export function SubmetricLockLimitsDialog({
           </div>
 
           {/* Limit Inputs */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="avgX" className="text-sm font-medium">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="avgX" className="text-xs sm:text-sm font-medium">
                 Avg X
               </Label>
               <Input
@@ -451,12 +457,13 @@ export function SubmetricLockLimitsDialog({
                   setHasUserMadeChanges(true);
                 }}
                 placeholder={currentLimits.avgX.toString()}
-                className={isModified.avgX ? "border-red-500" : ""}
+                className={`h-8 sm:h-10 text-xs sm:text-sm ${isModified.avgX ? "border-red-500" : ""}`}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="unpl" className="text-sm font-medium">
-                Upper X Limit (UNPL)
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="unpl" className="text-xs sm:text-sm font-medium">
+                <span className="hidden sm:inline">Upper X Limit (UNPL)</span>
+                <span className="sm:hidden">UNPL</span>
               </Label>
               <Input
                 id="unpl"
@@ -469,12 +476,13 @@ export function SubmetricLockLimitsDialog({
                   setHasUserMadeChanges(true);
                 }}
                 placeholder={currentLimits.UNPL.toString()}
-                className={isModified.unpl ? "border-red-500" : ""}
+                className={`h-8 sm:h-10 text-xs sm:text-sm ${isModified.unpl ? "border-red-500" : ""}`}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="lnpl" className="text-sm font-medium">
-                Lower X Limit (LNPL)
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="lnpl" className="text-xs sm:text-sm font-medium">
+                <span className="hidden sm:inline">Lower X Limit (LNPL)</span>
+                <span className="sm:hidden">LNPL</span>
               </Label>
               <Input
                 id="lnpl"
@@ -487,15 +495,19 @@ export function SubmetricLockLimitsDialog({
                   setHasUserMadeChanges(true);
                 }}
                 placeholder={currentLimits.LNPL.toString()}
-                className={isModified.lnpl ? "border-red-500" : ""}
+                className={`h-8 sm:h-10 text-xs sm:text-sm ${isModified.lnpl ? "border-red-500" : ""}`}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="avgMovement" className="text-sm font-medium">
-                Avg Movement
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
+            <div className="space-y-1 sm:space-y-2">
+              <Label
+                htmlFor="avgMovement"
+                className="text-xs sm:text-sm font-medium"
+              >
+                <span className="hidden sm:inline">Avg Movement</span>
+                <span className="sm:hidden">Avg Move</span>
               </Label>
               <Input
                 id="avgMovement"
@@ -508,12 +520,15 @@ export function SubmetricLockLimitsDialog({
                   setHasUserMadeChanges(true);
                 }}
                 placeholder={currentLimits.avgMovement.toString()}
-                className={isModified.avgMovement ? "border-red-500" : ""}
+                className={`h-8 sm:h-10 text-xs sm:text-sm ${isModified.avgMovement ? "border-red-500" : ""}`}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="url" className="text-sm font-medium">
-                Upper Movement Limit (URL)
+            <div className="space-y-1 sm:space-y-2">
+              <Label htmlFor="url" className="text-xs sm:text-sm font-medium">
+                <span className="hidden sm:inline">
+                  Upper Movement Limit (URL)
+                </span>
+                <span className="sm:hidden">URL</span>
               </Label>
               <Input
                 id="url"
@@ -526,31 +541,30 @@ export function SubmetricLockLimitsDialog({
                   setHasUserMadeChanges(true);
                 }}
                 placeholder={currentLimits.URL.toString()}
-                className={isModified.url ? "border-red-500" : ""}
+                className={`h-8 sm:h-10 text-xs sm:text-sm ${isModified.url ? "border-red-500" : ""}`}
               />
             </div>
           </div>
 
           {/* Locked Limits Basis Data Table */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-medium">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                <span className="text-xs sm:text-sm font-medium">
                   Locked Limits Basis:
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  ({editedDataPoints.length - excludedIndices.length} data
-                  points
+                <span className="text-[10px] sm:text-xs text-muted-foreground">
+                  ({editedDataPoints.length - excludedIndices.length} pts
                   {excludedIndices.length > 0 && (
                     <span className="text-muted-foreground">
                       {" "}
-                      + {excludedIndices.length} excluded
+                      + {excludedIndices.length} excl.
                     </span>
                   )}
                   )
                 </span>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-2 sm:gap-3">
                 {!isAutoLocked &&
                   onResetToAutoLock &&
                   autoDetectedOutliers.length > 0 && (
@@ -558,29 +572,31 @@ export function SubmetricLockLimitsDialog({
                       variant="link"
                       size="sm"
                       onClick={handleResetToAutoLock}
-                      className="h-auto p-0 text-green-600 hover:text-green-700"
+                      className="h-auto p-0 text-xs sm:text-sm text-green-600 hover:text-green-700"
                     >
-                      Reset to Auto Lock
+                      Reset to Auto
                     </Button>
                   )}
                 <Button
                   variant="link"
                   size="sm"
                   onClick={handleResetToOriginal}
-                  className="h-auto p-0 text-blue-600 hover:text-blue-700"
+                  className="h-auto p-0 text-xs sm:text-sm text-blue-600 hover:text-blue-700"
                 >
                   Reset to Original
                 </Button>
               </div>
             </div>
 
-            <ScrollArea className="h-[300px] rounded-md border">
+            <ScrollArea className="h-[200px] sm:h-[300px] rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Value</TableHead>
-                    <TableHead className="w-[60px]"></TableHead>
+                    <TableHead className="text-xs sm:text-sm">Date</TableHead>
+                    <TableHead className="text-right text-xs sm:text-sm">
+                      Value
+                    </TableHead>
+                    <TableHead className="w-[50px] sm:w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

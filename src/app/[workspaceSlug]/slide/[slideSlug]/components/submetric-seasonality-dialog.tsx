@@ -327,26 +327,30 @@ export function SubmetricSeasonalityDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="!max-w-[50vw] max-h-[90vh] flex flex-col overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-[50vw] max-h-[80vh] sm:max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0">
+        <DialogHeader className="shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-2 sm:pb-3">
           <div className="flex items-center justify-between pr-8">
-            <DialogTitle className="text-2xl font-bold">
+            <DialogTitle className="text-lg sm:text-2xl font-bold">
               Seasonality
             </DialogTitle>
-            <Button onClick={handleApplySeasonality} size="sm" className="h-9">
+            <Button
+              onClick={handleApplySeasonality}
+              size="sm"
+              className="h-8 sm:h-9 text-xs sm:text-sm"
+            >
               Deseasonalise
             </Button>
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-4 pr-2">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-3 sm:gap-4 px-4 sm:px-6 pb-4 sm:pb-6">
           {/* Description */}
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Use this to remove recurring patterns or fluctuations in data at
             regular intervals (e.g., monthly or yearly) to reveal underlying
             trends or residual variations.
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
             Modify your seasonal data or set the seasonal factors directly
             below. In case of conflict, the latter wins.
           </p>
@@ -408,11 +412,11 @@ export function SubmetricSeasonalityDialog({
           )}
 
           {/* Period and Grouping selectors */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <h3 className="font-semibold text-sm">Period:</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="space-y-1.5 sm:space-y-2">
+              <h3 className="font-semibold text-xs sm:text-sm">Period:</h3>
               <Select value={period} onValueChange={handlePeriodChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full h-8 sm:h-10 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -451,31 +455,35 @@ export function SubmetricSeasonalityDialog({
             </div> */}
           </div>
 
-          {/* Two-column layout for tables */}
-          <div className="grid grid-cols-2 gap-4 min-h-0">
+          {/* Two-column layout for tables - stacks on mobile */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-h-0">
             {/* Seasonal Data */}
             <div className="flex flex-col min-h-0">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-sm">Seasonal Data:</h3>
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                <h3 className="font-semibold text-xs sm:text-sm">
+                  Seasonal Data:
+                </h3>
                 <Button
                   variant="link"
                   size="sm"
                   onClick={handleResetToOriginal}
-                  className="h-auto p-0 text-blue-600 hover:text-blue-700"
+                  className="h-auto p-0 text-xs sm:text-sm text-blue-600 hover:text-blue-700"
                 >
                   Reset to Original
                 </Button>
               </div>
 
-              <ScrollArea className="h-[500px] border rounded-lg">
+              <ScrollArea className="h-[250px] sm:h-[400px] border rounded-lg">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[35%]">Date</TableHead>
-                      <TableHead className="w-[40%] text-right">
+                      <TableHead className="w-[35%] text-xs sm:text-sm">
+                        Date
+                      </TableHead>
+                      <TableHead className="w-[40%] text-right text-xs sm:text-sm">
                         Value
                       </TableHead>
-                      <TableHead className="w-[25%] text-center">
+                      <TableHead className="w-[25%] text-center text-xs sm:text-sm">
                         Season
                       </TableHead>
                     </TableRow>
@@ -494,21 +502,21 @@ export function SubmetricSeasonalityDialog({
                               : "rgb(17, 24, 39)",
                           }}
                         >
-                          <TableCell className="font-mono text-xs py-2">
+                          <TableCell className="font-mono text-[10px] sm:text-xs py-1.5 sm:py-2">
                             {item.timestamp}
                           </TableCell>
-                          <TableCell className="text-right py-2">
+                          <TableCell className="text-right py-1.5 sm:py-2">
                             <Input
                               type="number"
                               value={item.value}
                               onChange={(e) =>
                                 handleValueChange(index, e.target.value)
                               }
-                              className="h-7 text-xs text-right w-full min-w-[100px]"
+                              className="h-6 sm:h-7 text-[10px] sm:text-xs text-right w-full min-w-[70px] sm:min-w-[100px]"
                               step="any"
                             />
                           </TableCell>
-                          <TableCell className="text-center py-2 text-sm font-semibold">
+                          <TableCell className="text-center py-1.5 sm:py-2 text-xs sm:text-sm font-semibold">
                             {item.season}
                           </TableCell>
                         </TableRow>
@@ -521,26 +529,26 @@ export function SubmetricSeasonalityDialog({
 
             {/* Seasonal Factors */}
             <div className="flex flex-col min-h-0">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-sm">Seasons:</h3>
+              <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+                <h3 className="font-semibold text-xs sm:text-sm">Seasons:</h3>
                 <Button
                   variant="link"
                   size="sm"
                   onClick={handleRecalculateFactors}
-                  className="h-auto p-0 text-blue-600 hover:text-blue-700"
+                  className="h-auto p-0 text-xs sm:text-sm text-blue-600 hover:text-blue-700"
                 >
-                  Recalculate seasonal factors
+                  Recalculate
                 </Button>
               </div>
 
-              <ScrollArea className="h-[500px] border rounded-lg">
+              <ScrollArea className="h-[200px] sm:h-[400px] border rounded-lg">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[25%] text-center">
+                      <TableHead className="w-[25%] text-center text-xs sm:text-sm">
                         Season
                       </TableHead>
-                      <TableHead className="w-[75%]">
+                      <TableHead className="w-[75%] text-xs sm:text-sm">
                         Seasonal Factors
                       </TableHead>
                     </TableRow>
@@ -558,17 +566,17 @@ export function SubmetricSeasonalityDialog({
                               : "rgb(17, 24, 39)",
                           }}
                         >
-                          <TableCell className="text-center py-2 font-semibold">
+                          <TableCell className="text-center py-1.5 sm:py-2 text-xs sm:text-sm font-semibold">
                             {index + 1}
                           </TableCell>
-                          <TableCell className="py-2">
+                          <TableCell className="py-1.5 sm:py-2">
                             <Input
                               type="number"
                               value={factor}
                               onChange={(e) =>
                                 handleFactorChange(index, e.target.value)
                               }
-                              className="h-7 text-xs w-full min-w-[120px]"
+                              className="h-6 sm:h-7 text-[10px] sm:text-xs w-full min-w-[80px] sm:min-w-[120px]"
                               step="any"
                             />
                           </TableCell>

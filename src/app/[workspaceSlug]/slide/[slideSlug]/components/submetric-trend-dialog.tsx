@@ -118,22 +118,28 @@ export function SubmetricTrendDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="!max-w-[50vw] max-h-[90vh] flex flex-col overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-[50vw] max-h-[80vh] sm:max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0">
+        <DialogHeader className="shrink-0 px-4 sm:px-6 pt-4 sm:pt-6 pb-2 sm:pb-3">
           <div className="flex items-center justify-between pr-8">
-            <DialogTitle className="text-2xl font-bold">Trends</DialogTitle>
-            <Button onClick={handleApplyTrend} size="sm" className="h-9">
+            <DialogTitle className="text-lg sm:text-2xl font-bold">
+              Trends
+            </DialogTitle>
+            <Button
+              onClick={handleApplyTrend}
+              size="sm"
+              className="h-8 sm:h-9 text-xs sm:text-sm"
+            >
               Trend Limits
             </Button>
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-4 pr-2">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-3 sm:gap-4 px-4 sm:px-6 pb-4 sm:pb-6">
           {/* Description */}
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Use this to generate trended limit lines from a line of best fit.
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
             The gradient and intercept are automatically recalculated as you
             edit data points. Manual changes to gradient/intercept will disable
             auto-recalculation. Click "Reset to Original" to restore data and
@@ -141,10 +147,12 @@ export function SubmetricTrendDialog({
           </p>
 
           {/* Average line equation */}
-          <div className="border rounded-lg p-4 space-y-3">
-            <h3 className="font-semibold text-sm">Average line equation:</h3>
-            <div className="flex items-center gap-3">
-              <span className="text-sm">y =</span>
+          <div className="border rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3">
+            <h3 className="font-semibold text-xs sm:text-sm">
+              Average line equation:
+            </h3>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <span className="text-xs sm:text-sm">y =</span>
               <Input
                 type="text"
                 value={gradient}
@@ -152,10 +160,10 @@ export function SubmetricTrendDialog({
                   setGradient(e.target.value);
                   setIsManuallyEdited(true);
                 }}
-                className="w-32 h-9 text-sm"
+                className="w-24 sm:w-32 h-8 sm:h-9 text-xs sm:text-sm"
                 placeholder="-34.132867"
               />
-              <span className="text-sm">x +</span>
+              <span className="text-xs sm:text-sm">x +</span>
               <Input
                 type="text"
                 value={intercept}
@@ -163,7 +171,7 @@ export function SubmetricTrendDialog({
                   setIntercept(e.target.value);
                   setIsManuallyEdited(true);
                 }}
-                className="w-40 h-9 text-sm"
+                className="w-28 sm:w-40 h-8 sm:h-9 text-xs sm:text-sm"
                 placeholder="940.397436"
               />
             </div>
@@ -171,52 +179,61 @@ export function SubmetricTrendDialog({
 
           {/* Linear Regression Data */}
           <div className="flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-sm">Linear Regression Data:</h3>
+            <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+              <h3 className="font-semibold text-xs sm:text-sm">
+                Linear Regression Data:
+              </h3>
               <Button
                 variant="link"
                 size="sm"
                 onClick={handleResetToOriginal}
-                className="h-auto p-0 text-blue-600 hover:text-blue-700"
+                className="h-auto p-0 text-xs sm:text-sm text-blue-600 hover:text-blue-700"
               >
                 Reset to Original
               </Button>
             </div>
 
-            <ScrollArea className="h-[400px] border rounded-lg">
+            <ScrollArea className="h-[250px] sm:h-[400px] border rounded-lg">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[45%]">Date</TableHead>
-                    <TableHead className="w-[55%] text-right">Value</TableHead>
+                    <TableHead className="w-[45%] text-xs sm:text-sm">
+                      Date
+                    </TableHead>
+                    <TableHead className="w-[55%] text-right text-xs sm:text-sm">
+                      Value
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {editedDataPoints.map((point, index) => (
                     <TableRow key={`${point.timestamp}-${index}`}>
-                      <TableCell className="font-mono text-sm">
+                      <TableCell className="font-mono text-[10px] sm:text-sm py-1.5 sm:py-2">
                         {point.timestamp}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right py-1.5 sm:py-2">
                         <Input
                           type="number"
                           value={point.value}
                           onChange={(e) =>
                             handleValueChange(index, e.target.value)
                           }
-                          className="h-8 text-sm text-right w-32 min-w-[80px]"
+                          className="h-7 sm:h-8 text-xs sm:text-sm text-right w-24 sm:w-32 min-w-[70px] sm:min-w-[80px]"
                           step="any"
                         />
                       </TableCell>
                     </TableRow>
                   ))}
-                  {/* Empty rows for visual consistency */}
+                  {/* Empty rows for visual consistency - hidden on mobile */}
                   {editedDataPoints.length < 15 &&
                     Array.from(
                       { length: 15 - editedDataPoints.length },
                       (_, i) => i,
                     ).map((rowNum) => (
-                      <TableRow key={`empty-row-${rowNum}`}>
+                      <TableRow
+                        key={`empty-row-${rowNum}`}
+                        className="hidden sm:table-row"
+                      >
                         <TableCell className="h-10"></TableCell>
                         <TableCell></TableCell>
                       </TableRow>
