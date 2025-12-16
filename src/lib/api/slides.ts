@@ -66,9 +66,10 @@ export function useSlide(slideId: string, initialData?: SlideWithMetrics) {
     queryFn: () => slideApiClient.getSlideById(slideId),
     enabled: !!slideId,
     initialData, // Hydrate from SSR data
-    staleTime: 10 * 60 * 1000, // 10 minutes (increased since definitions are stable)
+    staleTime: 30 * 1000, // 30 seconds - reduced to catch new ingested data faster
     gcTime: 20 * 60 * 1000, // 20 minutes
     refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000, // Poll every 30 seconds for new data
     // Stale-while-revalidate: show stale data while refetching
     placeholderData: (previousData) => previousData,
   });
@@ -90,7 +91,7 @@ export function usePrefetchSlide() {
     queryClient.prefetchQuery({
       queryKey: slideKeys.detail(slideId),
       queryFn: () => slideApiClient.getSlideById(slideId),
-      staleTime: 10 * 60 * 1000, // Match the useSlide staleTime
+      staleTime: 30 * 1000, // Match the useSlide staleTime
     });
   };
 }

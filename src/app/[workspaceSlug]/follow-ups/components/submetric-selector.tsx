@@ -81,7 +81,7 @@ export function SubmetricSelector({
   // Find the selected definition
   const selectedDefinition = React.useMemo(
     () => submetricDefinitions.find((def) => def.id === value),
-    [submetricDefinitions, value]
+    [submetricDefinitions, value],
   );
 
   // Get display text for trigger
@@ -91,8 +91,8 @@ export function SubmetricSelector({
       return showAllOption
         ? "All submetrics"
         : showNoneOption
-        ? "None"
-        : placeholder;
+          ? "None"
+          : placeholder;
     }
     if (!selectedDefinition) {
       // Value exists but definition not found - show placeholder or "Unknown"
@@ -114,7 +114,7 @@ export function SubmetricSelector({
       onValueChange(definitionId);
       setOpen(false);
     },
-    [onValueChange]
+    [onValueChange],
   );
 
   return (
@@ -130,7 +130,7 @@ export function SubmetricSelector({
             !value && "text-muted-foreground",
             triggerWidth,
             triggerMaxWidth,
-            className
+            className,
           )}
           style={{
             maxWidth: triggerMaxWidth
@@ -168,7 +168,7 @@ export function SubmetricSelector({
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4 shrink-0",
-                      !value ? "opacity-100" : "opacity-0"
+                      !value ? "opacity-100" : "opacity-0",
                     )}
                   />
                   <span className="text-muted-foreground truncate block flex-1 min-w-0">
@@ -187,7 +187,7 @@ export function SubmetricSelector({
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4 shrink-0",
-                      !value ? "opacity-100" : "opacity-0"
+                      !value ? "opacity-100" : "opacity-0",
                     )}
                   />
                   <span className="text-muted-foreground truncate block flex-1 min-w-0">
@@ -236,7 +236,7 @@ export function SubmetricSelector({
                       <Check
                         className={cn(
                           "mr-2 h-4 w-4 shrink-0",
-                          value === definition.id ? "opacity-100" : "opacity-0"
+                          value === definition.id ? "opacity-100" : "opacity-0",
                         )}
                       />
                       <span className="truncate block flex-1 min-w-0">

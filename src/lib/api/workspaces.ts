@@ -82,9 +82,10 @@ export function useWorkspaces(initialData?: Workspace[]) {
     queryKey: workspaceKeys.list(),
     queryFn: () => workspaceApiClient.getAllWorkspaces(),
     initialData, // Hydrate from SSR data
-    staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh
+    staleTime: 30 * 1000, // 30 seconds - reduced to catch new ingested data faster
     gcTime: 10 * 60 * 1000, // 10 minutes - keep in cache (formerly cacheTime)
     refetchOnWindowFocus: true, // Refetch when user returns to tab
+    refetchInterval: 30 * 1000, // Poll every 30 seconds for new data
   });
 
   return {
@@ -105,9 +106,10 @@ export function useWorkspace(
     queryFn: () => workspaceApiClient.getWorkspaceById(workspaceId),
     enabled: !!workspaceId,
     initialData, // Hydrate from SSR data
-    staleTime: 30 * 1000, // 30 seconds - shorter stale time to ensure fresh data with nested structure
+    staleTime: 30 * 1000, // 30 seconds - reduced to catch new ingested data faster
     gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000, // Poll every 30 seconds for new data
     // Stale-while-revalidate: show stale data while refetching
     placeholderData: (previousData) => previousData,
   });
@@ -127,9 +129,10 @@ export function useWorkspaceSlidesList(workspaceId: string) {
     queryKey: workspaceKeys.slidesList(workspaceId),
     queryFn: () => workspaceApiClient.getWorkspaceSlidesList(workspaceId),
     enabled: !!workspaceId,
-    staleTime: 10 * 60 * 1000, // 10 minutes - slides list rarely changes
+    staleTime: 30 * 1000, // 30 seconds - reduced to catch new ingested data faster
     gcTime: 30 * 60 * 1000, // 30 minutes cache
-    refetchOnWindowFocus: false, // Don't refetch on focus for better performance
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
+    refetchInterval: 30 * 1000, // Poll every 30 seconds for new data
   });
 
   return {
