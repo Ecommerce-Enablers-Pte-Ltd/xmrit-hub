@@ -51,7 +51,7 @@ const SlideHeader = memo(
     onEditClick,
   }: Omit<SlideHeaderProps, "workspaceId" | "slideId">) => {
     return (
-      <div className="px-2 py-4 border-b">
+      <div className="px-0 md:px-2 py-4 border-b">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
@@ -79,7 +79,7 @@ const SlideHeader = memo(
         </div>
       </div>
     );
-  },
+  }
 );
 SlideHeader.displayName = "SlideHeader";
 
@@ -166,7 +166,7 @@ export function SlideClient({
     const expectedPath = generateSlideUrl(
       workspaceSlug,
       slideNumber,
-      slideTitle,
+      slideTitle
     );
 
     // Read current path from window (non-reactive) instead of usePathname
@@ -197,7 +197,7 @@ export function SlideClient({
         workspaceId={workspaceId}
       />
 
-      <div className="px-2 py-6">
+      <div className="px-0 md:px-2 py-6">
         {/* Wrap with providers to batch-fetch all counts in ONE request each instead of 100+ individual requests */}
         <CommentCountsProvider slideId={slideId} definitionIds={definitionIds}>
           <FollowUpCountsProvider
