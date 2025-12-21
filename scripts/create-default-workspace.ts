@@ -33,7 +33,7 @@ function slugify(text: string, fallback?: string): string {
 
 /**
  * Normalize a string to a stable key format
- * Example: "% of MCB Count" -> "of-mcb-count"
+ * Example: "% of Total Count" -> "of-total-count"
  */
 function normalizeKey(str: string): string {
   return str
@@ -46,8 +46,8 @@ function normalizeKey(str: string): string {
 /**
  * Derive submetric key from label
  * Extracts both category prefix and metric name to create a unique key
- * Example: "[Adidas] - % of MCB Count" -> "adidas-of-mcb-count"
- * Example: "[Nike] - % of MCB Count" -> "nike-of-mcb-count"
+ * Example: "[Category A] - % of Total Count" -> "category-a-of-total-count"
+ * Example: "[Category B] - % of Total Count" -> "category-b-of-total-count"
  * Example: "Transaction Count" -> "transaction-count"
  */
 function deriveSubmetricKey(label: string): string {

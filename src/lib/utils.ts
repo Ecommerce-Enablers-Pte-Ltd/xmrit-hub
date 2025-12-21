@@ -51,7 +51,7 @@ export function validateAndNormalizeSlug(slug: string): string {
 
   if (!SLUG_REGEX.test(normalized)) {
     throw new SlugValidationError(
-      "Slug must start with a letter and contain only lowercase letters, numbers, and hyphens (no consecutive or trailing hyphens)",
+      "Slug must start with a letter and contain only lowercase letters, numbers, and hyphens (no consecutive or trailing hyphens)"
     );
   }
 
@@ -109,7 +109,7 @@ export function slugify(text: string, fallback?: string): string {
 export function generateSlideUrl(
   workspaceSlug: string,
   slideNumber: number,
-  slideTitle: string,
+  slideTitle: string
 ): string {
   const titleSlug = slugify(slideTitle);
   const slideSlug = titleSlug
@@ -156,7 +156,7 @@ export function displayWorkspaceSlug(slug: string): string {
 export function setCookie(
   name: string,
   value: string,
-  options?: { path?: string; maxAge?: number },
+  options?: { path?: string; maxAge?: number }
 ): void {
   if (typeof window === "undefined") return;
 
@@ -201,19 +201,19 @@ export function getCookie(name: string): string | null {
 
   const cookies = document.cookie.split("; ");
   const cookie = cookies.find((c) => c.startsWith(`${name}=`));
-  return cookie ? (cookie.split("=")[1] ?? null) : null;
+  return cookie ? cookie.split("=")[1] ?? null : null;
 }
 
 /**
  * Generates a URL-safe slug from category and metric name.
  * Used for creating anchor links to charts on slide pages.
- * @param category - The category/dimension (e.g., "Adidas", "North America")
- * @param metricName - The metric name (e.g., "% of MCB Count")
- * @returns URL-safe slug (e.g., "adidas-of-mcb-count")
+ * @param category - The category/dimension (e.g., "Category A", "Region 1")
+ * @param metricName - The metric name (e.g., "% of Total Count")
+ * @returns URL-safe slug (e.g., "adidas-of-total-count")
  */
 export function generateChartSlug(
   category: string | null | undefined,
-  metricName: string | null | undefined,
+  metricName: string | null | undefined
 ): string {
   const parts: string[] = [];
   if (category) {
@@ -221,7 +221,7 @@ export function generateChartSlug(
       category
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, ""),
+        .replace(/^-|-$/g, "")
     );
   }
   if (metricName) {
@@ -229,7 +229,7 @@ export function generateChartSlug(
       metricName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, ""),
+        .replace(/^-|-$/g, "")
     );
   }
   return parts.join("-") || "chart";
@@ -245,7 +245,7 @@ export function generateChartSlug(
  */
 export function getErrorMessage(
   error: unknown,
-  fallback: string = "An unexpected error occurred",
+  fallback: string = "An unexpected error occurred"
 ): string {
   // Handle Error instances
   if (error instanceof Error) {

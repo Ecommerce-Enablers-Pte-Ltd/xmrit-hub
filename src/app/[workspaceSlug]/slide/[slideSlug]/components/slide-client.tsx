@@ -79,7 +79,7 @@ const SlideHeader = memo(
         </div>
       </div>
     );
-  }
+  },
 );
 SlideHeader.displayName = "SlideHeader";
 
@@ -166,7 +166,7 @@ export function SlideClient({
     const expectedPath = generateSlideUrl(
       workspaceSlug,
       slideNumber,
-      slideTitle
+      slideTitle,
     );
 
     // Read current path from window (non-reactive) instead of usePathname

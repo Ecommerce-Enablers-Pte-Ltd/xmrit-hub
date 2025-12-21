@@ -34,7 +34,7 @@ import { slugify } from "@/lib/utils";
  *       "chart_type": "line", // optional, default: "line"
  *       "submetrics": [
  *         {
- *           "category": "Adidas",            // optional - dimension/segment (e.g., "Adidas", "North America")
+ *           "category": "Category A",        // optional - category/dimension (e.g., "Category A", "Region 1")
  *           "timezone": "ltz",               // optional - default: "UTC"
  *           "xaxis": "period",               // optional - x-axis semantic label (stored in definition)
  *           "yaxis": "% of transactions",    // optional - y-axis semantic label (stored in definition, fallback for unit)
@@ -66,10 +66,10 @@ interface DataPointInput {
 }
 
 interface SubmetricInput {
-  category?: string; // Dimension/segment (e.g., "Adidas", "North America")
+  category?: string; // Category/dimension (e.g., "Category A", "Region 1")
   timezone?: string;
   xaxis?: string; // X-axis semantic label (stored in definition, e.g., "period", "tracked_week")
-  yaxis?: string; // Y-axis semantic label (stored in definition, e.g., "hours", "% of MCB")
+  yaxis?: string; // Y-axis semantic label (stored in definition, e.g., "hours", "% of total")
   preferred_trend?: "uptrend" | "downtrend" | "stable" | null;
   unit?: string; // Unit of measurement (stored in definition, takes precedence over yaxis if both provided)
   aggregation_type?: string;
@@ -97,7 +97,7 @@ interface IngestRequest {
 
 /**
  * Normalize a string to a stable key format
- * Example: "% of MCB Count" -> "of-mcb-count"
+ * Example: "% of Total Count" -> "of-total-count"
  */
 function normalizeKey(str: string): string {
   return str
@@ -109,7 +109,7 @@ function normalizeKey(str: string): string {
 
 /**
  * Derive stable submetric key from category and metric name
- * Example: category="Adidas", metricName="% of MCB Count" -> "adidas-of-mcb-count"
+ * Example: category="Category A", metricName="% of Total Count" -> "category-a-of-total-count"
  * Example: category=null, metricName="Transaction Count" -> "transaction-count"
  */
 function deriveSubmetricKey(
@@ -518,16 +518,16 @@ export async function GET(request: NextRequest) {
       slide_description: "Optional description",
       metrics: [
         {
-          metric_name: "% of MCB Count to Total Transactions",
+          metric_name: "% of Total Count to Total Transactions",
           description: "Optional description",
           ranking: 1,
           chart_type: "line",
           submetrics: [
             {
-              category: "Adidas",
+              category: "Category A",
               timezone: "ltz",
               xaxis: "period",
-              yaxis: "% of MCB",
+              yaxis: "% of total",
               unit: "%",
               preferred_trend: "downtrend",
               aggregation_type: "avg",
