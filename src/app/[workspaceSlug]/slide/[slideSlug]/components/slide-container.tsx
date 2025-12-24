@@ -639,7 +639,7 @@ export const SlideContainer = memo(function SlideContainer({
   }
 
   return (
-    <>
+    <div className="overflow-x-hidden">
       {/* Chart Search Dialog - Lazy loaded, kept mounted after first open for close animation */}
       {hasDialogLoaded && (
         <Suspense fallback={null}>
@@ -718,7 +718,7 @@ export const SlideContainer = memo(function SlideContainer({
           <div key={metric.id} id={`metric-${metric.id}`} className="space-y-8">
             <div>
               <div className="flex items-start gap-2 mb-0.5 flex-wrap">
-                <h2 className="text-2xl sm:text-3xl font-bold text-foreground wrap-break-words min-w-0 flex-1 leading-tight">
+                <h2 className="text-2xl sm:text-3xl font-bold text-foreground wrap-break-word min-w-0 flex-1 leading-tight">
                   {metric.name}
                 </h2>
                 <Button
@@ -842,7 +842,7 @@ export const SlideContainer = memo(function SlideContainer({
           metric={editingMetric}
         />
       )}
-    </>
+    </div>
   );
 },
 arePropsEqual);
