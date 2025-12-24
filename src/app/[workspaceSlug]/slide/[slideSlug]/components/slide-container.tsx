@@ -31,14 +31,14 @@ import { EditMetricDefinitionDialog } from "./edit-metric-definition-dialog";
 const SubmetricLineChart = lazy(() =>
   import("./submetric-card").then((mod) => ({
     default: mod.SubmetricLineChart,
-  })),
+  }))
 );
 
 // Lazy load ChartSearchDialog to improve initial load performance
 const ChartSearchDialog = lazy(() =>
   import("./chart-search-dialog").then((mod) => ({
     default: mod.ChartSearchDialog,
-  })),
+  }))
 );
 
 // Skeleton loader for charts - hides chart info until reached
@@ -109,7 +109,7 @@ interface SlideContainerProps {
 // Custom comparison function for memo to prevent unnecessary re-renders
 function arePropsEqual(
   prevProps: SlideContainerProps,
-  nextProps: SlideContainerProps,
+  nextProps: SlideContainerProps
 ): boolean {
   // Only re-render if slideId, workspaceId or metrics data actually changes
   if (prevProps.slideId !== nextProps.slideId) return false;
@@ -175,7 +175,7 @@ export const SlideContainer = memo(function SlideContainer({
   // Mobile: start with first 3 charts (increased for smoother initial experience)
   // Desktop: start with first 4 charts
   const [visibleCharts, setVisibleCharts] = useState<Set<number>>(
-    () => new Set(isMobileDevice ? [0, 1, 2] : [0, 1, 2, 3]),
+    () => new Set(isMobileDevice ? [0, 1, 2] : [0, 1, 2, 3])
   );
 
   // Prefetch hook for batch-loading datapoints
@@ -205,9 +205,9 @@ export const SlideContainer = memo(function SlideContainer({
         submetric,
         slug: generateChartSlug(
           submetric.definition?.category,
-          submetric.definition?.metricName,
+          submetric.definition?.metricName
         ),
-      })),
+      }))
     );
   }, [metrics]);
 
@@ -271,14 +271,14 @@ export const SlideContainer = memo(function SlideContainer({
             "ring-2",
             "ring-primary/40",
             "ring-offset-2",
-            "ring-offset-background",
+            "ring-offset-background"
           );
           setTimeout(() => {
             element.classList.remove(
               "ring-2",
               "ring-primary/40",
               "ring-offset-2",
-              "ring-offset-background",
+              "ring-offset-background"
             );
           }, 1500);
         } else {
@@ -294,14 +294,14 @@ export const SlideContainer = memo(function SlideContainer({
               "ring-2",
               "ring-primary/40",
               "ring-offset-2",
-              "ring-offset-background",
+              "ring-offset-background"
             );
             setTimeout(() => {
               element.classList.remove(
                 "ring-2",
                 "ring-primary/40",
                 "ring-offset-2",
-                "ring-offset-background",
+                "ring-offset-background"
               );
             }, 1500);
           }, 300);
@@ -323,7 +323,7 @@ export const SlideContainer = memo(function SlideContainer({
       // Start trying after a brief delay for React to process state update
       setTimeout(() => tryScroll(), 10);
     },
-    [totalCharts],
+    [totalCharts]
   );
 
   // Navigate to previous chart - INSTANT, NO RE-RENDERS
@@ -397,7 +397,7 @@ export const SlideContainer = memo(function SlideContainer({
           root: null,
           rootMargin: "-40% 0px -40% 0px", // Middle 20% of viewport
           threshold: 0,
-        },
+        }
       );
 
       // Observer for managing which charts should render (virtualization)
@@ -446,7 +446,7 @@ export const SlideContainer = memo(function SlideContainer({
                     const keepDistance = 3;
                     const isNearVisible = Array.from(next).some(
                       (visibleIndex) =>
-                        Math.abs(visibleIndex - index) <= keepDistance,
+                        Math.abs(visibleIndex - index) <= keepDistance
                     );
                     if (!isNearVisible && next.has(index)) {
                       next.delete(index);
@@ -477,7 +477,7 @@ export const SlideContainer = memo(function SlideContainer({
           // Desktop: moderate margin (400px) with cleanup for memory efficiency
           rootMargin: isMobileDevice ? "800px" : "400px",
           threshold: 0,
-        },
+        }
       );
 
       // Observe all chart elements
@@ -518,7 +518,7 @@ export const SlideContainer = memo(function SlideContainer({
     if (slug.startsWith("submetric-")) {
       const submetricId = slug.replace("submetric-", "");
       const chartIndex = allCharts.findIndex(
-        (c) => c.submetric.id === submetricId,
+        (c) => c.submetric.id === submetricId
       );
       if (chartIndex !== -1) {
         currentIndexRef.current = chartIndex;
@@ -608,7 +608,7 @@ export const SlideContainer = memo(function SlideContainer({
       currentIndexRef.current = index;
       scrollToChart(index, "instant");
     },
-    [scrollToChart],
+    [scrollToChart]
   );
 
   if (metrics.length === 0) {
@@ -717,8 +717,8 @@ export const SlideContainer = memo(function SlideContainer({
         {metrics.map((metric) => (
           <div key={metric.id} id={`metric-${metric.id}`} className="space-y-8">
             <div>
-              <div className="flex items-start gap-2 mb-0.5">
-                <h2 className="text-2xl sm:text-3xl font-bold text-foreground wrap-break-word">
+              <div className="flex items-start gap-2 mb-0.5 flex-wrap">
+                <h2 className="text-2xl sm:text-3xl font-bold text-foreground wrap-break-words min-w-0 flex-1 leading-tight">
                   {metric.name}
                 </h2>
                 <Button
@@ -767,7 +767,7 @@ export const SlideContainer = memo(function SlideContainer({
                 {metric.submetrics.map((submetric) => {
                   // Find the global index and chart data for this chart
                   const chartIndex = allCharts.findIndex(
-                    (c) => c.submetric.id === submetric.id,
+                    (c) => c.submetric.id === submetric.id
                   );
                   const chartData = allCharts[chartIndex];
 
@@ -844,4 +844,5 @@ export const SlideContainer = memo(function SlideContainer({
       )}
     </>
   );
-}, arePropsEqual);
+},
+arePropsEqual);
