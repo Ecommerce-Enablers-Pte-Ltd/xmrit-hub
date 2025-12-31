@@ -7,7 +7,7 @@ import {
   Lock,
   LockOpen,
   MessageSquare,
-  MoreHorizontal,
+  SlidersHorizontal,
   TrendingUp,
   X,
 } from "lucide-react";
@@ -172,11 +172,11 @@ export const SubmetricLineChart = memo(
     // Check if label indicates trend or seasonality
     const labelHasTrend = useMemo(
       () => /\(Trend\)/i.test(submetric.definition?.metricName || ""),
-      [submetric.definition?.metricName],
+      [submetric.definition?.metricName]
     );
     const labelHasSeasonality = useMemo(
       () => /\(Seasonality\)/i.test(submetric.definition?.metricName || ""),
-      [submetric.definition?.metricName],
+      [submetric.definition?.metricName]
     );
 
     // Lock limits state
@@ -189,7 +189,7 @@ export const SubmetricLineChart = memo(
       useState(false); // Track if chart has ever been manually modified
     const [outlierIndices, setOutlierIndices] = useState<number[]>([]); // Auto-detected outliers
     const [originalAutoOutliers, setOriginalAutoOutliers] = useState<number[]>(
-      [],
+      []
     ); // Store original auto-detected outliers
     const [manuallyExcludedIndices, setManuallyExcludedIndices] = useState<
       number[]
@@ -250,7 +250,7 @@ export const SubmetricLineChart = memo(
       validPoints.sort(
         (a, b) =>
           parseTimestamp(a.timestamp).getTime() -
-          parseTimestamp(b.timestamp).getTime(),
+          parseTimestamp(b.timestamp).getTime()
       );
 
       // Deduplicate points with same timestamp
@@ -330,7 +330,7 @@ export const SubmetricLineChart = memo(
               c: stats.c,
               avgMR: baseData.limits.avgMovement,
             },
-            rawDataPoints,
+            rawDataPoints
           );
 
           // Now set all state atomically
@@ -364,7 +364,7 @@ export const SubmetricLineChart = memo(
           rawDataPoints, // xData - for initial date reference
           rawDataPoints, // seasonalData - data to calculate factors from
           detectedPeriod,
-          "none", // No grouping for auto-apply
+          "none" // No grouping for auto-apply
         );
 
         if (factors.length > 0) {
@@ -433,7 +433,7 @@ export const SubmetricLineChart = memo(
           processed,
           seasonalFactors,
           seasonalityGrouping, // grouping comes before period
-          seasonalityPeriod,
+          seasonalityPeriod
         );
       }
 
@@ -488,7 +488,7 @@ export const SubmetricLineChart = memo(
         const updatedViolations = detectViolations(
           baseXmrData.dataPoints,
           baseXmrData.limits,
-          trendLines,
+          trendLines
         );
 
         return {
@@ -502,7 +502,7 @@ export const SubmetricLineChart = memo(
         // Recalculate violations based on locked limits
         const updatedViolations = detectViolations(
           baseXmrData.dataPoints,
-          lockedLimits,
+          lockedLimits
         );
 
         return {
@@ -519,7 +519,7 @@ export const SubmetricLineChart = memo(
     const chartData = useMemo(() => {
       // Check if data spans multiple years
       const dates = xmrData.dataPoints.map((point) =>
-        parseTimestamp(point.timestamp),
+        parseTimestamp(point.timestamp)
       );
       const years = new Set(dates.map((date) => date.getFullYear()));
       const spansMultipleYears = years.size > 1;
@@ -615,7 +615,7 @@ export const SubmetricLineChart = memo(
     const handleLockLimits = (
       limits: XMRLimits,
       isManuallyModified: boolean,
-      excludedIndices: number[],
+      excludedIndices: number[]
     ) => {
       setLockedLimits(limits);
       setIsLimitsLocked(true);
@@ -696,7 +696,7 @@ export const SubmetricLineChart = memo(
     const handleApplySeasonality = (
       period: SeasonalityPeriod,
       factors: number[],
-      grouping: SeasonalityGrouping,
+      grouping: SeasonalityGrouping
     ) => {
       setSeasonalityPeriod(period);
       setSeasonalityGrouping(grouping);
@@ -955,7 +955,7 @@ export const SubmetricLineChart = memo(
                         size="sm"
                         className="gap-1 relative"
                       >
-                        <MoreHorizontal className="h-4 w-4" />
+                        <SlidersHorizontal className="h-4 w-4" />
                         {(isLimitsLocked ||
                           trendActive ||
                           seasonalityActive) && (
@@ -1278,5 +1278,5 @@ export const SubmetricLineChart = memo(
       // by the isolated TrafficLightIndicator component
       // Note: dataPoints comparison removed - lazy loading handles this internally
     );
-  },
+  }
 );
