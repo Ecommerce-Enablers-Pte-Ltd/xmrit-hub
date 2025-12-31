@@ -639,7 +639,7 @@ export const SlideContainer = memo(function SlideContainer({
   }
 
   return (
-    <div className="overflow-x-hidden">
+    <div>
       {/* Chart Search Dialog - Lazy loaded, kept mounted after first open for close animation */}
       {hasDialogLoaded && (
         <Suspense fallback={null}>
@@ -784,7 +784,7 @@ export const SlideContainer = memo(function SlideContainer({
                           chartIndexMap.current.set(el, chartIndex);
                         }
                       }}
-                      className="rounded-lg relative"
+                      className="rounded-lg relative overflow-x-hidden"
                       style={{
                         // Reserve minimum height to prevent layout shift
                         minHeight: shouldRender ? undefined : "500px",
